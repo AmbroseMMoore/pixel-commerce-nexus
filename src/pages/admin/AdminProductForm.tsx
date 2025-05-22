@@ -16,7 +16,16 @@ import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useCategories, useSubcategoriesByCategory } from "@/hooks/useCategories";
 import { useProduct } from "@/hooks/useProducts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/integrations/supabase/client";
+import { 
+  createProduct, 
+  updateProduct, 
+  createProductColor, 
+  updateProductColor,
+  createProductSize, 
+  updateProductSize 
+} from "@/services/adminApi";
+import { Product } from "@/types/product";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ColorVariant {
   id: string;
@@ -39,11 +48,15 @@ interface Specification {
 const AdminProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isEditMode = !!id;
   
   // Fetch data
   const { categories, isLoading: isCategoriesLoading } = useCategories();
   const { data: existingProduct, isLoading: isProductLoading } = useProduct(isEditMode ? id : "");
+  
+  // Form submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Basic product info
   const [title, setTitle] = useState("");
@@ -129,11 +142,12 @@ const AdminProductForm = () => {
     if (!title || !shortDescription || !originalPrice || !mainCategoryId || !subCategoryId) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
+        description: "Please fill in all required fields."
       });
       return;
     }
+    
+    setIsSubmitting(true);
     
     try {
       // Create specifications object from array
@@ -159,122 +173,60 @@ const AdminProductForm = () => {
         updated_at: new Date().toISOString()
       };
       
+      let productId = id;
+      
       if (isEditMode) {
         // Update existing product
-        const { error: productError } = await supabase
-          .from('products')
-          .update(productData)
-          .eq('id', id);
-          
-        if (productError) throw productError;
-        
-        // Update color variants (this is simplified - in a real app, you'd need to handle deletes and adds)
-        for (const colorVariant of colorVariants) {
-          if (colorVariant.id.startsWith('color-')) {
-            // New color variant
-            const { data: newColor, error: colorError } = await supabase
-              .from('product_colors')
-              .insert({
-                product_id: id,
-                name: colorVariant.name,
-                color_code: colorVariant.colorCode
-              })
-              .select()
-              .single();
-              
-            if (colorError) throw colorError;
-            
-            // For a real app, you'd handle actual image uploads to storage here
-          } else {
-            // Update existing color variant
-            const { error: colorError } = await supabase
-              .from('product_colors')
-              .update({
-                name: colorVariant.name,
-                color_code: colorVariant.colorCode
-              })
-              .eq('id', colorVariant.id);
-              
-            if (colorError) throw colorError;
-          }
-        }
-        
-        // Update size variants (simplified)
-        for (const sizeVariant of sizeVariants) {
-          if (sizeVariant.id.startsWith('size-')) {
-            // New size variant
-            const { error: sizeError } = await supabase
-              .from('product_sizes')
-              .insert({
-                product_id: id,
-                name: sizeVariant.name,
-                in_stock: sizeVariant.inStock
-              });
-              
-            if (sizeError) throw sizeError;
-          } else {
-            // Update existing size variant
-            const { error: sizeError } = await supabase
-              .from('product_sizes')
-              .update({
-                name: sizeVariant.name,
-                in_stock: sizeVariant.inStock
-              })
-              .eq('id', sizeVariant.id);
-              
-            if (sizeError) throw sizeError;
-          }
-        }
-        
-        toast({
-          title: "Product Updated",
-          description: `${title} has been successfully updated.`
-        });
+        await updateProduct(id!, productData);
       } else {
         // Create new product
-        const { data: newProduct, error: productError } = await supabase
-          .from('products')
-          .insert(productData)
-          .select()
-          .single();
-          
-        if (productError) throw productError;
-        
-        // Add color variants
-        for (const colorVariant of colorVariants) {
-          const { data: newColor, error: colorError } = await supabase
-            .from('product_colors')
-            .insert({
-              product_id: newProduct.id,
-              name: colorVariant.name,
-              color_code: colorVariant.colorCode
-            })
-            .select()
-            .single();
-            
-          if (colorError) throw colorError;
-          
-          // For a real app, you'd handle actual image uploads to storage here
-        }
-        
-        // Add size variants
-        for (const sizeVariant of sizeVariants) {
-          const { error: sizeError } = await supabase
-            .from('product_sizes')
-            .insert({
-              product_id: newProduct.id,
-              name: sizeVariant.name,
-              in_stock: sizeVariant.inStock
-            });
-            
-          if (sizeError) throw sizeError;
-        }
-        
-        toast({
-          title: "Product Created",
-          description: `${title} has been successfully created.`
-        });
+        const newProduct = await createProduct(productData);
+        productId = newProduct.id;
       }
+      
+      // Handle color variants
+      for (const colorVariant of colorVariants) {
+        const colorData = {
+          product_id: productId,
+          name: colorVariant.name,
+          color_code: colorVariant.colorCode
+        };
+        
+        if (colorVariant.id.startsWith('color-') || !isEditMode) {
+          // New color variant
+          await createProductColor(colorData);
+        } else {
+          // Update existing color variant
+          await updateProductColor(colorVariant.id, colorData);
+        }
+        
+        // For a real app, you'd handle actual image uploads to storage here
+      }
+      
+      // Handle size variants
+      for (const sizeVariant of sizeVariants) {
+        const sizeData = {
+          product_id: productId,
+          name: sizeVariant.name,
+          in_stock: sizeVariant.inStock
+        };
+        
+        if (sizeVariant.id.startsWith('size-') || !isEditMode) {
+          // New size variant
+          await createProductSize(sizeData);
+        } else {
+          // Update existing size variant
+          await updateProductSize(sizeVariant.id, sizeData);
+        }
+      }
+      
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      
+      toast({
+        title: isEditMode ? "Product Updated" : "Product Created",
+        description: `${title} has been successfully ${isEditMode ? 'updated' : 'created'}.`
+      });
       
       // Redirect back to products page
       navigate("/admin/products");
@@ -282,9 +234,10 @@ const AdminProductForm = () => {
       console.error("Error saving product:", error);
       toast({
         title: "Error",
-        description: "There was an error saving the product. Please try again.",
-        variant: "destructive"
+        description: "There was an error saving the product. Please try again."
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -427,13 +380,20 @@ const AdminProductForm = () => {
               <Button variant="outline" onClick={() => navigate("/admin/products")}>
                 Cancel
               </Button>
-              <Button onClick={handleSubmit}>
-                {isEditMode ? "Update Product" : "Create Product"}
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isEditMode ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  isEditMode ? "Update Product" : "Create Product"
+                )}
               </Button>
             </div>
           </div>
 
-          <form>
+          <form onSubmit={handleSubmit}>
             <Tabs defaultValue="basic">
               <TabsList className="mb-4">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>

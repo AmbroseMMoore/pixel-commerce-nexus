@@ -6,6 +6,7 @@ import {
   fetchProductsByCategory,
   fetchProductBySlug
 } from "@/services/api";
+import { supabase } from "@/integrations/supabase/client";
 
 // Hook for all products
 export const useProducts = () => {
