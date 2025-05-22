@@ -52,7 +52,7 @@ const LoginPage = () => {
       const redirectUri = window.location.origin + "/auth/google/callback";
       
       // These would be your actual Google OAuth credentials in a real app
-      const clientId = "your-google-client-id";
+      const clientId = "796970443987-20ojsj31uq6r0ivmp1m6eki8scr0f5lr.apps.googleusercontent.com";
       
       const params = new URLSearchParams({
         client_id: clientId,
