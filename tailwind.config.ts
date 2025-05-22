@@ -68,7 +68,21 @@ export default {
 					DEFAULT: '#3b82f6', // blue-500
 					light: '#bfdbfe', // blue-200
 					dark: '#1d4ed8', // blue-700
+				},
+				// User requested colors
+				'custom': {
+					'purple': '#712D8F',
+					'pink': '#E94897',
+					'aqua': '#89D0C4',
+					'red': '#F05338',
+					'wheat': '#EAE6D3',
+					'white': '#ffffff',
+					'black': '#000000',
 				}
+			},
+			fontFamily: {
+				'dela-gothic': ['"Dela Gothic One"', 'cursive'],
+				'quicksand': ['Quicksand', 'sans-serif'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

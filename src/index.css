@@ -43,6 +43,15 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    /* Custom theme colors */
+    --purple: 282 52% 37%;
+    --pink: 329 80% 59%;
+    --aqua: 167 38% 68%;
+    --red: 11 88% 58%;
+    --wheat: 55 32% 87%;
+    --custom-white: 0 0% 100%;
+    --custom-black: 0 0% 0%;
   }
 
   .dark {
@@ -90,8 +99,11 @@
   }
 
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground font-quicksand;
+  }
+
+  h1, h2 {
+    @apply font-dela-gothic;
   }
 }
 
@@ -101,7 +113,7 @@
   }
   
   .btn-primary {
-    @apply bg-brand hover:bg-brand-dark text-white font-medium py-2 px-4 rounded transition-colors;
+    @apply bg-custom-purple hover:bg-custom-purple/90 text-white font-medium py-2 px-4 rounded transition-colors;
   }
   
   .btn-secondary {

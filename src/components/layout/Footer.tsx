@@ -90,6 +90,11 @@ const Footer = () => {
                   Terms & Conditions
                 </Link>
               </li>
+              <li>
+                <Link to="/admin" className="text-gray-300 hover:text-custom-pink transition-colors font-semibold">
+                  Admin Panel
+                </Link>
+              </li>
             </ul>
           </div>
 
