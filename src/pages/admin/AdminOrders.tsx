@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, Eye } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-import { OrderStatus, type Order } from "@/types/user";
+import { OrderStatus, PaymentStatus, type Order } from "@/types/user";
 
 // Mock data for orders
 const mockOrders: Partial<Order>[] = [
@@ -18,7 +18,7 @@ const mockOrders: Partial<Order>[] = [
     orderNumber: "ORD-12345",
     userId: "user-1",
     status: OrderStatus.DELIVERED,
-    paymentStatus: "PAID",
+    paymentStatus: PaymentStatus.PAID,
     totalAmount: 129.99,
     createdAt: new Date("2023-05-20")
   },
@@ -27,7 +27,7 @@ const mockOrders: Partial<Order>[] = [
     orderNumber: "ORD-12344",
     userId: "user-2",
     status: OrderStatus.PROCESSING,
-    paymentStatus: "PAID",
+    paymentStatus: PaymentStatus.PAID,
     totalAmount: 79.50,
     createdAt: new Date("2023-05-19")
   },
@@ -36,7 +36,7 @@ const mockOrders: Partial<Order>[] = [
     orderNumber: "ORD-12343",
     userId: "user-3",
     status: OrderStatus.SHIPPED,
-    paymentStatus: "PAID",
+    paymentStatus: PaymentStatus.PAID,
     totalAmount: 199.95,
     createdAt: new Date("2023-05-18")
   },
@@ -45,7 +45,7 @@ const mockOrders: Partial<Order>[] = [
     orderNumber: "ORD-12342",
     userId: "user-4",
     status: OrderStatus.CANCELLED,
-    paymentStatus: "REFUNDED",
+    paymentStatus: PaymentStatus.REFUNDED,
     totalAmount: 49.99,
     createdAt: new Date("2023-05-17")
   },
@@ -54,7 +54,7 @@ const mockOrders: Partial<Order>[] = [
     orderNumber: "ORD-12341",
     userId: "user-5",
     status: OrderStatus.PENDING,
-    paymentStatus: "PENDING",
+    paymentStatus: PaymentStatus.PENDING,
     totalAmount: 89.99,
     createdAt: new Date("2023-05-16")
   },
@@ -63,7 +63,7 @@ const mockOrders: Partial<Order>[] = [
     orderNumber: "ORD-12340",
     userId: "user-1",
     status: OrderStatus.RETURNED,
-    paymentStatus: "REFUNDED",
+    paymentStatus: PaymentStatus.REFUNDED,
     totalAmount: 149.95,
     createdAt: new Date("2023-05-15")
   }
