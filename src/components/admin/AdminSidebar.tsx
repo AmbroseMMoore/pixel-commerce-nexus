@@ -9,7 +9,8 @@ import {
   FileText, 
   Settings,
   ChevronRight,
-  LogOut
+  LogOut,
+  Tag
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ const NavItem = ({ icon, label, href, active }: NavItemProps) => {
         className={cn(
           "w-full justify-start gap-3 font-normal h-auto py-3",
           active
-            ? "bg-secondary/80 font-medium text-brand hover:bg-secondary/80"
+            ? "bg-secondary/80 font-medium text-custom-purple hover:bg-secondary/80"
             : "hover:bg-secondary/50"
         )}
       >
@@ -58,6 +59,11 @@ const AdminSidebar = () => {
       icon: <ShoppingBag size={20} />,
       label: "Products",
       href: "/admin/products"
+    },
+    {
+      icon: <Tag size={20} />,
+      label: "Sub-Categories",
+      href: "/admin/subcategories"
     },
     {
       icon: <Package size={20} />,
@@ -90,10 +96,10 @@ const AdminSidebar = () => {
       <div className="h-16 flex items-center px-4 border-b border-gray-200">
         <div className="flex items-center gap-2 overflow-hidden">
           {!isCollapsed && (
-            <span className="font-bold text-lg text-brand">EcoShop Admin</span>
+            <span className="font-bold text-lg text-custom-purple">CuteBae Admin</span>
           )}
           {isCollapsed && (
-            <span className="font-bold text-lg text-brand">E</span>
+            <span className="font-bold text-lg text-custom-purple">C</span>
           )}
         </div>
       </div>

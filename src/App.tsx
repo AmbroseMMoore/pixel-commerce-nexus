@@ -16,6 +16,7 @@ import LoginPage from "./pages/LoginPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminProducts from "./pages/admin/AdminProducts";
+import AdminSubCategories from "./pages/admin/AdminSubCategories";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCMS from "./pages/admin/AdminCMS";
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/products/new" element={<AdminProductForm />} />
             <Route path="/admin/products/:id" element={<AdminProductForm />} />
+            <Route path="/admin/subcategories" element={<AdminSubCategories />} />
             <Route path="/admin/customers" element={<AdminCustomers />} />
             <Route path="/admin/orders" element={<AdminOrders />} />
             <Route path="/admin/cms" element={<AdminCMS />} />

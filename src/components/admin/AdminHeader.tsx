@@ -7,16 +7,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { mockUser } from "@/data/mockData";
 
 const AdminHeader = () => {
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Search functionality would be implemented here
+    console.log("Search submitted");
+  };
+
   return (
     <header className="h-16 border-b border-gray-200 bg-white px-6 flex items-center justify-between">
       {/* Search */}
-      <div className="relative max-w-md">
+      <form onSubmit={handleSearch} className="relative max-w-md">
         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <Input
           placeholder="Search..."
           className="w-full max-w-sm pl-10"
         />
-      </div>
+      </form>
       
       {/* Actions */}
       <div className="flex items-center gap-4">
