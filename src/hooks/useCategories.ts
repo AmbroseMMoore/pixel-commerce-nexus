@@ -2,11 +2,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchCategories, fetchSubCategories } from "@/services/api";
 import { Category, SubCategory } from "@/types/product";
-import { useEffect, useState } from "react";
 
+// Hook for all categories
 export const useCategories = () => {
-  const [mergedCategories, setMergedCategories] = useState<Category[]>([]);
-  
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
     queryFn: fetchCategories
@@ -17,19 +15,18 @@ export const useCategories = () => {
     queryFn: fetchSubCategories
   });
   
-  useEffect(() => {
-    if (categoriesQuery.data && subCategoriesQuery.data) {
-      // Merge subcategories into their parent categories
-      const categories = [...categoriesQuery.data];
-      
-      categories.forEach(category => {
-        category.subCategories = subCategoriesQuery.data.filter(
-          subCategory => subCategory.categoryId === category.id
-        );
-      });
-      
-      setMergedCategories(categories);
-    }
+  // Compute the merged categories array that includes subcategories
+  const mergedCategories = React.useMemo(() => {
+    if (!categoriesQuery.data || !subCategoriesQuery.data) return [];
+    
+    const categories = [...categoriesQuery.data];
+    categories.forEach(category => {
+      category.subCategories = subCategoriesQuery.data.filter(
+        subCategory => subCategory.categoryId === category.id
+      );
+    });
+    
+    return categories;
   }, [categoriesQuery.data, subCategoriesQuery.data]);
   
   return {
@@ -47,7 +44,7 @@ export const useCategories = () => {
 export const useSubcategoriesByCategory = (categoryId: string | undefined) => {
   return useQuery({
     queryKey: ["subcategories", "byCategory", categoryId],
-    queryFn: () => fetchSubCategories(),
+    queryFn: fetchSubCategories,
     select: (data) => data.filter(subCategory => subCategory.categoryId === categoryId),
     enabled: !!categoryId
   });

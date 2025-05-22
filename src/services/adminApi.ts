@@ -4,6 +4,7 @@ import { Product, Category, SubCategory } from "@/types/product";
 
 // Admin Functions for Products
 export const createProduct = async (productData: any) => {
+  // Make sure to enable the admin role for this operation
   const { data, error } = await supabase
     .from('products')
     .insert(productData)
@@ -37,6 +38,22 @@ export const deleteProduct = async (id: string) => {
 };
 
 // Admin Functions for Categories
+export const fetchAllCategories = async (): Promise<Category[]> => {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*');
+    
+  if (error) throw error;
+  
+  return (data || []).map(category => ({
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    image: category.image,
+    subCategories: [] // Will be populated by useCategories hook
+  }));
+};
+
 export const createCategory = async (categoryData: any) => {
   const { data, error } = await supabase
     .from('categories')
@@ -71,6 +88,21 @@ export const deleteCategory = async (id: string) => {
 };
 
 // Admin Functions for SubCategories
+export const fetchAllSubcategories = async (): Promise<SubCategory[]> => {
+  const { data, error } = await supabase
+    .from('subcategories')
+    .select('*');
+    
+  if (error) throw error;
+  
+  return (data || []).map(subCategory => ({
+    id: subCategory.id,
+    name: subCategory.name,
+    slug: subCategory.slug,
+    categoryId: subCategory.category_id
+  }));
+};
+
 export const createSubCategory = async (subCategoryData: any) => {
   const { data, error } = await supabase
     .from('subcategories')
@@ -150,4 +182,26 @@ export const updateProductSize = async (id: string, sizeData: any) => {
     
   if (error) throw error;
   return data;
+};
+
+// Admin Functions for Product Images
+export const createProductImage = async (imageData: any) => {
+  const { data, error } = await supabase
+    .from('product_images')
+    .insert(imageData)
+    .select()
+    .single();
+    
+  if (error) throw error;
+  return data;
+};
+
+export const deleteProductImage = async (id: string) => {
+  const { error } = await supabase
+    .from('product_images')
+    .delete()
+    .eq('id', id);
+    
+  if (error) throw error;
+  return true;
 };

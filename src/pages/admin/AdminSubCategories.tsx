@@ -6,59 +6,43 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Edit, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Search, Edit, Trash2, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-
-// Main categories as defined
-const mainCategories = [
-  { id: "1", name: "Boys", slug: "boys" },
-  { id: "2", name: "Girls", slug: "girls" },
-  { id: "3", name: "Toys", slug: "toys" },
-  { id: "4", name: "Shoes", slug: "shoes" },
-  { id: "5", name: "Accessories", slug: "accessories" },
-  { id: "6", name: "New Born", slug: "new-born" },
-];
-
-// Mock data for sub-categories
-const initialSubCategories = [
-  { id: "101", name: "T-Shirts", slug: "t-shirts", mainCategoryId: "1" },
-  { id: "102", name: "Jeans", slug: "jeans", mainCategoryId: "1" },
-  { id: "201", name: "Dresses", slug: "dresses", mainCategoryId: "2" },
-  { id: "202", name: "Skirts", slug: "skirts", mainCategoryId: "2" },
-  { id: "301", name: "Action Figures", slug: "action-figures", mainCategoryId: "3" },
-  { id: "302", name: "Board Games", slug: "board-games", mainCategoryId: "3" },
-  { id: "401", name: "Sneakers", slug: "sneakers", mainCategoryId: "4" },
-  { id: "402", name: "Boots", slug: "boots", mainCategoryId: "4" },
-  { id: "501", name: "Hats", slug: "hats", mainCategoryId: "5" },
-  { id: "502", name: "Jewelry", slug: "jewelry", mainCategoryId: "5" },
-  { id: "601", name: "Onesies", slug: "onesies", mainCategoryId: "6" },
-  { id: "602", name: "Bibs", slug: "bibs", mainCategoryId: "6" },
-];
-
-interface SubCategory {
-  id: string;
-  name: string;
-  slug: string;
-  mainCategoryId: string;
-}
+import { toast } from "@/hooks/use-toast";
+import { useCategories } from "@/hooks/useCategories";
+import { fetchAllSubcategories, createSubCategory, updateSubCategory, deleteSubCategory } from "@/services/adminApi";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { SubCategory } from "@/types/product";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const AdminSubCategories = () => {
-  const [subCategories, setSubCategories] = useState<SubCategory[]>(initialSubCategories);
+  const queryClient = useQueryClient();
+  const { categories, isLoading: isCategoriesLoading } = useCategories();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
 
   // For the add/edit form
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentSubCategory, setCurrentSubCategory] = useState<SubCategory>({
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentSubCategory, setCurrentSubCategory] = useState<{
+    id: string;
+    name: string;
+    slug: string;
+    categoryId: string;
+  }>({
     id: "",
     name: "",
     slug: "",
-    mainCategoryId: ""
+    categoryId: ""
+  });
+
+  // Fetch subcategories
+  const { data: subCategories = [], isLoading, error, refetch } = useQuery({
+    queryKey: ["subcategories", "admin"],
+    queryFn: fetchAllSubcategories
   });
 
   const filteredSubCategories = subCategories.filter(subCategory => {
@@ -68,7 +52,7 @@ const AdminSubCategories = () => {
       
     const matchesCategory = 
       selectedCategoryFilter === "all" || 
-      subCategory.mainCategoryId === selectedCategoryFilter;
+      subCategory.categoryId === selectedCategoryFilter;
       
     return matchesSearch && matchesCategory;
   });
@@ -79,7 +63,7 @@ const AdminSubCategories = () => {
       id: "",
       name: "",
       slug: "",
-      mainCategoryId: ""
+      categoryId: ""
     });
     setIsDialogOpen(true);
   };
@@ -90,19 +74,32 @@ const AdminSubCategories = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    // In a real app, you would make an API call to delete the sub-category
-    setSubCategories(prev => prev.filter(item => item.id !== id));
-    toast("Sub-category deleted", {
-      description: "The sub-category has been successfully removed."
-    });
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this sub-category? This action cannot be undone.")) {
+      try {
+        await deleteSubCategory(id);
+        toast({
+          title: "Sub-category deleted",
+          description: "The sub-category has been successfully removed."
+        });
+        queryClient.invalidateQueries({ queryKey: ["subcategories"] });
+      } catch (error) {
+        console.error("Error deleting sub-category:", error);
+        toast({
+          title: "Error",
+          description: "There was an error deleting the sub-category.",
+          variant: "destructive"
+        });
+      }
+    }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!currentSubCategory.name || !currentSubCategory.mainCategoryId) {
-      toast("Validation Error", {
+    if (!currentSubCategory.name || !currentSubCategory.categoryId) {
+      toast({
+        title: "Validation Error",
         description: "Please fill in all required fields."
       });
       return;
@@ -112,38 +109,113 @@ const AdminSubCategories = () => {
     const slug = currentSubCategory.slug || 
       currentSubCategory.name.toLowerCase().replace(/\s+/g, '-');
     
-    if (isEditing) {
-      // Update existing sub-category
-      setSubCategories(prev => 
-        prev.map(item => 
-          item.id === currentSubCategory.id 
-            ? {...currentSubCategory, slug} 
-            : item
-        )
-      );
-      toast("Sub-category updated", {
-        description: `${currentSubCategory.name} has been successfully updated.`
-      });
-    } else {
-      // Add new sub-category
-      const newId = `sc-${Date.now()}`;
-      setSubCategories(prev => [
-        ...prev,
-        {...currentSubCategory, id: newId, slug}
-      ]);
-      toast("Sub-category added", {
-        description: `${currentSubCategory.name} has been successfully added.`
-      });
-    }
+    setIsSubmitting(true);
     
-    setIsDialogOpen(false);
+    try {
+      if (isEditing) {
+        // Update existing sub-category
+        await updateSubCategory(currentSubCategory.id, {
+          name: currentSubCategory.name,
+          slug,
+          category_id: currentSubCategory.categoryId
+        });
+        
+        toast({
+          title: "Sub-category updated",
+          description: `${currentSubCategory.name} has been successfully updated.`
+        });
+      } else {
+        // Add new sub-category
+        await createSubCategory({
+          name: currentSubCategory.name,
+          slug,
+          category_id: currentSubCategory.categoryId
+        });
+        
+        toast({
+          title: "Sub-category added",
+          description: `${currentSubCategory.name} has been successfully added.`
+        });
+      }
+      
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["subcategories"] });
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving sub-category:", error);
+      toast({
+        title: "Error",
+        description: "There was an error saving the sub-category.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Helper function to get main category name by ID
-  const getMainCategoryName = (id: string): string => {
-    const category = mainCategories.find(cat => cat.id === id);
+  const getCategoryName = (id: string): string => {
+    const category = categories.find(cat => cat.id === id);
     return category ? category.name : "Unknown";
   };
+
+  if (isLoading || isCategoriesLoading) {
+    return (
+      <AdminProtectedRoute>
+        <AdminLayout>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">Sub-Categories</h1>
+              <Button disabled>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading
+              </Button>
+            </div>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle>Sub-Category Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 flex flex-col sm:flex-row gap-4">
+                  <Skeleton className="h-10 w-full sm:max-w-xs flex-1" />
+                  <Skeleton className="h-10 sm:w-48" />
+                </div>
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Skeleton key={n} className="h-12 w-full" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </AdminLayout>
+      </AdminProtectedRoute>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminProtectedRoute>
+        <AdminLayout>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">Sub-Categories</h1>
+              <Button onClick={handleAddNew}>
+                <Plus className="mr-2 h-4 w-4" /> Add Sub-Category
+              </Button>
+            </div>
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="pt-6">
+                <p className="text-red-600">Error loading sub-categories. Please try again later.</p>
+                <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+                  Retry
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </AdminLayout>
+      </AdminProtectedRoute>
+    );
+  }
 
   return (
     <AdminProtectedRoute>
@@ -182,7 +254,7 @@ const AdminSubCategories = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      {mainCategories.map((category) => (
+                      {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
                         </SelectItem>
@@ -206,7 +278,9 @@ const AdminSubCategories = () => {
                     {filteredSubCategories.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={4} className="text-center">
-                          No sub-categories found.
+                          {searchTerm || selectedCategoryFilter !== "all" 
+                            ? "No sub-categories found matching your search criteria." 
+                            : "No sub-categories found. Add your first sub-category!"}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -214,7 +288,7 @@ const AdminSubCategories = () => {
                         <TableRow key={subCategory.id}>
                           <TableCell className="font-medium">{subCategory.name}</TableCell>
                           <TableCell>{subCategory.slug}</TableCell>
-                          <TableCell>{getMainCategoryName(subCategory.mainCategoryId)}</TableCell>
+                          <TableCell>{getCategoryName(subCategory.categoryId)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button 
@@ -280,14 +354,14 @@ const AdminSubCategories = () => {
                 <div className="space-y-2">
                   <Label htmlFor="mainCategory">Main Category *</Label>
                   <Select 
-                    value={currentSubCategory.mainCategoryId} 
-                    onValueChange={(value) => setCurrentSubCategory({...currentSubCategory, mainCategoryId: value})}
+                    value={currentSubCategory.categoryId} 
+                    onValueChange={(value) => setCurrentSubCategory({...currentSubCategory, categoryId: value})}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select main category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mainCategories.map((category) => (
+                      {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
                         </SelectItem>
@@ -297,11 +371,18 @@ const AdminSubCategories = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
                   Cancel
                 </Button>
-                <Button type="submit">
-                  {isEditing ? "Update" : "Create"}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isEditing ? "Updating..." : "Creating..."}
+                    </>
+                  ) : (
+                    isEditing ? "Update" : "Create"
+                  )}
                 </Button>
               </DialogFooter>
             </form>
