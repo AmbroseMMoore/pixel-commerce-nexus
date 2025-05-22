@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -10,33 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-
-// Mock data for categories
-const mainCategories = [
-  { id: "1", name: "Clothing" },
-  { id: "2", name: "Footwear" },
-  { id: "3", name: "Accessories" },
-  { id: "4", name: "Home Goods" },
-  { id: "5", name: "Electronics" },
-  { id: "6", name: "Beauty" },
-];
-
-const subCategoriesByMain: Record<string, { id: string; name: string }[]> = {
-  "1": [
-    { id: "101", name: "T-Shirts" },
-    { id: "102", name: "Bottoms" },
-    { id: "103", name: "Outerwear" },
-  ],
-  "2": [
-    { id: "201", name: "Sneakers" },
-    { id: "202", name: "Boots" },
-    { id: "203", name: "Sandals" },
-  ],
-  // Add more subcategories for other main categories
-};
+import { useCategories, useSubcategoriesByCategory } from "@/hooks/useCategories";
+import { useProduct } from "@/hooks/useProducts";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ColorVariant {
   id: string;
@@ -61,6 +41,10 @@ const AdminProductForm = () => {
   const navigate = useNavigate();
   const isEditMode = !!id;
   
+  // Fetch data
+  const { categories, isLoading: isCategoriesLoading } = useCategories();
+  const { data: existingProduct, isLoading: isProductLoading } = useProduct(isEditMode ? id : "");
+  
   // Basic product info
   const [title, setTitle] = useState("");
   const [shortDescription, setShortDescription] = useState("");
@@ -71,6 +55,10 @@ const AdminProductForm = () => {
   const [subCategoryId, setSubCategoryId] = useState("");
   const [isLowStock, setIsLowStock] = useState(false);
   const [isOutOfStock, setIsOutOfStock] = useState(false);
+  const [slug, setSlug] = useState("");
+  
+  // Fetch subcategories based on selected main category
+  const { data: subcategories, isLoading: isSubcategoriesLoading } = useSubcategoriesByCategory(mainCategoryId);
   
   // Variants
   const [colorVariants, setColorVariants] = useState<ColorVariant[]>([
@@ -88,12 +76,53 @@ const AdminProductForm = () => {
     { key: "Material", value: "" },
     { key: "Care Instructions", value: "" },
   ]);
-
-  // Available subcategories based on main category
-  const availableSubCategories = mainCategoryId ? subCategoriesByMain[mainCategoryId] || [] : [];
-
+  
+  // Populate form with existing product data if in edit mode
+  useEffect(() => {
+    if (isEditMode && existingProduct) {
+      setTitle(existingProduct.title);
+      setShortDescription(existingProduct.shortDescription);
+      setLongDescription(existingProduct.longDescription);
+      setOriginalPrice(existingProduct.price.original.toString());
+      setDiscountedPrice(existingProduct.price.discounted?.toString() || "");
+      setMainCategoryId(existingProduct.categoryId);
+      setSubCategoryId(existingProduct.subCategoryId);
+      setIsLowStock(existingProduct.isLowStock);
+      setIsOutOfStock(existingProduct.isOutOfStock);
+      setSlug(existingProduct.slug);
+      
+      // Set color variants from existing product
+      if (existingProduct.colorVariants.length > 0) {
+        setColorVariants(existingProduct.colorVariants.map(variant => ({
+          id: variant.id,
+          name: variant.name,
+          colorCode: variant.colorCode,
+          images: variant.images || []
+        })));
+      }
+      
+      // Set size variants from existing product
+      if (existingProduct.sizeVariants.length > 0) {
+        setSizeVariants(existingProduct.sizeVariants.map(variant => ({
+          id: variant.id,
+          name: variant.name,
+          inStock: variant.inStock
+        })));
+      }
+    }
+  }, [isEditMode, existingProduct]);
+  
+  // Generate slug when title changes
+  useEffect(() => {
+    if (!isEditMode && title) {
+      // Simple slug generation
+      const newSlug = title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      setSlug(newSlug);
+    }
+  }, [title, isEditMode]);
+  
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
@@ -105,14 +134,158 @@ const AdminProductForm = () => {
       });
       return;
     }
-
-    // In a real app, you would make an API call to save the product
-    toast({
-      title: `Product ${isEditMode ? 'Updated' : 'Created'}`,
-      description: `${title} has been successfully ${isEditMode ? 'updated' : 'created'}.`,
-    });
     
-    navigate("/admin/products");
+    try {
+      // Create specifications object from array
+      const specsObj: Record<string, string> = {};
+      specifications.forEach(spec => {
+        if (spec.key && spec.value) {
+          specsObj[spec.key] = spec.value;
+        }
+      });
+      
+      // Prepare product data
+      const productData = {
+        title,
+        slug,
+        short_description: shortDescription,
+        long_description: longDescription,
+        price_original: parseFloat(originalPrice),
+        price_discounted: discountedPrice ? parseFloat(discountedPrice) : null,
+        category_id: mainCategoryId,
+        subcategory_id: subCategoryId,
+        stock_quantity: isOutOfStock ? 0 : isLowStock ? 5 : 100,
+        is_featured: false,
+        updated_at: new Date().toISOString()
+      };
+      
+      if (isEditMode) {
+        // Update existing product
+        const { error: productError } = await supabase
+          .from('products')
+          .update(productData)
+          .eq('id', id);
+          
+        if (productError) throw productError;
+        
+        // Update color variants (this is simplified - in a real app, you'd need to handle deletes and adds)
+        for (const colorVariant of colorVariants) {
+          if (colorVariant.id.startsWith('color-')) {
+            // New color variant
+            const { data: newColor, error: colorError } = await supabase
+              .from('product_colors')
+              .insert({
+                product_id: id,
+                name: colorVariant.name,
+                color_code: colorVariant.colorCode
+              })
+              .select()
+              .single();
+              
+            if (colorError) throw colorError;
+            
+            // For a real app, you'd handle actual image uploads to storage here
+          } else {
+            // Update existing color variant
+            const { error: colorError } = await supabase
+              .from('product_colors')
+              .update({
+                name: colorVariant.name,
+                color_code: colorVariant.colorCode
+              })
+              .eq('id', colorVariant.id);
+              
+            if (colorError) throw colorError;
+          }
+        }
+        
+        // Update size variants (simplified)
+        for (const sizeVariant of sizeVariants) {
+          if (sizeVariant.id.startsWith('size-')) {
+            // New size variant
+            const { error: sizeError } = await supabase
+              .from('product_sizes')
+              .insert({
+                product_id: id,
+                name: sizeVariant.name,
+                in_stock: sizeVariant.inStock
+              });
+              
+            if (sizeError) throw sizeError;
+          } else {
+            // Update existing size variant
+            const { error: sizeError } = await supabase
+              .from('product_sizes')
+              .update({
+                name: sizeVariant.name,
+                in_stock: sizeVariant.inStock
+              })
+              .eq('id', sizeVariant.id);
+              
+            if (sizeError) throw sizeError;
+          }
+        }
+        
+        toast({
+          title: "Product Updated",
+          description: `${title} has been successfully updated.`
+        });
+      } else {
+        // Create new product
+        const { data: newProduct, error: productError } = await supabase
+          .from('products')
+          .insert(productData)
+          .select()
+          .single();
+          
+        if (productError) throw productError;
+        
+        // Add color variants
+        for (const colorVariant of colorVariants) {
+          const { data: newColor, error: colorError } = await supabase
+            .from('product_colors')
+            .insert({
+              product_id: newProduct.id,
+              name: colorVariant.name,
+              color_code: colorVariant.colorCode
+            })
+            .select()
+            .single();
+            
+          if (colorError) throw colorError;
+          
+          // For a real app, you'd handle actual image uploads to storage here
+        }
+        
+        // Add size variants
+        for (const sizeVariant of sizeVariants) {
+          const { error: sizeError } = await supabase
+            .from('product_sizes')
+            .insert({
+              product_id: newProduct.id,
+              name: sizeVariant.name,
+              in_stock: sizeVariant.inStock
+            });
+            
+          if (sizeError) throw sizeError;
+        }
+        
+        toast({
+          title: "Product Created",
+          description: `${title} has been successfully created.`
+        });
+      }
+      
+      // Redirect back to products page
+      navigate("/admin/products");
+    } catch (error) {
+      console.error("Error saving product:", error);
+      toast({
+        title: "Error",
+        description: "There was an error saving the product. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Add a color variant
@@ -217,6 +390,31 @@ const AdminProductForm = () => {
     setSpecifications(newSpecifications);
   };
 
+  // Display loading state
+  const isLoading = isCategoriesLoading || isSubcategoriesLoading || (isEditMode && isProductLoading);
+  
+  if (isLoading) {
+    return (
+      <AdminProtectedRoute>
+        <AdminLayout>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-8 w-64" />
+              <div className="flex gap-2">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </div>
+        </AdminLayout>
+      </AdminProtectedRoute>
+    );
+  }
+
   return (
     <AdminProtectedRoute>
       <AdminLayout>
@@ -264,7 +462,7 @@ const AdminProductForm = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="originalPrice">Original Price ($) *</Label>
+                        <Label htmlFor="originalPrice">Original Price (₹) *</Label>
                         <Input
                           id="originalPrice"
                           type="number"
@@ -272,7 +470,7 @@ const AdminProductForm = () => {
                           step="0.01"
                           value={originalPrice}
                           onChange={(e) => setOriginalPrice(e.target.value)}
-                          placeholder="29.99"
+                          placeholder="999.00"
                           required
                         />
                       </div>
@@ -292,7 +490,7 @@ const AdminProductForm = () => {
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent>
-                            {mainCategories.map(category => (
+                            {categories.map(category => (
                               <SelectItem key={category.id} value={category.id}>
                                 {category.name}
                               </SelectItem>
@@ -302,7 +500,7 @@ const AdminProductForm = () => {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="discountedPrice">Sale Price ($)</Label>
+                        <Label htmlFor="discountedPrice">Sale Price (₹)</Label>
                         <Input
                           id="discountedPrice"
                           type="number"
@@ -310,7 +508,7 @@ const AdminProductForm = () => {
                           step="0.01"
                           value={discountedPrice}
                           onChange={(e) => setDiscountedPrice(e.target.value)}
-                          placeholder="24.99"
+                          placeholder="799.00"
                         />
                       </div>
                     </div>
@@ -321,15 +519,15 @@ const AdminProductForm = () => {
                         <Select 
                           value={subCategoryId} 
                           onValueChange={setSubCategoryId}
-                          disabled={!mainCategoryId}
+                          disabled={!mainCategoryId || !subcategories || subcategories.length === 0}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select subcategory" />
                           </SelectTrigger>
                           <SelectContent>
-                            {availableSubCategories.map(category => (
-                              <SelectItem key={category.id} value={category.id}>
-                                {category.name}
+                            {subcategories?.map(subCategory => (
+                              <SelectItem key={subCategory.id} value={subCategory.id}>
+                                {subCategory.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -354,6 +552,21 @@ const AdminProductForm = () => {
                           <Label htmlFor="out-of-stock">Out of Stock</Label>
                         </div>
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="slug">Slug (URL path)</Label>
+                      <Input
+                        id="slug"
+                        value={slug}
+                        onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""))}
+                        placeholder="product-url-slug"
+                        disabled={isEditMode}
+                        className={isEditMode ? "bg-gray-100" : ""}
+                      />
+                      <p className="text-xs text-gray-500">
+                        This will be used in the product URL. Auto-generated from title if left empty.
+                      </p>
                     </div>
 
                     <div className="space-y-2">

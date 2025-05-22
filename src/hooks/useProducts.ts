@@ -40,3 +40,28 @@ export const useProduct = (slug: string) => {
     enabled: !!slug
   });
 };
+
+// Hook for checking product availability in real-time
+export const useProductAvailability = (productId: string) => {
+  return useQuery({
+    queryKey: ["product", "availability", productId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('stock_quantity')
+        .eq('id', productId)
+        .single();
+      
+      if (error) throw error;
+      
+      return {
+        isInStock: data.stock_quantity > 0,
+        isLowStock: data.stock_quantity > 0 && data.stock_quantity <= 10,
+        quantity: data.stock_quantity
+      };
+    },
+    enabled: !!productId,
+    // Check more frequently for real-time stock updates
+    refetchInterval: 30000 // Check every 30 seconds
+  });
+};

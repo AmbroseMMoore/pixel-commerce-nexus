@@ -27,6 +27,10 @@ const CategorySection = ({ categories, isLoading = false }: CategorySectionProps
                 <Skeleton className="h-4 w-24 mb-1" />
               </div>
             ))
+          ) : categories.length === 0 ? (
+            <div className="col-span-full text-center py-8">
+              <p className="text-gray-500">No categories found.</p>
+            </div>
           ) : (
             // Actual categories
             categories.map((category) => (
@@ -37,7 +41,7 @@ const CategorySection = ({ categories, isLoading = false }: CategorySectionProps
               >
                 <div className="aspect-square relative overflow-hidden rounded-lg mb-2">
                   <img
-                    src={category.image || "https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&q=80&w=300"}
+                    src={category.image || "https://via.placeholder.com/300x300?text=Category"}
                     alt={category.name}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
@@ -46,6 +50,9 @@ const CategorySection = ({ categories, isLoading = false }: CategorySectionProps
                 <h3 className="text-center font-medium text-gray-800 group-hover:text-purple transition-colors">
                   {category.name}
                 </h3>
+                <p className="text-xs text-center text-gray-500">
+                  {category.subCategories?.length || 0} subcategories
+                </p>
               </Link>
             ))
           )}

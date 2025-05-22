@@ -35,6 +35,20 @@ export const useCategories = () => {
   return {
     categories: mergedCategories,
     isLoading: categoriesQuery.isLoading || subCategoriesQuery.isLoading,
-    error: categoriesQuery.error || subCategoriesQuery.error
+    error: categoriesQuery.error || subCategoriesQuery.error,
+    refetch: () => {
+      categoriesQuery.refetch();
+      subCategoriesQuery.refetch();
+    }
   };
+};
+
+// Hook for subcategories of a specific category
+export const useSubcategoriesByCategory = (categoryId: string | undefined) => {
+  return useQuery({
+    queryKey: ["subcategories", "byCategory", categoryId],
+    queryFn: () => fetchSubCategories(),
+    select: (data) => data.filter(subCategory => subCategory.categoryId === categoryId),
+    enabled: !!categoryId
+  });
 };

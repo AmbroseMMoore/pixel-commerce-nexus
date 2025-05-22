@@ -6,57 +6,107 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, Loader2 } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-import { categories } from "@/data/mockData";
-
-// Mock data for demo with correct categories
-const mockProducts = [
-  { 
-    id: "1", 
-    title: "Premium Cotton T-Shirt", 
-    category: "Boys", 
-    subCategory: "T-Shirts", 
-    price: 1299,
-    discountedPrice: 999,
-    isLowStock: false,
-    isOutOfStock: false
-  },
-  { 
-    id: "2", 
-    title: "Colorful Dress", 
-    category: "Girls", 
-    subCategory: "Dresses", 
-    price: 1599,
-    discountedPrice: 1299,
-    isLowStock: true,
-    isOutOfStock: false
-  },
-  { 
-    id: "3", 
-    title: "Leather Ankle Boots", 
-    category: "Shoes", 
-    subCategory: "Boots", 
-    price: 2499,
-    discountedPrice: null,
-    isLowStock: false,
-    isOutOfStock: true 
-  }
-];
+import { useProducts } from "@/hooks/useProducts";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const AdminProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const { data: products, isLoading, error, refetch } = useProducts();
   
-  const filteredProducts = mockProducts.filter(product => 
-    product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.subCategory.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = products?.filter(product => 
+    product.title.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
-  const handleDelete = (id: string) => {
-    // In a real app, you would make an API call to delete the product
-    alert(`Delete product with ID: ${id}`);
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
+      try {
+        const { error } = await supabase
+          .from('products')
+          .delete()
+          .eq('id', id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Product Deleted",
+          description: "The product has been successfully deleted."
+        });
+        
+        // Refresh the product list
+        refetch();
+      } catch (error) {
+        console.error("Error deleting product:", error);
+        toast({
+          title: "Error",
+          description: "There was an error deleting the product. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
   };
+
+  if (isLoading) {
+    return (
+      <AdminProtectedRoute>
+        <AdminLayout>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">Products</h1>
+              <Button disabled>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading
+              </Button>
+            </div>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle>Product Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4">
+                  <Skeleton className="h-10 w-full max-w-md" />
+                </div>
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Skeleton key={n} className="h-12 w-full" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </AdminLayout>
+      </AdminProtectedRoute>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminProtectedRoute>
+        <AdminLayout>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">Products</h1>
+              <Button asChild>
+                <Link to="/admin/products/new">
+                  <Plus className="mr-2 h-4 w-4" /> Add Product
+                </Link>
+              </Button>
+            </div>
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="pt-6">
+                <p className="text-red-600">Error loading products. Please try again later.</p>
+                <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+                  Retry
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </AdminLayout>
+      </AdminProtectedRoute>
+    );
+  }
 
   return (
     <AdminProtectedRoute>
@@ -94,7 +144,6 @@ const AdminProducts = () => {
                     <TableRow>
                       <TableHead>Title</TableHead>
                       <TableHead>Category</TableHead>
-                      <TableHead>Sub-Category</TableHead>
                       <TableHead>Price</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -103,28 +152,30 @@ const AdminProducts = () => {
                   <TableBody>
                     {filteredProducts.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center">
-                          No products found.
+                        <TableCell colSpan={5} className="text-center">
+                          {searchTerm ? "No products found matching your search." : "No products found. Add your first product!"}
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredProducts.map((product) => (
                         <TableRow key={product.id}>
                           <TableCell>{product.title}</TableCell>
-                          <TableCell>{product.category}</TableCell>
-                          <TableCell>{product.subCategory}</TableCell>
                           <TableCell>
-                            {product.discountedPrice ? (
+                            {/* Use categoryId to display category name, but for now just show ID */}
+                            {product.categoryId}
+                          </TableCell>
+                          <TableCell>
+                            {product.price.discounted ? (
                               <>
                                 <span className="line-through text-gray-400 mr-2">
-                                  ₹{product.price.toFixed(2)}
+                                  ₹{product.price.original.toFixed(2)}
                                 </span>
                                 <span className="text-green-600 font-medium">
-                                  ₹{product.discountedPrice.toFixed(2)}
+                                  ₹{product.price.discounted.toFixed(2)}
                                 </span>
                               </>
                             ) : (
-                              `₹${product.price.toFixed(2)}`
+                              `₹${product.price.original.toFixed(2)}`
                             )}
                           </TableCell>
                           <TableCell>
@@ -145,7 +196,7 @@ const AdminProducts = () => {
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button size="sm" variant="ghost" asChild>
-                                <Link to={`/product/${product.id}`}>
+                                <Link to={`/product/${product.slug}`}>
                                   <Eye className="h-4 w-4" />
                                 </Link>
                               </Button>

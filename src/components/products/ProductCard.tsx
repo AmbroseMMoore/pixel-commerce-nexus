@@ -1,17 +1,36 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Product } from "@/types/product";
 import { Heart, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   product: Product;
   className?: string;
 }
 
+interface ProductCardSkeletonProps {
+  className?: string;
+}
+
+export const ProductCardSkeleton = ({ className }: ProductCardSkeletonProps) => {
+  return (
+    <div className={cn("group", className)}>
+      <Skeleton className="aspect-[3/4] w-full rounded-md mb-3" />
+      <Skeleton className="h-4 w-3/4 mb-2" />
+      <Skeleton className="h-4 w-1/2 mb-3" />
+      <Skeleton className="h-6 w-1/3" />
+    </div>
+  );
+};
+
 const ProductCard = ({ product, className }: ProductCardProps) => {
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  
   // Use first color variant's first image as the product thumbnail
   const thumbnailImage = product.colorVariants[0]?.images[0] || "";
   
@@ -19,12 +38,40 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
   const hasDiscount = product.price.discounted !== undefined && 
                       product.price.discounted < product.price.original;
   
+  // Handle adding to cart
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsAddingToCart(true);
+    
+    // Simulate adding to cart (in a real app, this would call a cart service)
+    setTimeout(() => {
+      toast({
+        title: "Added to Cart",
+        description: `${product.title} has been added to your cart.`,
+      });
+      setIsAddingToCart(false);
+    }, 600);
+  };
+  
+  // Handle adding to wishlist
+  const handleAddToWishlist = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    toast({
+      title: "Added to Wishlist",
+      description: `${product.title} has been added to your wishlist.`,
+    });
+  };
+  
   return (
     <div className={cn("group", className)}>
       <div className="aspect-[3/4] overflow-hidden relative rounded-md mb-3">
         <Link to={`/product/${product.slug}`}>
           <img 
-            src={thumbnailImage} 
+            src={thumbnailImage || "https://via.placeholder.com/300x400?text=No+Image"} 
             alt={product.title} 
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
@@ -56,6 +103,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
             size="icon" 
             className="bg-white text-gray-700 hover:text-brand shadow-sm"
             aria-label="Add to wishlist"
+            onClick={handleAddToWishlist}
           >
             <Heart size={18} />
           </Button>
@@ -66,6 +114,8 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
               size="icon" 
               className="bg-white text-gray-700 hover:text-brand shadow-sm"
               aria-label="Add to cart"
+              onClick={handleAddToCart}
+              disabled={isAddingToCart}
             >
               <ShoppingCart size={18} />
             </Button>

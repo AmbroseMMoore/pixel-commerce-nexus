@@ -1,8 +1,7 @@
 
 import React from "react";
-import ProductCard from "@/components/products/ProductCard";
+import ProductCard, { ProductCardSkeleton } from "@/components/products/ProductCard";
 import { Product } from "@/types/product";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface FeaturedProductsProps {
   products: Product[];
@@ -29,13 +28,12 @@ const FeaturedProducts = ({
           {isLoading ? (
             // Skeleton loader
             skeletonArray.map((_, index) => (
-              <div key={index} className="bg-white rounded-lg p-3 shadow-sm">
-                <Skeleton className="aspect-square w-full rounded-lg mb-3" />
-                <Skeleton className="h-4 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2 mb-3" />
-                <Skeleton className="h-6 w-1/3" />
-              </div>
+              <ProductCardSkeleton key={index} />
             ))
+          ) : products.length === 0 ? (
+            <div className="col-span-full text-center py-8">
+              <p className="text-gray-500">No products found.</p>
+            </div>
           ) : (
             // Actual products
             products.map((product) => (
