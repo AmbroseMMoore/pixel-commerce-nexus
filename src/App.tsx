@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 // Customer Pages
 import Index from "./pages/Index";
@@ -14,34 +14,54 @@ import LoginPage from "./pages/LoginPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminProducts from "./pages/admin/AdminProducts";
+import AdminCustomers from "./pages/admin/AdminCustomers";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminCMS from "./pages/admin/AdminCMS";
+import AdminProductForm from "./pages/admin/AdminProductForm";
 
 // Common Pages
 import NotFound from "./pages/NotFound";
+import ProfilePage from "./pages/ProfilePage";
+
+// Auth Provider
+import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Customer-facing Routes */}
-          <Route path="/" element={<Index />} />
-          <Route path="/product/:slug" element={<ProductDetailsPage />} />
-          <Route path="/category/:slug" element={<CategoryPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminDashboard />} />
-          
-          {/* Catch-All Route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Customer-facing Routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/product/:slug" element={<ProductDetailsPage />} />
+            <Route path="/category/:slug" element={<CategoryPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/products" element={<AdminProducts />} />
+            <Route path="/admin/products/new" element={<AdminProductForm />} />
+            <Route path="/admin/products/:id" element={<AdminProductForm />} />
+            <Route path="/admin/customers" element={<AdminCustomers />} />
+            <Route path="/admin/orders" element={<AdminOrders />} />
+            <Route path="/admin/cms" element={<AdminCMS />} />
+            
+            {/* Catch-All Route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
