@@ -1,13 +1,26 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React from "react";
+import MainLayout from "@/components/layout/MainLayout";
+import HeroSection from "@/components/home/HeroSection";
+import CategorySection from "@/components/home/CategorySection";
+import FeaturedProducts from "@/components/home/FeaturedProducts";
+import NewsletterSection from "@/components/home/NewsletterSection";
+import { categories, cmsContent, products } from "@/data/mockData";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <MainLayout>
+      <HeroSection
+        title={cmsContent.hero.title}
+        subtitle={cmsContent.hero.subtitle}
+        ctaText={cmsContent.hero.ctaText}
+        ctaLink={cmsContent.hero.ctaLink}
+        image={cmsContent.hero.image}
+      />
+      <CategorySection categories={categories} />
+      <FeaturedProducts products={products} />
+      <NewsletterSection />
+    </MainLayout>
   );
 };
 
