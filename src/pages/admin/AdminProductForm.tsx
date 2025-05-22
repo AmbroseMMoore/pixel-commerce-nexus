@@ -10,12 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Plus, Loader2 } from "lucide-react";
+import { Trash2, Plus, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useCategories, useSubcategoriesByCategory } from "@/hooks/useCategories";
 import { useProduct } from "@/hooks/useProducts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   createProduct, 
   updateProduct, 
@@ -57,6 +58,15 @@ const AdminProductForm = () => {
   
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<{
+    title?: string;
+    shortDescription?: string;
+    originalPrice?: string;
+    mainCategoryId?: string;
+    subCategoryId?: string;
+    slug?: string;
+    general?: string;
+  }>({});
   
   // Basic product info
   const [title, setTitle] = useState("");
@@ -134,15 +144,75 @@ const AdminProductForm = () => {
     }
   }, [title, isEditMode]);
   
+  // Validate form input
+  const validateForm = () => {
+    const errors: {
+      title?: string;
+      shortDescription?: string;
+      originalPrice?: string;
+      mainCategoryId?: string;
+      subCategoryId?: string;
+      slug?: string;
+    } = {};
+
+    if (!title.trim()) {
+      errors.title = "Product title is required";
+    } else if (title.length > 100) {
+      errors.title = "Title must be 100 characters or less";
+    }
+
+    if (!shortDescription.trim()) {
+      errors.shortDescription = "Short description is required";
+    }
+
+    if (!originalPrice) {
+      errors.originalPrice = "Original price is required";
+    } else if (isNaN(parseFloat(originalPrice)) || parseFloat(originalPrice) < 0) {
+      errors.originalPrice = "Price must be a positive number";
+    }
+
+    if (discountedPrice && (isNaN(parseFloat(discountedPrice)) || parseFloat(discountedPrice) < 0)) {
+      errors.originalPrice = "Discounted price must be a positive number";
+    }
+
+    if (!mainCategoryId) {
+      errors.mainCategoryId = "Main category is required";
+    }
+
+    if (!subCategoryId) {
+      errors.subCategoryId = "Sub-category is required";
+    }
+
+    if (slug && !/^[a-z0-9-]+$/.test(slug)) {
+      errors.slug = "Slug can only contain lowercase letters, numbers, and hyphens";
+    }
+
+    // Validate each color variant has a name
+    const invalidColorVariant = colorVariants.find(variant => !variant.name.trim());
+    if (invalidColorVariant) {
+      errors.general = "All color variants must have a name";
+    }
+
+    // Validate each size variant has a name
+    const invalidSizeVariant = sizeVariants.find(variant => !variant.name.trim());
+    if (invalidSizeVariant) {
+      errors.general = errors.general ? `${errors.general}. All size variants must have a name` : "All size variants must have a name";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+  
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
-    if (!title || !shortDescription || !originalPrice || !mainCategoryId || !subCategoryId) {
+    if (!validateForm()) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields."
+        description: "Please fix the errors in the form before submitting.",
+        variant: "destructive"
       });
       return;
     }
@@ -230,11 +300,32 @@ const AdminProductForm = () => {
       
       // Redirect back to products page
       navigate("/admin/products");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving product:", error);
+      
+      // Handle specific error types
+      if (error.code === "23505") { // Unique constraint violation
+        setFormErrors({
+          slug: "A product with this slug already exists. Please use a different slug."
+        });
+      } else if (error.code === "42501") { // Permission denied
+        setFormErrors({
+          general: "You don't have permission to perform this action. Make sure you're logged in with admin privileges."
+        });
+      } else if (error.message) {
+        setFormErrors({
+          general: error.message
+        });
+      } else {
+        setFormErrors({
+          general: "There was an error saving the product. Please try again."
+        });
+      }
+      
       toast({
         title: "Error",
-        description: "There was an error saving the product. Please try again."
+        description: "Please check the form for errors and try again.",
+        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
@@ -394,6 +485,13 @@ const AdminProductForm = () => {
           </div>
 
           <form onSubmit={handleSubmit}>
+            {formErrors.general && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{formErrors.general}</AlertDescription>
+              </Alert>
+            )}
+            
             <Tabs defaultValue="basic">
               <TabsList className="mb-4">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
@@ -411,18 +509,23 @@ const AdminProductForm = () => {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="title">Product Title *</Label>
+                        <Label htmlFor="title" className={formErrors.title ? "text-destructive" : ""}>
+                          Product Title * {formErrors.title && <span className="text-destructive text-sm">({formErrors.title})</span>}
+                        </Label>
                         <Input
                           id="title"
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
                           placeholder="Enter product title"
                           required
+                          className={formErrors.title ? "border-destructive" : ""}
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="originalPrice">Original Price (₹) *</Label>
+                        <Label htmlFor="originalPrice" className={formErrors.originalPrice ? "text-destructive" : ""}>
+                          Original Price (₹) * {formErrors.originalPrice && <span className="text-destructive text-sm">({formErrors.originalPrice})</span>}
+                        </Label>
                         <Input
                           id="originalPrice"
                           type="number"
@@ -432,13 +535,16 @@ const AdminProductForm = () => {
                           onChange={(e) => setOriginalPrice(e.target.value)}
                           placeholder="999.00"
                           required
+                          className={formErrors.originalPrice ? "border-destructive" : ""}
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="mainCategory">Main Category *</Label>
+                        <Label htmlFor="mainCategory" className={formErrors.mainCategoryId ? "text-destructive" : ""}>
+                          Main Category * {formErrors.mainCategoryId && <span className="text-destructive text-sm">({formErrors.mainCategoryId})</span>}
+                        </Label>
                         <Select 
                           value={mainCategoryId} 
                           onValueChange={(value) => {
@@ -446,7 +552,7 @@ const AdminProductForm = () => {
                             setSubCategoryId("");
                           }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className={formErrors.mainCategoryId ? "border-destructive" : ""}>
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent>
@@ -475,13 +581,15 @@ const AdminProductForm = () => {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="subCategory">Sub Category *</Label>
+                        <Label htmlFor="subCategory" className={formErrors.subCategoryId ? "text-destructive" : ""}>
+                          Sub Category * {formErrors.subCategoryId && <span className="text-destructive text-sm">({formErrors.subCategoryId})</span>}
+                        </Label>
                         <Select 
                           value={subCategoryId} 
                           onValueChange={setSubCategoryId}
                           disabled={!mainCategoryId || !subcategories || subcategories.length === 0}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className={formErrors.subCategoryId ? "border-destructive" : ""}>
                             <SelectValue placeholder="Select subcategory" />
                           </SelectTrigger>
                           <SelectContent>
@@ -515,14 +623,16 @@ const AdminProductForm = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="slug">Slug (URL path)</Label>
+                      <Label htmlFor="slug" className={formErrors.slug ? "text-destructive" : ""}>
+                        Slug (URL path) {formErrors.slug && <span className="text-destructive text-sm">({formErrors.slug})</span>}
+                      </Label>
                       <Input
                         id="slug"
                         value={slug}
                         onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""))}
                         placeholder="product-url-slug"
                         disabled={isEditMode}
-                        className={isEditMode ? "bg-gray-100" : ""}
+                        className={`${isEditMode ? "bg-gray-100" : ""} ${formErrors.slug ? "border-destructive" : ""}`}
                       />
                       <p className="text-xs text-gray-500">
                         This will be used in the product URL. Auto-generated from title if left empty.
@@ -530,7 +640,9 @@ const AdminProductForm = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="shortDescription">Short Description *</Label>
+                      <Label htmlFor="shortDescription" className={formErrors.shortDescription ? "text-destructive" : ""}>
+                        Short Description * {formErrors.shortDescription && <span className="text-destructive text-sm">({formErrors.shortDescription})</span>}
+                      </Label>
                       <Textarea
                         id="shortDescription"
                         value={shortDescription}
@@ -538,6 +650,7 @@ const AdminProductForm = () => {
                         placeholder="Brief description of the product"
                         rows={2}
                         required
+                        className={formErrors.shortDescription ? "border-destructive" : ""}
                       />
                     </div>
 
@@ -746,6 +859,109 @@ const AdminProductForm = () => {
       </AdminLayout>
     </AdminProtectedRoute>
   );
+};
+
+// Add these functions back - they were in the original file
+// Add a color variant
+const addColorVariant = () => {
+  setColorVariants([
+    ...colorVariants, 
+    { 
+      id: `color-${Date.now()}`, 
+      name: "", 
+      colorCode: "#ffffff", 
+      images: [] 
+    }
+  ]);
+};
+
+// Remove a color variant
+const removeColorVariant = (id: string) => {
+  setColorVariants(colorVariants.filter(variant => variant.id !== id));
+};
+
+// Update color variant
+const updateColorVariant = (id: string, field: keyof ColorVariant, value: any) => {
+  setColorVariants(colorVariants.map(variant => 
+    variant.id === id ? { ...variant, [field]: value } : variant
+  ));
+};
+
+// Handle image upload
+const handleImageUpload = (colorId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  if (e.target.files && e.target.files.length > 0) {
+    const imageUrls = Array.from(e.target.files).map(file => 
+      URL.createObjectURL(file)
+    );
+    
+    setColorVariants(colorVariants.map(variant => {
+      if (variant.id === colorId) {
+        // Limit to 6 images
+        const currentImages = [...variant.images];
+        const newImages = [...currentImages, ...imageUrls].slice(0, 6);
+        return { ...variant, images: newImages };
+      }
+      return variant;
+    }));
+  }
+};
+
+// Remove image
+const removeImage = (colorId: string, imageUrl: string) => {
+  setColorVariants(colorVariants.map(variant => {
+    if (variant.id === colorId) {
+      return {
+        ...variant,
+        images: variant.images.filter(img => img !== imageUrl)
+      };
+    }
+    return variant;
+  }));
+};
+
+// Add a size variant
+const addSizeVariant = () => {
+  setSizeVariants([
+    ...sizeVariants,
+    { id: `size-${Date.now()}`, name: "", inStock: true }
+  ]);
+};
+
+// Remove a size variant
+const removeSizeVariant = (id: string) => {
+  setSizeVariants(sizeVariants.filter(variant => variant.id !== id));
+};
+
+// Update size variant
+const updateSizeVariant = (id: string, field: keyof SizeVariant, value: any) => {
+  setSizeVariants(sizeVariants.map(variant => 
+    variant.id === id ? { ...variant, [field]: value } : variant
+  ));
+};
+
+// Add a specification
+const addSpecification = () => {
+  setSpecifications([
+    ...specifications,
+    { key: "", value: "" }
+  ]);
+};
+
+// Remove a specification
+const removeSpecification = (index: number) => {
+  const newSpecifications = [...specifications];
+  newSpecifications.splice(index, 1);
+  setSpecifications(newSpecifications);
+};
+
+// Update specification
+const updateSpecification = (index: number, field: keyof Specification, value: string) => {
+  const newSpecifications = [...specifications];
+  newSpecifications[index] = {
+    ...newSpecifications[index],
+    [field]: value
+  };
+  setSpecifications(newSpecifications);
 };
 
 export default AdminProductForm;

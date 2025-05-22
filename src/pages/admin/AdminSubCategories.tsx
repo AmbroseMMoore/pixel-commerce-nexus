@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Edit, Trash2, Loader2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Loader2, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
@@ -16,6 +16,7 @@ import { fetchAllSubcategories, createSubCategory, updateSubCategory, deleteSubC
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SubCategory } from "@/types/product";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const AdminSubCategories = () => {
   const queryClient = useQueryClient();
@@ -27,6 +28,12 @@ const AdminSubCategories = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<{
+    name?: string;
+    slug?: string;
+    categoryId?: string;
+    general?: string;
+  }>({});
   const [currentSubCategory, setCurrentSubCategory] = useState<{
     id: string;
     name: string;
@@ -65,12 +72,14 @@ const AdminSubCategories = () => {
       slug: "",
       categoryId: ""
     });
+    setFormErrors({});
     setIsDialogOpen(true);
   };
 
   const handleEdit = (subCategory: SubCategory) => {
     setIsEditing(true);
     setCurrentSubCategory({...subCategory});
+    setFormErrors({});
     setIsDialogOpen(true);
   };
 
@@ -83,25 +92,56 @@ const AdminSubCategories = () => {
           description: "The sub-category has been successfully removed."
         });
         queryClient.invalidateQueries({ queryKey: ["subcategories"] });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting sub-category:", error);
+        let errorMessage = "There was an error deleting the sub-category.";
+        
+        if (error.message) {
+          errorMessage += ` ${error.message}`;
+        } else if (error.details) {
+          errorMessage += ` ${error.details}`;
+        }
+        
         toast({
           title: "Error",
-          description: "There was an error deleting the sub-category.",
+          description: errorMessage,
           variant: "destructive"
         });
       }
     }
   };
 
+  const validateForm = () => {
+    const errors: {
+      name?: string;
+      slug?: string;
+      categoryId?: string;
+    } = {};
+    
+    if (!currentSubCategory.name.trim()) {
+      errors.name = "Name is required";
+    }
+    
+    if (currentSubCategory.name.length > 50) {
+      errors.name = "Name must be 50 characters or less";
+    }
+    
+    if (currentSubCategory.slug && !/^[a-z0-9-]+$/.test(currentSubCategory.slug)) {
+      errors.slug = "Slug can only contain lowercase letters, numbers, and hyphens";
+    }
+    
+    if (!currentSubCategory.categoryId) {
+      errors.categoryId = "Main category is required";
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!currentSubCategory.name || !currentSubCategory.categoryId) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields."
-      });
+    if (!validateForm()) {
       return;
     }
 
@@ -110,6 +150,7 @@ const AdminSubCategories = () => {
       currentSubCategory.name.toLowerCase().replace(/\s+/g, '-');
     
     setIsSubmitting(true);
+    setFormErrors({});
     
     try {
       if (isEditing) {
@@ -141,13 +182,25 @@ const AdminSubCategories = () => {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["subcategories"] });
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving sub-category:", error);
-      toast({
-        title: "Error",
-        description: "There was an error saving the sub-category.",
-        variant: "destructive"
-      });
+      
+      // Handle specific error cases
+      if (error.code === "23505") { // Unique constraint violation
+        setFormErrors({ 
+          slug: "A sub-category with this slug already exists. Please use a different slug." 
+        });
+      } else if (error.code === "42501") { // Permission denied
+        setFormErrors({ 
+          general: "You don't have permission to perform this action. Make sure you're logged in with admin privileges." 
+        });
+      } else if (error.message) {
+        setFormErrors({ general: error.message });
+      } else {
+        setFormErrors({ 
+          general: "There was an error saving the sub-category. Please try again." 
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -327,24 +380,37 @@ const AdminSubCategories = () => {
             </DialogHeader>
             <form onSubmit={handleFormSubmit}>
               <div className="space-y-4 py-4">
+                {formErrors.general && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{formErrors.general}</AlertDescription>
+                  </Alert>
+                )}
+                
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
+                  <Label htmlFor="name" className={formErrors.name ? "text-destructive" : ""}>
+                    Name * {formErrors.name && <span className="text-destructive text-sm">({formErrors.name})</span>}
+                  </Label>
                   <Input
                     id="name"
                     value={currentSubCategory.name}
                     onChange={(e) => setCurrentSubCategory({...currentSubCategory, name: e.target.value})}
                     placeholder="Sub-category name"
                     required
+                    className={formErrors.name ? "border-destructive" : ""}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="slug">Slug</Label>
+                  <Label htmlFor="slug" className={formErrors.slug ? "text-destructive" : ""}>
+                    Slug {formErrors.slug && <span className="text-destructive text-sm">({formErrors.slug})</span>}
+                  </Label>
                   <Input
                     id="slug"
                     value={currentSubCategory.slug}
                     onChange={(e) => setCurrentSubCategory({...currentSubCategory, slug: e.target.value})}
                     placeholder="sub-category-slug (leave empty to generate)"
+                    className={formErrors.slug ? "border-destructive" : ""}
                   />
                   <p className="text-xs text-gray-500">
                     Leave empty to auto-generate from the name
@@ -352,12 +418,14 @@ const AdminSubCategories = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="mainCategory">Main Category *</Label>
+                  <Label htmlFor="mainCategory" className={formErrors.categoryId ? "text-destructive" : ""}>
+                    Main Category * {formErrors.categoryId && <span className="text-destructive text-sm">({formErrors.categoryId})</span>}
+                  </Label>
                   <Select 
                     value={currentSubCategory.categoryId} 
                     onValueChange={(value) => setCurrentSubCategory({...currentSubCategory, categoryId: value})}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={formErrors.categoryId ? "border-destructive" : ""}>
                       <SelectValue placeholder="Select main category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -371,7 +439,15 @@ const AdminSubCategories = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setIsDialogOpen(false);
+                    setFormErrors({});
+                  }} 
+                  disabled={isSubmitting}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
