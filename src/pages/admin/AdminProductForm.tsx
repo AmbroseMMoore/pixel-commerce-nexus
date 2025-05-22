@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -46,6 +45,16 @@ interface Specification {
   value: string;
 }
 
+interface FormErrors {
+  title?: string;
+  shortDescription?: string;
+  originalPrice?: string;
+  mainCategoryId?: string;
+  subCategoryId?: string;
+  slug?: string;
+  general?: string;
+}
+
 const AdminProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -58,15 +67,7 @@ const AdminProductForm = () => {
   
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formErrors, setFormErrors] = useState<{
-    title?: string;
-    shortDescription?: string;
-    originalPrice?: string;
-    mainCategoryId?: string;
-    subCategoryId?: string;
-    slug?: string;
-    general?: string;
-  }>({});
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   
   // Basic product info
   const [title, setTitle] = useState("");
@@ -146,14 +147,7 @@ const AdminProductForm = () => {
   
   // Validate form input
   const validateForm = () => {
-    const errors: {
-      title?: string;
-      shortDescription?: string;
-      originalPrice?: string;
-      mainCategoryId?: string;
-      subCategoryId?: string;
-      slug?: string;
-    } = {};
+    const errors: FormErrors = {};
 
     if (!title.trim()) {
       errors.title = "Product title is required";

@@ -7,46 +7,64 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage("");
 
     try {
-      // In a real app, you would make an API call to your backend
-      // For demo purposes, we'll just simulate a successful login with mock data
-      if (email === "admin@example.com" && password === "password") {
-        const mockAdminUser = {
-          id: "admin-1",
-          name: "Admin User",
-          email: "admin@example.com",
-          isAdmin: true
-        };
-        
-        login(mockAdminUser);
-        toast({
-          title: "Login successful",
-          description: "Welcome to the Cutebae admin dashboard.",
-        });
-        navigate("/admin");
-      } else {
-        toast({
-          title: "Login failed",
-          description: "Invalid email or password.",
-          variant: "destructive"
-        });
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
       }
-    } catch (error) {
+
+      if (data.user) {
+        // Check if this is the admin email
+        if (email === "user1@g.com") {
+          const user = {
+            id: data.user.id,
+            name: data.user.user_metadata?.name || "Admin User",
+            email: data.user.email!,
+            isAdmin: true
+          };
+          
+          login(user);
+          toast({
+            title: "Login successful",
+            description: "Welcome to the Cutebae admin dashboard.",
+          });
+          navigate("/admin");
+        } else {
+          setErrorMessage("You don't have admin privileges");
+          await supabase.auth.signOut(); // Sign out if not an admin
+          toast({
+            title: "Access denied",
+            description: "You don't have admin privileges.",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      setErrorMessage(error.message || "Login failed. Please check your credentials.");
       toast({
-        title: "Login error",
-        description: "An error occurred during login.",
+        title: "Login failed",
+        description: error.message || "Invalid email or password.",
         variant: "destructive"
       });
     } finally {
@@ -65,6 +83,11 @@ const AdminLogin = () => {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {errorMessage && (
+              <div className="p-3 bg-red-50 text-red-600 rounded-md text-sm">
+                {errorMessage}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -86,6 +109,10 @@ const AdminLogin = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+            <div className="text-sm text-muted-foreground pt-2">
+              <p>Admin: user1@g.com</p>
+              <p>Password: uurr1122</p>
             </div>
           </CardContent>
           <CardFooter>

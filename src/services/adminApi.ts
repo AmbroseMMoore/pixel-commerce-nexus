@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Product, Category, SubCategory } from "@/types/product";
 
@@ -10,7 +9,7 @@ const handleSupabaseError = (error: any) => {
   if (error.code === "23505") { // Unique constraint violation
     error.message = "A record with this value already exists. Please use unique values.";
   } else if (error.code === "42501") { // Permission denied
-    error.message = "You don't have permission to perform this action. Please check your admin credentials.";
+    error.message = "You don't have permission to perform this action. Please check your admin credentials and make sure you're logged in.";
   } else if (error.code === "23503") { // Foreign key violation
     error.message = "Invalid reference. The item you're referencing may not exist.";
   }

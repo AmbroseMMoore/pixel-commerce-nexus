@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User } from "@/types/user";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
   user: User | null;
@@ -19,25 +20,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Check for existing auth on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    const checkSession = async () => {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error checking session:", error);
+          return;
+        }
+        
+        if (data.session) {
+          const userData: User = {
+            id: data.session.user.id,
+            email: data.session.user.email || "",
+            name: data.session.user.user_metadata?.name || "User",
+            isAdmin: data.session.user.email === "user1@g.com" // Hardcode admin check for now
+          };
+          setUser(userData);
+        }
       } catch (error) {
-        console.error("Error parsing stored user:", error);
-        localStorage.removeItem("user");
+        console.error("Error in auth check:", error);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+    
+    checkSession();
+    
+    // Listen for auth changes
+    const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        const userData: User = {
+          id: session.user.id,
+          email: session.user.email || "",
+          name: session.user.user_metadata?.name || "User",
+          isAdmin: session.user.email === "user1@g.com" // Hardcode admin check for now
+        };
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+    };
   }, []);
 
-  const login = (userData: User) => {
+  const login = async (userData: User) => {
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     localStorage.removeItem("user");
   };
