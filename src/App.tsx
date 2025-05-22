@@ -47,6 +47,9 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             
+            {/* Auth callback routes - Would be connected to proper Auth callbacks in a production environment */}
+            <Route path="/auth/google/callback" element={<Navigate to="/" replace />} />
+            
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={<AdminDashboard />} />

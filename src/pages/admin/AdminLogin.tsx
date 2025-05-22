@@ -33,7 +33,7 @@ const AdminLogin = () => {
         login(mockAdminUser);
         toast({
           title: "Login successful",
-          description: "Welcome to the admin dashboard.",
+          description: "Welcome to the Cutebae admin dashboard.",
         });
         navigate("/admin");
       } else {
@@ -58,7 +58,7 @@ const AdminLogin = () => {
     <div className="flex h-screen items-center justify-center bg-gray-100">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Admin Login</CardTitle>
+          <CardTitle className="text-2xl text-center">Cutebae Admin Login</CardTitle>
           <CardDescription className="text-center">
             Enter your credentials to access the admin panel
           </CardDescription>

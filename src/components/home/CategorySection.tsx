@@ -28,7 +28,7 @@ const CategorySection = ({ categories }: CategorySectionProps) => {
                 />
                 <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-30 transition-opacity"></div>
               </div>
-              <h3 className="text-center font-medium text-gray-800 group-hover:text-brand transition-colors">
+              <h3 className="text-center font-medium text-gray-800 group-hover:text-purple transition-colors">
                 {category.name}
               </h3>
             </Link>

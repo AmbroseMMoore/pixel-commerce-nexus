@@ -1,16 +1,19 @@
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,8 +24,16 @@ const LoginPage = () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       
       // Mock successful login
+      const mockUser = {
+        id: "user-1",
+        name: "Customer User",
+        email: email,
+        isAdmin: false
+      };
+      
+      login(mockUser);
       toast.success("Successfully logged in!");
-      // Normally would redirect here
+      navigate("/");
     } catch (error) {
       toast.error("Invalid email or password");
     } finally {
@@ -34,12 +45,40 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
+      // In a real application, we would redirect to Google OAuth
+      // For now, we're simulating a successful Google sign-in
+      
+      const googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth";
+      const redirectUri = window.location.origin + "/auth/google/callback";
+      
+      // These would be your actual Google OAuth credentials in a real app
+      const clientId = "your-google-client-id";
+      
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope: "email profile",
+        access_type: "offline",
+        prompt: "consent"
+      });
+      
+      // For demo purposes, instead of redirecting to Google (which would cause a 404 without proper setup)
+      // we'll mock a successful login
       await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      const mockGoogleUser = {
+        id: "google-user-1",
+        name: "Google User",
+        email: "google.user@example.com",
+        isAdmin: false
+      };
+      
+      login(mockGoogleUser);
       toast.success("Successfully logged in with Google!");
-      // Normally would redirect here
+      navigate("/");
     } catch (error) {
-      toast.error("Failed to login with Google");
+      toast.error("Failed to login with Google. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +89,7 @@ const LoginPage = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <Link to="/" className="text-3xl font-bold text-brand">
-            EcoShop
+            Cutebae
           </Link>
           <h1 className="mt-6 text-2xl font-bold text-gray-900">Sign in to your account</h1>
           <p className="mt-2 text-sm text-gray-600">
