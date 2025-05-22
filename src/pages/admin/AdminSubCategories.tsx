@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -92,8 +91,7 @@ const AdminSubCategories = () => {
   const handleDelete = (id: string) => {
     // In a real app, you would make an API call to delete the sub-category
     setSubCategories(prev => prev.filter(item => item.id !== id));
-    toast({
-      title: "Sub-category deleted",
+    toast("Sub-category deleted", {
       description: "The sub-category has been successfully removed."
     });
   };
@@ -102,8 +100,7 @@ const AdminSubCategories = () => {
     e.preventDefault();
     
     if (!currentSubCategory.name || !currentSubCategory.mainCategoryId) {
-      toast({
-        title: "Validation Error",
+      toast("Validation Error", {
         description: "Please fill in all required fields.",
         variant: "destructive"
       });
@@ -123,8 +120,7 @@ const AdminSubCategories = () => {
             : item
         )
       );
-      toast({
-        title: "Sub-category updated",
+      toast("Sub-category updated", {
         description: `${currentSubCategory.name} has been successfully updated.`
       });
     } else {
@@ -134,8 +130,7 @@ const AdminSubCategories = () => {
         ...prev,
         {...currentSubCategory, id: newId, slug}
       ]);
-      toast({
-        title: "Sub-category added",
+      toast("Sub-category added", {
         description: `${currentSubCategory.name} has been successfully added.`
       });
     }
