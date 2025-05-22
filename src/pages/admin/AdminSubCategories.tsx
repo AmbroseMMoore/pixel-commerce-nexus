@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Label } from "@/components/ui/label";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Main categories as defined
 const mainCategories = [
@@ -101,8 +103,7 @@ const AdminSubCategories = () => {
     
     if (!currentSubCategory.name || !currentSubCategory.mainCategoryId) {
       toast("Validation Error", {
-        description: "Please fill in all required fields.",
-        variant: "destructive"
+        description: "Please fill in all required fields."
       });
       return;
     }

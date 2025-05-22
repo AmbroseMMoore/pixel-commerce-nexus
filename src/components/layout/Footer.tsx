@@ -10,7 +10,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Shop Info */}
           <div>
-            <h3 className="text-xl font-bold mb-4">EcoShop</h3>
+            <h3 className="text-xl font-bold mb-4">CuteBae</h3>
             <p className="text-gray-300 mb-4">
               Your one-stop destination for sustainable and stylish products.
             </p>
@@ -44,23 +44,33 @@ const Footer = () => {
             <h3 className="text-lg font-semibold mb-4">Shop Categories</h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/category/men" className="text-gray-300 hover:text-white transition-colors">
-                  Men
+                <Link to="/category/boys" className="text-gray-300 hover:text-white transition-colors">
+                  Boys
                 </Link>
               </li>
               <li>
-                <Link to="/category/women" className="text-gray-300 hover:text-white transition-colors">
-                  Women
+                <Link to="/category/girls" className="text-gray-300 hover:text-white transition-colors">
+                  Girls
                 </Link>
               </li>
               <li>
-                <Link to="/category/kids" className="text-gray-300 hover:text-white transition-colors">
-                  Kids
+                <Link to="/category/toys" className="text-gray-300 hover:text-white transition-colors">
+                  Toys
+                </Link>
+              </li>
+              <li>
+                <Link to="/category/shoes" className="text-gray-300 hover:text-white transition-colors">
+                  Shoes
                 </Link>
               </li>
               <li>
                 <Link to="/category/accessories" className="text-gray-300 hover:text-white transition-colors">
                   Accessories
+                </Link>
+              </li>
+              <li>
+                <Link to="/category/new-born" className="text-gray-300 hover:text-white transition-colors">
+                  New Born
                 </Link>
               </li>
             </ul>
@@ -105,8 +115,8 @@ const Footer = () => {
               <li className="flex items-start">
                 <MapPin size={18} className="mr-2 mt-1 flex-shrink-0" />
                 <span className="text-gray-300">
-                  123 Eco Street, Green City, 
-                  <br />EC 12345
+                  123 CuteBae Street, Fashion City, 
+                  <br />CB 12345
                 </span>
               </li>
               <li className="flex items-center">
@@ -115,14 +125,14 @@ const Footer = () => {
               </li>
               <li className="flex items-center">
                 <Mail size={18} className="mr-2 flex-shrink-0" />
-                <span className="text-gray-300">support@ecoshop.com</span>
+                <span className="text-gray-300">support@cutebae.com</span>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-gray-800 mt-10 pt-6 text-center text-gray-400 text-sm">
-          <p>&copy; {new Date().getFullYear()} EcoShop. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} CuteBae. All rights reserved.</p>
         </div>
       </div>
     </footer>
