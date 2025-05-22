@@ -111,15 +111,15 @@ const ProductDetailsPage = () => {
               {hasDiscount ? (
                 <>
                   <span className="text-2xl font-semibold text-red-600">
-                    ${product.price.discounted?.toFixed(2)}
+                    ₹{product.price.discounted?.toFixed(2)}
                   </span>
                   <span className="text-lg text-gray-500 line-through">
-                    ${product.price.original.toFixed(2)}
+                    ₹{product.price.original.toFixed(2)}
                   </span>
                 </>
               ) : (
                 <span className="text-2xl font-semibold">
-                  ${product.price.original.toFixed(2)}
+                  ₹{product.price.original.toFixed(2)}
                 </span>
               )}
             </div>

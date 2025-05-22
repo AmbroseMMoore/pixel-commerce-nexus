@@ -95,8 +95,8 @@ const generateSampleProducts = () => {
         shortDescription: `Quality ${subCategory.name.toLowerCase()} for ${categoryName.toLowerCase()}`,
         longDescription: `This is a high-quality item in our ${subCategory.name} collection designed specifically for ${categoryName}. Made with premium materials for comfort and durability.`,
         price: {
-          original: Math.floor(Math.random() * 50) + 20 + 0.99,
-          discounted: Math.random() > 0.5 ? Math.floor(Math.random() * 20) + 15 + 0.99 : undefined
+          original: Math.floor(Math.random() * 2000) + 999, // Indian Rupees
+          discounted: Math.random() > 0.5 ? Math.floor(Math.random() * 1000) + 699 : undefined // Indian Rupees
         },
         categoryId: subCategory.categoryId,
         subCategoryId: subCategory.id,
@@ -130,7 +130,7 @@ const generateSampleProducts = () => {
           "Material": "Premium Quality",
           "Fit": "Regular",
           "Care": "Machine wash cold",
-          "Origin": "Imported"
+          "Origin": "Made in India"
         },
         isLowStock: Math.random() > 0.7,
         isOutOfStock: false,

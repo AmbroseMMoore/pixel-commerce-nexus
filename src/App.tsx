@@ -28,8 +28,31 @@ import ProfilePage from "./pages/ProfilePage";
 
 // Auth Provider
 import { AuthProvider } from "./contexts/AuthContext";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 const queryClient = new QueryClient();
+
+// Google Auth Callback Handler
+const GoogleAuthCallback = () => {
+  useEffect(() => {
+    // In a real implementation, this would validate the auth code and get tokens
+    // For demo, we'll simulate successful login
+    const mockGoogleUser = {
+      id: "google-user-1",
+      name: "Google User",
+      email: "google.user@example.com",
+      isAdmin: false
+    };
+    
+    // Store in localStorage to simulate auth
+    localStorage.setItem("user", JSON.stringify(mockGoogleUser));
+    
+    toast.success("Successfully logged in with Google!");
+  }, []);
+  
+  return <Navigate to="/profile" replace />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -47,8 +70,8 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             
-            {/* Auth callback routes - Would be connected to proper Auth callbacks in a production environment */}
-            <Route path="/auth/google/callback" element={<Navigate to="/" replace />} />
+            {/* Auth callback routes */}
+            <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
             
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />

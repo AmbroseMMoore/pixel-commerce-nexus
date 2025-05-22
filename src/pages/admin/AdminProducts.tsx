@@ -8,35 +8,36 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Search, Edit, Trash2, Eye } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
+import { categories } from "@/data/mockData";
 
-// Mock data for demo
+// Mock data for demo with correct categories
 const mockProducts = [
   { 
     id: "1", 
     title: "Premium Cotton T-Shirt", 
-    category: "Clothing", 
+    category: "Boys", 
     subCategory: "T-Shirts", 
-    price: 29.99,
-    discountedPrice: 24.99,
+    price: 1299,
+    discountedPrice: 999,
     isLowStock: false,
     isOutOfStock: false
   },
   { 
     id: "2", 
-    title: "Slim Fit Jeans", 
-    category: "Clothing", 
-    subCategory: "Bottoms", 
-    price: 59.99,
-    discountedPrice: 49.99,
+    title: "Colorful Dress", 
+    category: "Girls", 
+    subCategory: "Dresses", 
+    price: 1599,
+    discountedPrice: 1299,
     isLowStock: true,
     isOutOfStock: false
   },
   { 
     id: "3", 
     title: "Leather Ankle Boots", 
-    category: "Footwear", 
+    category: "Shoes", 
     subCategory: "Boots", 
-    price: 89.99,
+    price: 2499,
     discountedPrice: null,
     isLowStock: false,
     isOutOfStock: true 
@@ -116,14 +117,14 @@ const AdminProducts = () => {
                             {product.discountedPrice ? (
                               <>
                                 <span className="line-through text-gray-400 mr-2">
-                                  ${product.price.toFixed(2)}
+                                  ₹{product.price.toFixed(2)}
                                 </span>
                                 <span className="text-green-600 font-medium">
-                                  ${product.discountedPrice.toFixed(2)}
+                                  ₹{product.discountedPrice.toFixed(2)}
                                 </span>
                               </>
                             ) : (
-                              `$${product.price.toFixed(2)}`
+                              `₹${product.price.toFixed(2)}`
                             )}
                           </TableCell>
                           <TableCell>

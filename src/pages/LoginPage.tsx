@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,7 @@ const LoginPage = () => {
       
       login(mockUser);
       toast.success("Successfully logged in!");
-      navigate("/");
+      navigate("/profile"); // Redirect to profile page
     } catch (error) {
       toast.error("Invalid email or password");
     } finally {
@@ -45,9 +44,7 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      // In a real application, we would redirect to Google OAuth
-      // For now, we're simulating a successful Google sign-in
-      
+      // Redirect to Google OAuth
       const googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth";
       const redirectUri = window.location.origin + "/auth/google/callback";
       
@@ -63,8 +60,11 @@ const LoginPage = () => {
         prompt: "consent"
       });
       
-      // For demo purposes, instead of redirecting to Google (which would cause a 404 without proper setup)
-      // we'll mock a successful login
+      // For actual Google authentication, uncomment this:
+      window.location.href = `${googleAuthUrl}?${params.toString()}`;
+      
+      // We keep this mock code commented out since we're now actually redirecting
+      /*
       await new Promise((resolve) => setTimeout(resolve, 1000));
       
       const mockGoogleUser = {
@@ -76,10 +76,10 @@ const LoginPage = () => {
       
       login(mockGoogleUser);
       toast.success("Successfully logged in with Google!");
-      navigate("/");
+      navigate("/profile");
+      */
     } catch (error) {
       toast.error("Failed to login with Google. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };

@@ -86,15 +86,15 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
           {hasDiscount ? (
             <>
               <span className="font-semibold text-red-600">
-                ${product.price.discounted?.toFixed(2)}
+                ₹{product.price.discounted?.toFixed(2)}
               </span>
               <span className="text-sm text-gray-500 line-through">
-                ${product.price.original.toFixed(2)}
+                ₹{product.price.original.toFixed(2)}
               </span>
             </>
           ) : (
             <span className="font-semibold">
-              ${product.price.original.toFixed(2)}
+              ₹{product.price.original.toFixed(2)}
             </span>
           )}
         </div>
