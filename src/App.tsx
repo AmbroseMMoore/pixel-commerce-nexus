@@ -31,6 +31,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
+// Admin Protected Route
+import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
+
 const queryClient = new QueryClient();
 
 // Google Auth Callback Handler
@@ -75,14 +78,46 @@ const App = () => (
             
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/products" element={<AdminProducts />} />
-            <Route path="/admin/products/new" element={<AdminProductForm />} />
-            <Route path="/admin/products/:id" element={<AdminProductForm />} />
-            <Route path="/admin/subcategories" element={<AdminSubCategories />} />
-            <Route path="/admin/customers" element={<AdminCustomers />} />
-            <Route path="/admin/orders" element={<AdminOrders />} />
-            <Route path="/admin/cms" element={<AdminCMS />} />
+            <Route path="/admin" element={
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            } />
+            <Route path="/admin/products" element={
+              <AdminProtectedRoute>
+                <AdminProducts />
+              </AdminProtectedRoute>
+            } />
+            <Route path="/admin/products/new" element={
+              <AdminProtectedRoute>
+                <AdminProductForm />
+              </AdminProtectedRoute>
+            } />
+            <Route path="/admin/products/:id" element={
+              <AdminProtectedRoute>
+                <AdminProductForm />
+              </AdminProtectedRoute>
+            } />
+            <Route path="/admin/subcategories" element={
+              <AdminProtectedRoute>
+                <AdminSubCategories />
+              </AdminProtectedRoute>
+            } />
+            <Route path="/admin/customers" element={
+              <AdminProtectedRoute>
+                <AdminCustomers />
+              </AdminProtectedRoute>
+            } />
+            <Route path="/admin/orders" element={
+              <AdminProtectedRoute>
+                <AdminOrders />
+              </AdminProtectedRoute>
+            } />
+            <Route path="/admin/cms" element={
+              <AdminProtectedRoute>
+                <AdminCMS />
+              </AdminProtectedRoute>
+            } />
             
             {/* Catch-All Route */}
             <Route path="*" element={<NotFound />} />

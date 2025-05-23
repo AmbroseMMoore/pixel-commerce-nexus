@@ -30,11 +30,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (data.session) {
+          // List of admin emails
+          const adminEmails = ["user1@g.com", "ambrosem.moore@gmail.com"];
+          
           const userData: User = {
             id: data.session.user.id,
             email: data.session.user.email || "",
             name: data.session.user.user_metadata?.name || "User",
-            isAdmin: data.session.user.email === "user1@g.com" // Hardcode admin check for now
+            isAdmin: adminEmails.includes(data.session.user.email || "") // Check if email is in admin list
           };
           setUser(userData);
         }
@@ -50,11 +53,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
+        // List of admin emails
+        const adminEmails = ["user1@g.com", "ambrosem.moore@gmail.com"];
+        
         const userData: User = {
           id: session.user.id,
           email: session.user.email || "",
           name: session.user.user_metadata?.name || "User",
-          isAdmin: session.user.email === "user1@g.com" // Hardcode admin check for now
+          isAdmin: adminEmails.includes(session.user.email || "") // Check if email is in admin list
         };
         setUser(userData);
       } else {

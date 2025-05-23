@@ -34,8 +34,10 @@ const AdminLogin = () => {
       }
 
       if (data.user) {
-        // Check if this is the admin email
-        if (email === "user1@g.com") {
+        // Check if this is an admin email
+        const adminEmails = ["user1@g.com", "ambrosem.moore@gmail.com"];
+        
+        if (adminEmails.includes(email)) {
           const user = {
             id: data.user.id,
             name: data.user.user_metadata?.name || "Admin User",
@@ -111,8 +113,10 @@ const AdminLogin = () => {
               />
             </div>
             <div className="text-sm text-muted-foreground pt-2">
-              <p>Admin: user1@g.com</p>
+              <p>Admin 1: user1@g.com</p>
               <p>Password: uurr1122</p>
+              <p className="mt-1">Admin 2: ambrosem.moore@gmail.com</p>
+              <p>Password: Moore@9600</p>
             </div>
           </CardContent>
           <CardFooter>
