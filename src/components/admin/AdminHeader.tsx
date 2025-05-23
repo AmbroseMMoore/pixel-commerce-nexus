@@ -6,10 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { toast } from "@/hooks/use-toast";
 
 const AdminHeader = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -18,23 +17,13 @@ const AdminHeader = () => {
     console.log("Search submitted");
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out."
-      });
-      navigate("/admin/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast({
-        title: "Logout failed",
-        description: "There was an error logging out. Please try again.",
-        variant: "destructive"
-      });
-    }
+  const handleLogout = () => {
+    navigate("/logout");
   };
+
+  // Use email if name is not available
+  const displayName = user?.name || user?.email || "Admin";
+  const avatarInitial = displayName.charAt(0).toUpperCase();
 
   return (
     <header className="h-16 border-b border-gray-200 bg-white px-6 flex items-center justify-between">
@@ -54,10 +43,10 @@ const AdminHeader = () => {
         </Button>
         
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium hidden md:block">{user?.name || "Admin"}</span>
+          <span className="text-sm font-medium hidden md:block">{displayName}</span>
           <Avatar className="h-8 w-8">
-            <AvatarImage src="" alt={user?.name || "Admin"} />
-            <AvatarFallback>{user?.name?.charAt(0) || "A"}</AvatarFallback>
+            <AvatarImage src="" alt={displayName} />
+            <AvatarFallback>{avatarInitial}</AvatarFallback>
           </Avatar>
           
           <Button variant="ghost" size="sm" onClick={handleLogout} className="text-red-500 hover:text-red-600 hidden sm:flex items-center gap-1">

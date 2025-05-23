@@ -34,6 +34,9 @@ import { toast } from "sonner";
 // Admin Protected Route
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
 
+// Logout Component
+import AdminLogout from "./pages/admin/AdminLogout";
+
 const queryClient = new QueryClient();
 
 // Google Auth Callback Handler
@@ -75,6 +78,9 @@ const App = () => (
             
             {/* Auth callback routes */}
             <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
+            
+            {/* Logout route */}
+            <Route path="/logout" element={<AdminLogout />} />
             
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />

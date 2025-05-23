@@ -43,13 +43,13 @@ const AdminLogin = () => {
       }
 
       if (data.user) {
-        // Check if this is an admin email
-        const adminEmails = ["user1@g.com", "ambrosem.moore@gmail.com"];
+        // Check if this is the admin email
+        const adminEmails = ["mail.trulle@gmail.com"];
         
         if (adminEmails.includes(email)) {
           const user = {
             id: data.user.id,
-            name: data.user.user_metadata?.name || "Admin User",
+            name: data.user.user_metadata?.name || data.user.email || "Admin",
             email: data.user.email!,
             isAdmin: true
           };
@@ -62,7 +62,7 @@ const AdminLogin = () => {
           navigate("/admin");
         } else {
           setErrorMessage("You don't have admin privileges");
-          await supabase.auth.signOut(); // Sign out if not an admin
+          await supabase.auth.signOut();
           toast({
             title: "Access denied",
             description: "You don't have admin privileges.",
@@ -123,10 +123,8 @@ const AdminLogin = () => {
               />
             </div>
             <div className="text-sm text-muted-foreground pt-2">
-              <p>Admin 1: user1@g.com</p>
-              <p>Password: uurr1122</p>
-              <p className="mt-1">Admin 2: ambrosem.moore@gmail.com</p>
-              <p>Password: Moore@9600</p>
+              <p>Admin: mail.trulle@gmail.com</p>
+              <p>Password: mmee1122</p>
             </div>
           </CardContent>
           <CardFooter>

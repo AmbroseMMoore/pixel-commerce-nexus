@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import { createProduct, updateProduct } from "@/services/adminApi";
 import AdminLayout from "@/components/layout/AdminLayout";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useQuery } from "@tanstack/react-query";
-import { fetchProduct } from "@/services/api";
+import { fetchProducts } from "@/services/api";
 import { Product } from "@/types/product";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -49,20 +50,6 @@ const formSchema = z.object({
   isActive: z.boolean().default(true),
   images: z.array(z.string()).optional(),
   specifications: z.array(z.string()).optional(),
-  colorVariants: z.array(z.object({
-    id: z.string().optional(),
-    name: z.string().optional(),
-    colorCode: z.string().optional(),
-    productId: z.string().optional(),
-    isNew: z.boolean().optional()
-  })).optional(),
-  sizeVariants: z.array(z.object({
-    id: z.string().optional(),
-    size: z.string().optional(),
-    stock: z.string().optional(),
-    productId: z.string().optional(),
-    isNew: z.boolean().optional()
-  })).optional(),
 });
 
 const AdminProductForm = () => {
@@ -70,68 +57,66 @@ const AdminProductForm = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { categories } = useCategories();
-  const [product, setProduct] = useState<Partial<Product>>({
-    name: "",
-    slug: "",
-    description: "",
-    price: "",
-    categoryId: "",
-    subCategoryId: "",
-    isFeatured: false,
-    isTrending: false,
-    isActive: true,
-    images: [],
-    specifications: [],
-    colorVariants: [],
-    sizeVariants: []
-  });
+  const [existingProduct, setExistingProduct] = useState<Product | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { data: existingProduct, isLoading } = useQuery(
-    ["product", id],
-    () => id ? fetchProduct(id) : null,
-    {
-      enabled: !!id,
-      onSuccess: (data) => {
-        if (data) {
-          setProduct(data);
+  // Simplified product state for variants and specs
+  const [specifications, setSpecifications] = useState<string[]>([]);
+  const [colorVariants, setColorVariants] = useState<Array<{name: string, colorCode: string}>>([]);
+  const [sizeVariants, setSizeVariants] = useState<Array<{size: string, stock: number}>>([]);
+
+  const { data: products, isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: fetchProducts,
+    onSuccess: (data) => {
+      if (id && data) {
+        const product = data.find(p => p.id === id);
+        if (product) {
+          setExistingProduct(product);
+          setSpecifications(product.specifications || []);
+          // Set initial form values
+          form.reset({
+            name: product.name,
+            slug: product.slug,
+            description: product.description,
+            price: product.price.toString(),
+            categoryId: product.categoryId,
+            subCategoryId: product.subCategoryId,
+            isFeatured: product.isFeatured,
+            isTrending: product.isTrending,
+            isActive: product.isActive,
+            images: product.images,
+            specifications: product.specifications,
+          });
         }
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Error fetching product",
-          description: error.message,
-          variant: "destructive",
-        });
-      },
-    }
-  );
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error fetching products",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: existingProduct ? zodResolver(formSchema) : zodResolver(formSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      name: existingProduct?.name || "",
-      slug: existingProduct?.slug || "",
-      description: existingProduct?.description || "",
-      price: existingProduct?.price || "",
-      categoryId: existingProduct?.categoryId || "",
-      subCategoryId: existingProduct?.subCategoryId || "",
-      isFeatured: existingProduct?.isFeatured || false,
-      isTrending: existingProduct?.isTrending || false,
-      isActive: existingProduct?.isActive || true,
-      images: existingProduct?.images || [],
-      specifications: existingProduct?.specifications || [],
-      colorVariants: existingProduct?.colorVariants || [],
-      sizeVariants: existingProduct?.sizeVariants || []
+      name: "",
+      slug: "",
+      description: "",
+      price: "",
+      categoryId: "",
+      subCategoryId: "",
+      isFeatured: false,
+      isTrending: false,
+      isActive: true,
+      images: [],
+      specifications: [],
     },
     mode: "onChange",
   });
-
-  useEffect(() => {
-    if (existingProduct) {
-      form.reset(existingProduct);
-    }
-  }, [existingProduct, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
@@ -140,7 +125,9 @@ const AdminProductForm = () => {
     try {
       const productData = {
         ...values,
+        price: parseFloat(values.price),
         slug: values.slug || values.name.toLowerCase().replace(/\s+/g, '-'),
+        specifications,
       };
 
       if (id) {
@@ -172,67 +159,58 @@ const AdminProductForm = () => {
     }
   };
 
+  const handleRemoveSpecification = (index: number) => {
+    const updatedSpecifications = [...specifications];
+    updatedSpecifications.splice(index, 1);
+    setSpecifications(updatedSpecifications);
+  };
+
+  const handleSpecificationChange = (index: number, value: string) => {
+    const updatedSpecifications = [...specifications];
+    updatedSpecifications[index] = value;
+    setSpecifications(updatedSpecifications);
+  };
+
+  const handleAddSpecification = () => {
+    setSpecifications([...specifications, '']);
+  };
+
   const handleRemoveColor = (index: number) => {
-    const updatedColorVariants = [...product.colorVariants!];
+    const updatedColorVariants = [...colorVariants];
     updatedColorVariants.splice(index, 1);
-    setProduct({...product, colorVariants: updatedColorVariants});
+    setColorVariants(updatedColorVariants);
   };
 
   const handleColorChange = (index: number, field: string, value: string) => {
-    const updatedColorVariants = [...product.colorVariants!];
+    const updatedColorVariants = [...colorVariants];
     updatedColorVariants[index] = {
       ...updatedColorVariants[index],
       [field]: value
     };
-    setProduct({...product, colorVariants: updatedColorVariants});
+    setColorVariants(updatedColorVariants);
   };
 
   const handleAddColor = () => {
-    const newColor = {
-      id: '',
-      name: '',
-      colorCode: '',
-      productId: '',
-      isNew: true
-    };
-    setProduct({
-      ...product, 
-      colorVariants: [...product.colorVariants!, newColor]
-    });
+    setColorVariants([...colorVariants, { name: '', colorCode: '' }]);
   };
 
   const handleRemoveSize = (index: number) => {
-    const updatedSizeVariants = [...product.sizeVariants!];
+    const updatedSizeVariants = [...sizeVariants];
     updatedSizeVariants.splice(index, 1);
-    setProduct({...product, sizeVariants: updatedSizeVariants});
+    setSizeVariants(updatedSizeVariants);
   };
 
   const handleSizeChange = (index: number, field: string, value: any) => {
-    const updatedSizeVariants = [...product.sizeVariants!];
+    const updatedSizeVariants = [...sizeVariants];
     updatedSizeVariants[index] = {
       ...updatedSizeVariants[index],
-      [field]: value
+      [field]: field === 'stock' ? parseInt(value) || 0 : value
     };
-    setProduct({...product, sizeVariants: updatedSizeVariants});
+    setSizeVariants(updatedSizeVariants);
   };
 
-  const handleRemoveSpecification = (index: number) => {
-    const updatedSpecifications = [...product.specifications!];
-    updatedSpecifications.splice(index, 1);
-    setProduct({...product, specifications: updatedSpecifications});
-  };
-
-  const handleSpecificationChange = (index: number, value: string) => {
-    const updatedSpecifications = [...product.specifications!];
-    updatedSpecifications[index] = value;
-    setProduct({...product, specifications: updatedSpecifications});
-  };
-
-  const handleAddSpecification = () => {
-    setProduct({
-      ...product, 
-      specifications: [...product.specifications!, '']
-    });
+  const handleAddSize = () => {
+    setSizeVariants([...sizeVariants, { size: '', stock: 0 }]);
   };
 
   if (isLoading) {
@@ -358,9 +336,9 @@ const AdminProductForm = () => {
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel>Featured</FormLabel>
-                          <FormDescription>
+                          <div className="text-sm text-muted-foreground">
                             Should this product be featured?
-                          </FormDescription>
+                          </div>
                         </div>
                         <FormControl>
                           <Switch
@@ -378,9 +356,9 @@ const AdminProductForm = () => {
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel>Trending</FormLabel>
-                          <FormDescription>
+                          <div className="text-sm text-muted-foreground">
                             Should this product be trending?
-                          </FormDescription>
+                          </div>
                         </div>
                         <FormControl>
                           <Switch
@@ -398,9 +376,9 @@ const AdminProductForm = () => {
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                           <FormLabel>Active</FormLabel>
-                          <FormDescription>
+                          <div className="text-sm text-muted-foreground">
                             Is this product active?
-                          </FormDescription>
+                          </div>
                         </div>
                         <FormControl>
                           <Switch
@@ -416,7 +394,7 @@ const AdminProductForm = () => {
                 {/* Specifications */}
                 <div className="space-y-2">
                   <Label>Specifications</Label>
-                  {product.specifications && product.specifications.map((spec, index) => (
+                  {specifications.map((spec, index) => (
                     <div key={index} className="flex items-center space-x-2">
                       <Input
                         type="text"
@@ -444,17 +422,17 @@ const AdminProductForm = () => {
                 {/* Color Variants */}
                 <div className="space-y-2">
                   <Label>Color Variants</Label>
-                  {product.colorVariants && product.colorVariants.map((color, index) => (
+                  {colorVariants.map((color, index) => (
                     <div key={index} className="grid grid-cols-3 gap-4 items-center">
                       <Input
                         type="text"
                         placeholder="Color Name"
-                        value={color.name || ''}
+                        value={color.name}
                         onChange={(e) => handleColorChange(index, 'name', e.target.value)}
                       />
                       <Input
                         type="color"
-                        value={color.colorCode || ''}
+                        value={color.colorCode}
                         onChange={(e) => handleColorChange(index, 'colorCode', e.target.value)}
                       />
                       <Button
@@ -476,18 +454,18 @@ const AdminProductForm = () => {
                 {/* Size Variants */}
                 <div className="space-y-2">
                   <Label>Size Variants</Label>
-                  {product.sizeVariants && product.sizeVariants.map((size, index) => (
+                  {sizeVariants.map((size, index) => (
                     <div key={index} className="grid grid-cols-3 gap-4 items-center">
                       <Input
                         type="text"
                         placeholder="Size"
-                        value={size.size || ''}
+                        value={size.size}
                         onChange={(e) => handleSizeChange(index, 'size', e.target.value)}
                       />
                       <Input
                         type="number"
                         placeholder="Stock"
-                        value={size.stock || ''}
+                        value={size.stock}
                         onChange={(e) => handleSizeChange(index, 'stock', e.target.value)}
                       />
                       <Button
@@ -500,10 +478,7 @@ const AdminProductForm = () => {
                       </Button>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={() => setProduct({
-                    ...product, 
-                    sizeVariants: [...product.sizeVariants!, { size: '', stock: '', productId: '', id: '', isNew: true }]
-                  })}>
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddSize}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add Size Variant
                   </Button>

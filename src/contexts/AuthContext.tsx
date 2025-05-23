@@ -30,14 +30,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (data.session) {
-          // List of admin emails
-          const adminEmails = ["user1@g.com", "ambrosem.moore@gmail.com"];
+          // Updated admin emails - only the new admin user
+          const adminEmails = ["mail.trulle@gmail.com"];
           
           const userData: User = {
             id: data.session.user.id,
             email: data.session.user.email || "",
-            name: data.session.user.user_metadata?.name || "User",
-            isAdmin: adminEmails.includes(data.session.user.email || "") // Check if email is in admin list
+            name: data.session.user.user_metadata?.name || data.session.user.email || "Admin",
+            isAdmin: adminEmails.includes(data.session.user.email || "")
           };
           setUser(userData);
         }
@@ -54,14 +54,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session);
       if (session) {
-        // List of admin emails
-        const adminEmails = ["user1@g.com", "ambrosem.moore@gmail.com"];
+        // Updated admin emails - only the new admin user
+        const adminEmails = ["mail.trulle@gmail.com"];
         
         const userData: User = {
           id: session.user.id,
           email: session.user.email || "",
-          name: session.user.user_metadata?.name || "User",
-          isAdmin: adminEmails.includes(session.user.email || "") // Check if email is in admin list
+          name: session.user.user_metadata?.name || session.user.email || "Admin",
+          isAdmin: adminEmails.includes(session.user.email || "")
         };
         setUser(userData);
       } else {

@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -50,25 +49,16 @@ const AdminSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      toast({
-        title: "Logged out",
-        description: "You have been successfully logged out.",
-      });
-      navigate("/admin/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast({
-        title: "Logout failed",
-        description: "There was an error logging out. Please try again.",
-        variant: "destructive"
-      });
-    }
+  const handleLogout = () => {
+    navigate("/logout");
   };
+
+  // Use email if name is not available
+  const displayName = user?.name || user?.email || "Admin";
+  const displayEmail = user?.email || "admin@example.com";
+  const avatarInitial = displayName.charAt(0).toUpperCase();
 
   const nav = [
     {
@@ -150,13 +140,13 @@ const AdminSidebar = () => {
         )}>
           <div className="flex items-center gap-3 overflow-hidden">
             <Avatar className="h-8 w-8">
-              <AvatarImage src="" alt={user?.name || "Admin"} />
-              <AvatarFallback>{user?.name?.charAt(0) || "A"}</AvatarFallback>
+              <AvatarImage src="" alt={displayName} />
+              <AvatarFallback>{avatarInitial}</AvatarFallback>
             </Avatar>
             {!isCollapsed && (
               <div className="overflow-hidden">
-                <p className="text-sm font-medium truncate">{user?.name || "Admin User"}</p>
-                <p className="text-xs text-gray-500 truncate">{user?.email || "admin@example.com"}</p>
+                <p className="text-sm font-medium truncate">{displayName}</p>
+                <p className="text-xs text-gray-500 truncate">{displayEmail}</p>
               </div>
             )}
           </div>
