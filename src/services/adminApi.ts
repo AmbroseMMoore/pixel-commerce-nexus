@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Product, Category, SubCategory } from "@/types/product";
 
@@ -159,9 +160,23 @@ export const fetchAllSubcategories = async (): Promise<SubCategory[]> => {
 export const createSubCategory = async (subCategoryData: any) => {
   try {
     console.log("Creating subcategory with data:", subCategoryData);
-    const session = await supabase.auth.getSession();
-    console.log("Current session:", session);
     
+    // Get and log current auth session for debugging
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error("Error getting session:", sessionError);
+    } else {
+      console.log("Current user ID:", sessionData.session?.user?.id);
+      console.log("Current user email:", sessionData.session?.user?.email);
+      console.log("Access token:", sessionData.session?.access_token?.substring(0, 10) + "...");
+    }
+    
+    // Make sure the user is authenticated before proceeding
+    if (!sessionData.session?.user) {
+      throw new Error("User is not authenticated. Please log in again.");
+    }
+    
+    // Attempt to create the subcategory
     const { data, error } = await supabase
       .from('subcategories')
       .insert(subCategoryData)

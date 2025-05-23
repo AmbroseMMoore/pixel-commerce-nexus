@@ -30,13 +30,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (data.session) {
-          // Updated admin emails - only the new admin user
+          // Only mail.trulle@gmail.com is admin
           const adminEmails = ["mail.trulle@gmail.com"];
           
           const userData: User = {
             id: data.session.user.id,
             email: data.session.user.email || "",
-            name: data.session.user.user_metadata?.name || data.session.user.email || "Admin",
+            name: data.session.user.user_metadata?.name || data.session.user.email || "User",
             isAdmin: adminEmails.includes(data.session.user.email || "")
           };
           setUser(userData);
@@ -54,13 +54,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session);
       if (session) {
-        // Updated admin emails - only the new admin user
+        // Only mail.trulle@gmail.com is admin
         const adminEmails = ["mail.trulle@gmail.com"];
         
         const userData: User = {
           id: session.user.id,
           email: session.user.email || "",
-          name: session.user.user_metadata?.name || session.user.email || "Admin",
+          name: session.user.user_metadata?.name || session.user.email || "User",
           isAdmin: adminEmails.includes(session.user.email || "")
         };
         setUser(userData);

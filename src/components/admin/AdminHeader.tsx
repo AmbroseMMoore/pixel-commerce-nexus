@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const AdminHeader = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -17,8 +17,13 @@ const AdminHeader = () => {
     console.log("Search submitted");
   };
 
-  const handleLogout = () => {
-    navigate("/logout");
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/admin/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   // Use email if name is not available

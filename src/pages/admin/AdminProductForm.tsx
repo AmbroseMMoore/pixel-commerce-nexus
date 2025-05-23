@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -65,40 +64,36 @@ const AdminProductForm = () => {
   const [colorVariants, setColorVariants] = useState<Array<{name: string, colorCode: string}>>([]);
   const [sizeVariants, setSizeVariants] = useState<Array<{size: string, stock: number}>>([]);
 
+  // Fix the TypeScript error by removing onSuccess from useQuery options
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: fetchProducts,
-    onSuccess: (data) => {
-      if (id && data) {
-        const product = data.find(p => p.id === id);
-        if (product) {
-          setExistingProduct(product);
-          setSpecifications(product.specifications || []);
-          // Set initial form values
-          form.reset({
-            name: product.name,
-            slug: product.slug,
-            description: product.description,
-            price: product.price.toString(),
-            categoryId: product.categoryId,
-            subCategoryId: product.subCategoryId,
-            isFeatured: product.isFeatured,
-            isTrending: product.isTrending,
-            isActive: product.isActive,
-            images: product.images,
-            specifications: product.specifications,
-          });
-        }
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error fetching products",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
   });
+
+  // Move the data handling to a useEffect to fix the build error
+  useEffect(() => {
+    if (id && products) {
+      const product = products.find(p => p.id === id);
+      if (product) {
+        setExistingProduct(product);
+        setSpecifications(product.specifications || []);
+        // Set initial form values
+        form.reset({
+          name: product.name,
+          slug: product.slug,
+          description: product.description,
+          price: product.price.toString(),
+          categoryId: product.categoryId,
+          subCategoryId: product.subCategoryId,
+          isFeatured: product.isFeatured,
+          isTrending: product.isTrending,
+          isActive: product.isActive,
+          images: product.images,
+          specifications: product.specifications,
+        });
+      }
+    }
+  }, [id, products]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

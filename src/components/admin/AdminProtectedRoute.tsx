@@ -1,9 +1,10 @@
 
 import React, { useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface AdminProtectedRouteProps {
   children: React.ReactNode;
@@ -11,18 +12,31 @@ interface AdminProtectedRouteProps {
 
 const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) => {
   const { isAdmin, loading, logout } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        // If no session found, ensure user is logged out
-        logout();
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Session error:", error);
+          navigate("/admin/login");
+          return;
+        }
+        
+        if (!data.session) {
+          // If no session found, ensure user is logged out
+          await logout();
+          navigate("/admin/login");
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
       }
     };
     
     checkSession();
-  }, [logout]);
+  }, [logout, navigate]);
 
   if (loading) {
     return (
@@ -34,6 +48,11 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) =
   }
 
   if (!isAdmin) {
+    toast({
+      title: "Access denied",
+      description: "You don't have admin privileges to access this page.",
+      variant: "destructive"
+    });
     return <Navigate to="/admin/login" replace />;
   }
 

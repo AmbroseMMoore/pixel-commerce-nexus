@@ -39,27 +39,6 @@ import AdminLogout from "./pages/admin/AdminLogout";
 
 const queryClient = new QueryClient();
 
-// Google Auth Callback Handler
-const GoogleAuthCallback = () => {
-  useEffect(() => {
-    // In a real implementation, this would validate the auth code and get tokens
-    // For demo, we'll simulate successful login
-    const mockGoogleUser = {
-      id: "google-user-1",
-      name: "Google User",
-      email: "google.user@example.com",
-      isAdmin: false
-    };
-    
-    // Store in localStorage to simulate auth
-    localStorage.setItem("user", JSON.stringify(mockGoogleUser));
-    
-    toast.success("Successfully logged in with Google!");
-  }, []);
-  
-  return <Navigate to="/profile" replace />;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -76,11 +55,9 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             
-            {/* Auth callback routes */}
-            <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
-            
-            {/* Logout route */}
+            {/* Logout routes */}
             <Route path="/logout" element={<AdminLogout />} />
+            <Route path="/admin/logout" element={<AdminLogout />} />
             
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
