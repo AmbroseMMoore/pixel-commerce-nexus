@@ -64,7 +64,6 @@ const AdminProductForm = () => {
   const [colorVariants, setColorVariants] = useState<Array<{name: string, colorCode: string}>>([]);
   const [sizeVariants, setSizeVariants] = useState<Array<{size: string, stock: number}>>([]);
 
-  // Fix the TypeScript error by removing onSuccess from useQuery options
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: fetchProducts,
@@ -76,20 +75,30 @@ const AdminProductForm = () => {
       const product = products.find(p => p.id === id);
       if (product) {
         setExistingProduct(product);
-        setSpecifications(product.specifications || []);
-        // Set initial form values
+        // Handle specifications properly - check if it's an array or object
+        const productSpecs = product.specifications;
+        if (Array.isArray(productSpecs)) {
+          setSpecifications(productSpecs);
+        } else if (productSpecs && typeof productSpecs === 'object') {
+          // Convert object to array of strings
+          setSpecifications(Object.entries(productSpecs).map(([key, value]) => `${key}: ${value}`));
+        } else {
+          setSpecifications([]);
+        }
+        
+        // Set initial form values using correct property names
         form.reset({
-          name: product.name,
+          name: product.title, // Use title instead of name
           slug: product.slug,
-          description: product.description,
-          price: product.price.toString(),
+          description: product.shortDescription || product.longDescription || "", // Use available description
+          price: product.price.original.toString(),
           categoryId: product.categoryId,
           subCategoryId: product.subCategoryId,
-          isFeatured: product.isFeatured,
-          isTrending: product.isTrending,
-          isActive: product.isActive,
-          images: product.images,
-          specifications: product.specifications,
+          isFeatured: product.isFeatured || false,
+          isTrending: product.isTrending || false,
+          isActive: !product.isOutOfStock, // Use inverse of isOutOfStock
+          images: product.colorVariants?.[0]?.images || [],
+          specifications: Array.isArray(productSpecs) ? productSpecs : [],
         });
       }
     }
@@ -239,6 +248,7 @@ const AdminProductForm = () => {
                     <AlertDescription>{formError}</AlertDescription>
                   </Alert>
                 )}
+                
                 <div className="grid md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
