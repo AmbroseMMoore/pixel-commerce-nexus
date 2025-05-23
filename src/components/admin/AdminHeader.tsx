@@ -1,16 +1,39 @@
 
 import React from "react";
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { mockUser } from "@/data/mockData";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 
 const AdminHeader = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     // Search functionality would be implemented here
     console.log("Search submitted");
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out."
+      });
+      navigate("/admin/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Logout failed",
+        description: "There was an error logging out. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -30,10 +53,18 @@ const AdminHeader = () => {
           <Bell size={18} />
         </Button>
         
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={mockUser.avatar} alt={mockUser.name} />
-          <AvatarFallback>{mockUser.name.charAt(0)}</AvatarFallback>
-        </Avatar>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium hidden md:block">{user?.name || "Admin"}</span>
+          <Avatar className="h-8 w-8">
+            <AvatarImage src="" alt={user?.name || "Admin"} />
+            <AvatarFallback>{user?.name?.charAt(0) || "A"}</AvatarFallback>
+          </Avatar>
+          
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-red-500 hover:text-red-600 hidden sm:flex items-center gap-1">
+            <LogOut size={16} />
+            <span className="ml-1">Logout</span>
+          </Button>
+        </div>
       </div>
     </header>
   );

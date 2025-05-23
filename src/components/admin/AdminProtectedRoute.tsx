@@ -1,15 +1,28 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdminProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) => {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, logout } = useAuth();
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        // If no session found, ensure user is logged out
+        logout();
+      }
+    };
+    
+    checkSession();
+  }, [logout]);
 
   if (loading) {
     return (

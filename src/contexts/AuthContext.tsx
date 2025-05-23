@@ -8,7 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   login: (userData: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   loading: boolean;
 }
 
@@ -52,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Listen for auth changes
     const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session);
       if (session) {
         // List of admin emails
         const adminEmails = ["user1@g.com", "ambrosem.moore@gmail.com"];
@@ -76,13 +77,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (userData: User) => {
     setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    localStorage.removeItem("user");
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Error signing out:", error);
+      return Promise.reject(error);
+    }
   };
 
   const isAuthenticated = !!user;

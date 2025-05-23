@@ -9,7 +9,9 @@ const handleSupabaseError = (error: any) => {
   if (error.code === "23505") { // Unique constraint violation
     error.message = "A record with this value already exists. Please use unique values.";
   } else if (error.code === "42501") { // Permission denied
-    error.message = "You don't have permission to perform this action. Please check your admin credentials and make sure you're logged in.";
+    error.message = "You don't have permission to perform this action. Please check your admin credentials and make sure you're logged in with admin privileges.";
+    // Force refresh the session to ensure we have the latest auth state
+    supabase.auth.refreshSession();
   } else if (error.code === "23503") { // Foreign key violation
     error.message = "Invalid reference. The item you're referencing may not exist.";
   }
@@ -132,12 +134,17 @@ export const deleteCategory = async (id: string) => {
 // Admin Functions for SubCategories
 export const fetchAllSubcategories = async (): Promise<SubCategory[]> => {
   try {
+    console.log("Fetching subcategories...");
     const { data, error } = await supabase
       .from('subcategories')
       .select('*');
       
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching subcategories:", error);
+      throw error;
+    }
     
+    console.log("Fetched subcategories:", data);
     return (data || []).map(subCategory => ({
       id: subCategory.id,
       name: subCategory.name,
@@ -151,13 +158,22 @@ export const fetchAllSubcategories = async (): Promise<SubCategory[]> => {
 
 export const createSubCategory = async (subCategoryData: any) => {
   try {
+    console.log("Creating subcategory with data:", subCategoryData);
+    const session = await supabase.auth.getSession();
+    console.log("Current session:", session);
+    
     const { data, error } = await supabase
       .from('subcategories')
       .insert(subCategoryData)
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) {
+      console.error("Error creating subcategory:", error);
+      throw error;
+    }
+    
+    console.log("Subcategory created:", data);
     return data;
   } catch (error) {
     return handleSupabaseError(error);

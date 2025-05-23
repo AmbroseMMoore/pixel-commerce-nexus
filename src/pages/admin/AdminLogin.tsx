@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,14 +8,23 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const { login } = useAuth();
+  const { login, isAdmin } = useAuth();
   const navigate = useNavigate();
+
+  // Check if user is already logged in
+  useEffect(() => {
+    if (isAdmin) {
+      navigate("/admin");
+    }
+  }, [isAdmin, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,9 +95,10 @@ const AdminLogin = () => {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {errorMessage && (
-              <div className="p-3 bg-red-50 text-red-600 rounded-md text-sm">
-                {errorMessage}
-              </div>
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

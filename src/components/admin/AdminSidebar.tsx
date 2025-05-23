@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -14,8 +14,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { mockUser } from "@/data/mockData";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -47,7 +48,27 @@ const NavItem = ({ icon, label, href, active }: NavItemProps) => {
 const AdminSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out.",
+      });
+      navigate("/admin/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Logout failed",
+        description: "There was an error logging out. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const nav = [
     {
@@ -129,19 +150,19 @@ const AdminSidebar = () => {
         )}>
           <div className="flex items-center gap-3 overflow-hidden">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={mockUser.avatar} alt={mockUser.name} />
-              <AvatarFallback>{mockUser.name.charAt(0)}</AvatarFallback>
+              <AvatarImage src="" alt={user?.name || "Admin"} />
+              <AvatarFallback>{user?.name?.charAt(0) || "A"}</AvatarFallback>
             </Avatar>
             {!isCollapsed && (
               <div className="overflow-hidden">
-                <p className="text-sm font-medium truncate">{mockUser.name}</p>
-                <p className="text-xs text-gray-500 truncate">{mockUser.email}</p>
+                <p className="text-sm font-medium truncate">{user?.name || "Admin User"}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email || "admin@example.com"}</p>
               </div>
             )}
           </div>
           
           {!isCollapsed && (
-            <Button variant="ghost" size="icon" aria-label="Log out">
+            <Button variant="ghost" size="icon" aria-label="Log out" onClick={handleLogout}>
               <LogOut size={18} />
             </Button>
           )}
