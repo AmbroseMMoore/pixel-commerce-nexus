@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -19,6 +18,7 @@ import { fetchProductBySlug } from "@/services/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useProductById } from "@/hooks/useProducts";
 
 interface ColorVariant {
   id: string;
@@ -44,13 +44,9 @@ const AdminProductForm = () => {
   const queryClient = useQueryClient();
   const isEditMode = !!id;
 
-  // Fetch data
+  // Fetch data - use useProductById for admin edit functionality
   const { categories, isLoading: isCategoriesLoading } = useCategories();
-  const { data: existingProduct, isLoading: isProductLoading } = useQuery({
-    queryKey: ["product", id],
-    queryFn: () => fetchProductBySlug(id!),
-    enabled: !!id,
-  });
+  const { data: existingProduct, isLoading: isProductLoading } = useProductById(isEditMode ? id! : "");
 
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);

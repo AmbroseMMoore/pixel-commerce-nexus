@@ -37,23 +37,9 @@ export const fetchSubCategories = async (): Promise<SubCategory[]> => {
   }));
 };
 
-// Products API
-export const fetchProducts = async (): Promise<Product[]> => {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      product_colors (
-        id, name, color_code,
-        product_images (id, image_url, is_primary)
-      ),
-      product_sizes (id, name, in_stock)
-    `);
-
-  if (error) throw error;
-  
-  // Transform data to match our Product type
-  return (data || []).map(product => ({
+// Helper function to transform product data
+const transformProductData = (product: any): Product => {
+  return {
     id: product.id,
     title: product.title,
     slug: product.slug,
@@ -76,14 +62,33 @@ export const fetchProducts = async (): Promise<Product[]> => {
       name: size.name,
       inStock: size.in_stock
     })),
-    specifications: {},
+    specifications: product.specifications || {},
     isLowStock: product.stock_quantity <= 10,
     isOutOfStock: product.stock_quantity <= 0,
     isFeatured: product.is_featured || false,
     isTrending: product.is_trending || false,
     createdAt: new Date(product.created_at),
     updatedAt: new Date(product.updated_at)
-  }));
+  };
+};
+
+// Products API
+export const fetchProducts = async (): Promise<Product[]> => {
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_colors (
+        id, name, color_code,
+        product_images (id, image_url, is_primary)
+      ),
+      product_sizes (id, name, in_stock)
+    `);
+
+  if (error) throw error;
+  
+  // Transform data to match our Product type
+  return (data || []).map(transformProductData);
 };
 
 // Featured Products
@@ -102,38 +107,7 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
 
   if (error) throw error;
   
-  // Transform data to match our Product type (using the same transform as fetchProducts)
-  return (data || []).map(product => ({
-    id: product.id,
-    title: product.title,
-    slug: product.slug,
-    shortDescription: product.short_description || "",
-    longDescription: product.long_description || "",
-    price: {
-      original: product.price_original,
-      discounted: product.price_discounted || undefined
-    },
-    categoryId: product.category_id,
-    subCategoryId: product.subcategory_id,
-    colorVariants: (product.product_colors || []).map(color => ({
-      id: color.id,
-      name: color.name,
-      colorCode: color.color_code,
-      images: (color.product_images || []).map(img => img.image_url)
-    })),
-    sizeVariants: (product.product_sizes || []).map(size => ({
-      id: size.id,
-      name: size.name,
-      inStock: size.in_stock
-    })),
-    specifications: {},
-    isLowStock: product.stock_quantity <= 10,
-    isOutOfStock: product.stock_quantity <= 0,
-    isFeatured: product.is_featured || false,
-    isTrending: product.is_trending || false,
-    createdAt: new Date(product.created_at),
-    updatedAt: new Date(product.updated_at)
-  }));
+  return (data || []).map(transformProductData);
 };
 
 // Products by Category
@@ -163,41 +137,10 @@ export const fetchProductsByCategory = async (categorySlug: string): Promise<Pro
 
   if (error) throw error;
   
-  // Transform data (using the same transform as fetchProducts)
-  return (data || []).map(product => ({
-    id: product.id,
-    title: product.title,
-    slug: product.slug,
-    shortDescription: product.short_description || "",
-    longDescription: product.long_description || "",
-    price: {
-      original: product.price_original,
-      discounted: product.price_discounted || undefined
-    },
-    categoryId: product.category_id,
-    subCategoryId: product.subcategory_id,
-    colorVariants: (product.product_colors || []).map(color => ({
-      id: color.id,
-      name: color.name,
-      colorCode: color.color_code,
-      images: (color.product_images || []).map(img => img.image_url)
-    })),
-    sizeVariants: (product.product_sizes || []).map(size => ({
-      id: size.id,
-      name: size.name,
-      inStock: size.in_stock
-    })),
-    specifications: {},
-    isLowStock: product.stock_quantity <= 10,
-    isOutOfStock: product.stock_quantity <= 0,
-    isFeatured: product.is_featured || false,
-    isTrending: product.is_trending || false,
-    createdAt: new Date(product.created_at),
-    updatedAt: new Date(product.updated_at)
-  }));
+  return (data || []).map(transformProductData);
 };
 
-// Single Product
+// Single Product by Slug (for public product pages)
 export const fetchProductBySlug = async (slug: string): Promise<Product> => {
   const { data, error } = await supabase
     .from('products')
@@ -215,36 +158,26 @@ export const fetchProductBySlug = async (slug: string): Promise<Product> => {
   if (error) throw error;
   if (!data) throw new Error("Product not found");
   
-  // Transform data (using the same transform as fetchProducts)
-  return {
-    id: data.id,
-    title: data.title,
-    slug: data.slug,
-    shortDescription: data.short_description || "",
-    longDescription: data.long_description || "",
-    price: {
-      original: data.price_original,
-      discounted: data.price_discounted || undefined
-    },
-    categoryId: data.category_id,
-    subCategoryId: data.subcategory_id,
-    colorVariants: (data.product_colors || []).map(color => ({
-      id: color.id,
-      name: color.name,
-      colorCode: color.color_code,
-      images: (color.product_images || []).map(img => img.image_url)
-    })),
-    sizeVariants: (data.product_sizes || []).map(size => ({
-      id: size.id,
-      name: size.name,
-      inStock: size.in_stock
-    })),
-    specifications: {},
-    isLowStock: data.stock_quantity <= 10,
-    isOutOfStock: data.stock_quantity <= 0,
-    isFeatured: data.is_featured || false,
-    isTrending: data.is_trending || false,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at)
-  };
+  return transformProductData(data);
+};
+
+// Single Product by ID (for admin edit functionality)
+export const fetchProductById = async (id: string): Promise<Product> => {
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_colors (
+        id, name, color_code,
+        product_images (id, image_url, is_primary)
+      ),
+      product_sizes (id, name, in_stock)
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error("Product not found");
+  
+  return transformProductData(data);
 };

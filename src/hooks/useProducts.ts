@@ -4,7 +4,8 @@ import {
   fetchProducts, 
   fetchFeaturedProducts, 
   fetchProductsByCategory,
-  fetchProductBySlug
+  fetchProductBySlug,
+  fetchProductById
 } from "@/services/api";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,12 +34,21 @@ export const useProductsByCategory = (categorySlug: string) => {
   });
 };
 
-// Hook for single product
+// Hook for single product by slug (for public product pages)
 export const useProduct = (slug: string) => {
   return useQuery({
     queryKey: ["product", slug],
     queryFn: () => fetchProductBySlug(slug),
     enabled: !!slug
+  });
+};
+
+// Hook for single product by ID (for admin edit functionality)
+export const useProductById = (id: string) => {
+  return useQuery({
+    queryKey: ["product", "id", id],
+    queryFn: () => fetchProductById(id),
+    enabled: !!id
   });
 };
 
