@@ -68,6 +68,11 @@ const AdminProductForm = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
+  // Product variant states
+  const [specifications, setSpecifications] = useState<string[]>([]);
+  const [colorVariants, setColorVariants] = useState<Array<{name: string, colorCode: string}>>([]);
+  const [sizeVariants, setSizeVariants] = useState<Array<{size: string, stock: number}>>([]);
+
   // Only fetch product if we're editing (id exists)
   const { data: existingProduct, isLoading: productLoading, error: productError } = useQuery({
     queryKey: ["product", id],
@@ -91,10 +96,34 @@ const AdminProductForm = () => {
     mode: "onChange",
   });
 
-  // Handle form initialization for editing - Fixed infinite loop by removing form from dependencies
+  // Handle form initialization for editing
   useEffect(() => {
     if (id && existingProduct) {
       setSelectedCategoryId(existingProduct.categoryId);
+      
+      // Set specifications and variants if they exist
+      if (existingProduct.specifications) {
+        if (Array.isArray(existingProduct.specifications)) {
+          setSpecifications(existingProduct.specifications);
+        } else if (typeof existingProduct.specifications === 'object') {
+          setSpecifications(Object.values(existingProduct.specifications));
+        }
+      }
+
+      // Set color and size variants if they exist
+      if (existingProduct.colorVariants) {
+        setColorVariants(existingProduct.colorVariants.map(variant => ({
+          name: variant.name,
+          colorCode: variant.colorCode
+        })));
+      }
+
+      if (existingProduct.sizeVariants) {
+        setSizeVariants(existingProduct.sizeVariants.map(variant => ({
+          size: variant.name,
+          stock: variant.inStock ? 10 : 0 // Default stock if in stock
+        })));
+      }
       
       form.reset({
         title: existingProduct.title,
@@ -108,7 +137,7 @@ const AdminProductForm = () => {
         stockQuantity: "0",
       });
     }
-  }, [id, existingProduct]); // Removed 'form' from dependencies to prevent infinite loop
+  }, [id, existingProduct, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
@@ -125,7 +154,7 @@ const AdminProductForm = () => {
         is_featured: values.isFeatured,
         is_trending: values.isTrending,
         stock_quantity: parseInt(values.stockQuantity),
-        specifications: {},
+        specifications: specifications.length > 0 ? specifications : {},
       };
 
       if (id) {
@@ -155,6 +184,63 @@ const AdminProductForm = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Specification handlers
+  const handleAddSpecification = () => {
+    setSpecifications([...specifications, '']);
+  };
+
+  const handleRemoveSpecification = (index: number) => {
+    const updatedSpecifications = [...specifications];
+    updatedSpecifications.splice(index, 1);
+    setSpecifications(updatedSpecifications);
+  };
+
+  const handleSpecificationChange = (index: number, value: string) => {
+    const updatedSpecifications = [...specifications];
+    updatedSpecifications[index] = value;
+    setSpecifications(updatedSpecifications);
+  };
+
+  // Color variant handlers
+  const handleAddColor = () => {
+    setColorVariants([...colorVariants, { name: '', colorCode: '#000000' }]);
+  };
+
+  const handleRemoveColor = (index: number) => {
+    const updatedColorVariants = [...colorVariants];
+    updatedColorVariants.splice(index, 1);
+    setColorVariants(updatedColorVariants);
+  };
+
+  const handleColorChange = (index: number, field: string, value: string) => {
+    const updatedColorVariants = [...colorVariants];
+    updatedColorVariants[index] = {
+      ...updatedColorVariants[index],
+      [field]: value
+    };
+    setColorVariants(updatedColorVariants);
+  };
+
+  // Size variant handlers
+  const handleAddSize = () => {
+    setSizeVariants([...sizeVariants, { size: '', stock: 0 }]);
+  };
+
+  const handleRemoveSize = (index: number) => {
+    const updatedSizeVariants = [...sizeVariants];
+    updatedSizeVariants.splice(index, 1);
+    setSizeVariants(updatedSizeVariants);
+  };
+
+  const handleSizeChange = (index: number, field: string, value: any) => {
+    const updatedSizeVariants = [...sizeVariants];
+    updatedSizeVariants[index] = {
+      ...updatedSizeVariants[index],
+      [field]: field === 'stock' ? parseInt(value) || 0 : value
+    };
+    setSizeVariants(updatedSizeVariants);
   };
 
   // Get subcategories for selected category
@@ -386,6 +472,99 @@ const AdminProductForm = () => {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  {/* Specifications */}
+                  <div className="space-y-2">
+                    <Label>Specifications</Label>
+                    {specifications.map((spec, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <Input
+                          type="text"
+                          placeholder={`Specification ${index + 1}`}
+                          value={spec}
+                          onChange={(e) => handleSpecificationChange(index, e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveSpecification(index)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddSpecification}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Specification
+                    </Button>
+                  </div>
+
+                  {/* Color Variants */}
+                  <div className="space-y-2">
+                    <Label>Color Variants</Label>
+                    {colorVariants.map((color, index) => (
+                      <div key={index} className="grid grid-cols-3 gap-4 items-center">
+                        <Input
+                          type="text"
+                          placeholder="Color Name"
+                          value={color.name}
+                          onChange={(e) => handleColorChange(index, 'name', e.target.value)}
+                        />
+                        <Input
+                          type="color"
+                          value={color.colorCode}
+                          onChange={(e) => handleColorChange(index, 'colorCode', e.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveColor(index)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddColor}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Color Variant
+                    </Button>
+                  </div>
+
+                  {/* Size Variants */}
+                  <div className="space-y-2">
+                    <Label>Size Variants</Label>
+                    {sizeVariants.map((size, index) => (
+                      <div key={index} className="grid grid-cols-3 gap-4 items-center">
+                        <Input
+                          type="text"
+                          placeholder="Size"
+                          value={size.size}
+                          onChange={(e) => handleSizeChange(index, 'size', e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Stock"
+                          value={size.stock}
+                          onChange={(e) => handleSizeChange(index, 'stock', e.target.value)}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveSize(index)}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={handleAddSize}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Size Variant
+                    </Button>
                   </div>
 
                   <CardFooter className="pt-6">
