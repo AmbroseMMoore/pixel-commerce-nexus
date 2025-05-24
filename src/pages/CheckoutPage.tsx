@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAddresses } from "@/hooks/useAddresses";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useLogging } from "@/hooks/useLogging";
@@ -19,17 +19,33 @@ const CheckoutPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { cartItems, cartTotal, clearCart } = useCart();
+  const { addresses } = useAddresses();
   const { logFormSuccess, logFormError } = useLogging();
   
   const [isProcessing, setIsProcessing] = useState(false);
-  const [deliveryAddress, setDeliveryAddress] = useState({
-    fullName: "",
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    state: "",
-    postalCode: "",
-    phoneNumber: ""
+  const [deliveryAddress, setDeliveryAddress] = useState(() => {
+    // Auto-fill with the most recent address if available
+    if (addresses && addresses.length > 0) {
+      const mostRecentAddress = addresses[0]; // addresses are ordered by created_at desc
+      return {
+        fullName: mostRecentAddress.full_name || "",
+        addressLine1: mostRecentAddress.address_line_1 || "",
+        addressLine2: mostRecentAddress.address_line_2 || "",
+        city: mostRecentAddress.city || "",
+        state: mostRecentAddress.state || "",
+        postalCode: mostRecentAddress.postal_code || "",
+        phoneNumber: mostRecentAddress.phone_number || ""
+      };
+    }
+    return {
+      fullName: "",
+      addressLine1: "",
+      addressLine2: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      phoneNumber: ""
+    };
   });
   
   const [paymentMethod, setPaymentMethod] = useState("card");
@@ -77,7 +93,7 @@ const CheckoutPage = () => {
           city: deliveryAddress.city,
           state: deliveryAddress.state,
           postal_code: deliveryAddress.postalCode,
-          country: 'US',
+          country: 'IN',
           phone_number: deliveryAddress.phoneNumber,
           is_default: false
         })
@@ -228,7 +244,7 @@ const CheckoutPage = () => {
                       id="postalCode"
                       value={deliveryAddress.postalCode}
                       onChange={(e) => handleAddressChange('postalCode', e.target.value)}
-                      placeholder="ZIP code"
+                      placeholder="PIN code"
                       required
                     />
                   </div>
@@ -239,7 +255,7 @@ const CheckoutPage = () => {
                       id="phoneNumber"
                       value={deliveryAddress.phoneNumber}
                       onChange={(e) => handleAddressChange('phoneNumber', e.target.value)}
-                      placeholder="+1 (555) 123-4567"
+                      placeholder="+91 12345 67890"
                       required
                     />
                   </div>
@@ -259,8 +275,8 @@ const CheckoutPage = () => {
                     <Label htmlFor="card">Credit/Debit Card</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="paypal" id="paypal" />
-                    <Label htmlFor="paypal">PayPal</Label>
+                    <RadioGroupItem value="upi" id="upi" />
+                    <Label htmlFor="upi">UPI</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="cod" id="cod" />
@@ -283,9 +299,12 @@ const CheckoutPage = () => {
                   {cartItems.map((item) => (
                     <div key={item.id} className="flex items-center space-x-3">
                       <img
-                        src={item.product_images.find(img => img.is_primary)?.image_url || '/placeholder.svg'}
+                        src={item.product.image_url || '/placeholder.svg'}
                         alt={item.product.title}
                         className="w-12 h-12 object-cover rounded"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder.svg';
+                        }}
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.product.title}</p>
@@ -294,7 +313,7 @@ const CheckoutPage = () => {
                         </p>
                       </div>
                       <p className="text-sm font-semibold">
-                        ${((item.product.price_discounted || item.product.price_original) * item.quantity).toFixed(2)}
+                        ₹{((item.product.price_discounted || item.product.price_original) * item.quantity).toFixed(2)}
                       </p>
                     </div>
                   ))}
@@ -306,7 +325,7 @@ const CheckoutPage = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${cartTotal.toFixed(2)}</span>
+                    <span>₹{cartTotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping</span>
@@ -314,12 +333,12 @@ const CheckoutPage = () => {
                   </div>
                   <div className="flex justify-between">
                     <span>Tax</span>
-                    <span>$0.00</span>
+                    <span>₹0.00</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span>${cartTotal.toFixed(2)}</span>
+                    <span>₹{cartTotal.toFixed(2)}</span>
                   </div>
                 </div>
                 
