@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useLogging } from "@/hooks/useLogging";
+import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProductCardProps {
   product: Product;
@@ -30,7 +32,8 @@ export const ProductCardSkeleton = ({ className }: ProductCardSkeletonProps) => 
 };
 
 const ProductCard = ({ product, className }: ProductCardProps) => {
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const { addToCart, isAddingToCart } = useCart();
+  const { user } = useAuth();
   const { logInfo, logError, logFormSuccess } = useLogging();
   
   // Use first color variant's first image as the product thumbnail
@@ -45,7 +48,27 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
     e.preventDefault();
     e.stopPropagation();
     
-    setIsAddingToCart(true);
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to add items to your cart.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Use first available color and size for quick add
+    const firstColor = product.colorVariants[0];
+    const firstSize = product.sizeVariants.find(s => s.inStock) || product.sizeVariants[0];
+    
+    if (!firstColor || !firstSize) {
+      toast({
+        title: "Product unavailable",
+        description: "This product is currently not available.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
       logInfo('add_to_cart_attempt', { 
@@ -54,27 +77,23 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
         source: 'product_card'
       });
 
-      // Simulate adding to cart (in a real app, this would call a cart service)
-      setTimeout(() => {
-        toast({
-          title: "Added to Cart",
-          description: `${product.title} has been added to your cart.`,
-        });
+      addToCart({
+        productId: product.id,
+        colorId: firstColor.id,
+        sizeId: firstSize.id,
+        quantity: 1
+      });
         
-        logFormSuccess('cart', 'add_to_cart_success', {
-          productId: product.id,
-          productTitle: product.title,
-          price: product.price
-        });
-        
-        setIsAddingToCart(false);
-      }, 600);
+      logFormSuccess('cart', 'add_to_cart_success', {
+        productId: product.id,
+        productTitle: product.title,
+        price: product.price
+      });
     } catch (error) {
       logError('add_to_cart_error', { 
         productId: product.id, 
         error: error instanceof Error ? error.message : error 
       });
-      setIsAddingToCart(false);
     }
   };
   
@@ -82,6 +101,15 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
   const handleAddToWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to add items to your wishlist.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
       logInfo('add_to_wishlist_attempt', { 

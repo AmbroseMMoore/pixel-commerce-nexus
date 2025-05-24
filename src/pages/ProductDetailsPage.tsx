@@ -11,10 +11,14 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useProduct } from "@/hooks/useProducts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/contexts/AuthContext";
 
 const ProductDetailsPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading, error } = useProduct(slug || "");
+  const { addToCart, isAddingToCart } = useCart();
+  const { user } = useAuth();
 
   const [selectedColor, setSelectedColor] = useState<ColorVariant | null>(null);
   const [selectedSize, setSelectedSize] = useState<SizeVariant | null>(null);
@@ -70,15 +74,30 @@ const ProductDetailsPage = () => {
   }
 
   const handleAddToCart = () => {
+    if (!user) {
+      toast.error("Please log in to add items to your cart");
+      return;
+    }
+
     if (!selectedSize) {
       toast.error("Please select a size");
       return;
     }
 
-    toast.success(`Added ${quantity} ${product.title} to cart`);
+    addToCart({
+      productId: product.id,
+      colorId: selectedColor.id,
+      sizeId: selectedSize.id,
+      quantity
+    });
   };
 
   const handleAddToWishlist = () => {
+    if (!user) {
+      toast.error("Please log in to add items to your wishlist");
+      return;
+    }
+
     toast.success(`Added ${product.title} to wishlist`);
   };
 
@@ -264,9 +283,9 @@ const ProductDetailsPage = () => {
                 onClick={handleAddToCart}
                 className="flex-1 bg-brand hover:bg-brand-dark"
                 size="lg"
-                disabled={product.isOutOfStock || !selectedSize?.inStock}
+                disabled={product.isOutOfStock || !selectedSize?.inStock || isAddingToCart}
               >
-                {product.isOutOfStock ? "Out of Stock" : "Add to Cart"}
+                {isAddingToCart ? "Adding to Cart..." : product.isOutOfStock ? "Out of Stock" : "Add to Cart"}
               </Button>
               <Button
                 onClick={handleAddToWishlist}

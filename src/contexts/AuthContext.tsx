@@ -119,17 +119,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const logout = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // Clear local state first
+      setUser(null);
+      setIsAdmin(false);
+      
+      // Then sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Logout error:", error);
-        throw error;
+        // Don't throw error here, we already cleared local state
       }
-      
-      setUser(null);
-      setIsAdmin(false);
     } catch (error) {
       console.error("Error during logout:", error);
-      throw error;
     } finally {
       setLoading(false);
     }
