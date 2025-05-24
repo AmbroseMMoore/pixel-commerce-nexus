@@ -14,9 +14,14 @@ const Index = () => {
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { data: featuredProducts, isLoading: productsLoading } = useFeaturedProducts();
 
-  // Create test product on page load
+  // Create test product on page load - but only once
   useEffect(() => {
+    let isInitialized = false;
+    
     const initializeTestData = async () => {
+      if (isInitialized) return;
+      isInitialized = true;
+      
       try {
         await createTestProduct();
         console.log("Test product initialization completed");
@@ -30,11 +35,17 @@ const Index = () => {
     };
 
     initializeTestData();
-  }, []);
+  }, []); // Empty dependency array to run only once
 
   return (
     <MainLayout>
-      <HeroSection />
+      <HeroSection 
+        title="Welcome to CuteBae"
+        subtitle="Discover amazing products for kids"
+        ctaText="Shop Now"
+        ctaLink="/category/boys"
+        image="/placeholder.svg"
+      />
       <CategorySection categories={categories} isLoading={categoriesLoading} />
       <FeaturedProducts 
         products={featuredProducts || []} 
