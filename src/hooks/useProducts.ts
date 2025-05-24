@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { 
   fetchProducts, 
@@ -52,8 +51,8 @@ export const useProductById = (id: string) => {
   });
 };
 
-// Hook for checking product availability in real-time
-export const useProductAvailability = (productId: string) => {
+// Updated hook for checking product availability with better control
+export const useProductAvailability = (productId: string, enabled: boolean = false) => {
   return useQuery({
     queryKey: ["product", "availability", productId],
     queryFn: async () => {
@@ -71,8 +70,40 @@ export const useProductAvailability = (productId: string) => {
         quantity: data.stock_quantity
       };
     },
-    enabled: !!productId,
-    // Check more frequently for real-time stock updates
-    refetchInterval: 30000 // Check every 30 seconds
+    enabled: !!productId && enabled,
+    // Only refetch when explicitly needed, not automatically
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    // Cache for 2 minutes
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+};
+
+// New hook for real-time availability that can be used when needed
+export const useRealTimeProductAvailability = (productId: string, enabled: boolean = false) => {
+  return useQuery({
+    queryKey: ["product", "availability", "realtime", productId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('stock_quantity')
+        .eq('id', productId)
+        .single();
+      
+      if (error) throw error;
+      
+      return {
+        isInStock: data.stock_quantity > 0,
+        isLowStock: data.stock_quantity > 0 && data.stock_quantity <= 10,
+        quantity: data.stock_quantity
+      };
+    },
+    enabled: !!productId && enabled,
+    // Check every 30 seconds only when enabled
+    refetchInterval: enabled ? 30000 : false,
+    refetchOnWindowFocus: false,
+    staleTime: 10 * 1000, // 10 seconds
+    gcTime: 2 * 60 * 1000, // 2 minutes
   });
 };

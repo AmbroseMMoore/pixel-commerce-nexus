@@ -1,9 +1,9 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { queryClient } from "@/lib/queryClient";
 
 // Customer Pages
 import Index from "./pages/Index";
@@ -36,8 +36,6 @@ import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
 
 // Logout Component
 import AdminLogout from "./pages/admin/AdminLogout";
-
-const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

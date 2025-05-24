@@ -9,10 +9,12 @@ import { useCategories } from "@/hooks/useCategories";
 import { useFeaturedProducts } from "@/hooks/useProducts";
 import { createTestProduct } from "@/utils/createTestProduct";
 import { toast } from "@/hooks/use-toast";
+import { useCacheManager } from "@/hooks/useCacheManager";
 
 const Index = () => {
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { data: featuredProducts, isLoading: productsLoading } = useFeaturedProducts();
+  const { getCacheStats } = useCacheManager();
 
   // Create test product on page load - but only once
   useEffect(() => {
@@ -35,7 +37,20 @@ const Index = () => {
     };
 
     initializeTestData();
-  }, []); // Empty dependency array to run only once
+  }, []);
+
+  // Log cache stats periodically for monitoring
+  useEffect(() => {
+    const logStats = () => {
+      const stats = getCacheStats();
+      console.log('Cache Stats:', stats);
+    };
+
+    // Log stats every 5 minutes
+    const interval = setInterval(logStats, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [getCacheStats]);
 
   return (
     <MainLayout>
