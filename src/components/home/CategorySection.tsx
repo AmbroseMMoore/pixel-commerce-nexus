@@ -25,11 +25,13 @@ const CategorySection = ({ categories, isLoading = false }: CategorySectionProps
               <div key={index} className="flex flex-col items-center">
                 <Skeleton className="aspect-square w-full rounded-lg mb-2" />
                 <Skeleton className="h-4 w-24 mb-1" />
+                <Skeleton className="h-3 w-16" />
               </div>
             ))
           ) : categories.length === 0 ? (
             <div className="col-span-full text-center py-8">
-              <p className="text-gray-500">No categories found.</p>
+              <p className="text-gray-500">No categories available yet.</p>
+              <p className="text-sm text-gray-400 mt-2">Categories will appear here once they are added.</p>
             </div>
           ) : (
             // Actual categories
@@ -44,6 +46,10 @@ const CategorySection = ({ categories, isLoading = false }: CategorySectionProps
                     src={category.image || "https://via.placeholder.com/300x300?text=Category"}
                     alt={category.name}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "https://via.placeholder.com/300x300?text=Category";
+                    }}
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-30 transition-opacity"></div>
                 </div>

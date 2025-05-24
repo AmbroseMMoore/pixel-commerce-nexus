@@ -7,29 +7,30 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { categories, products, subCategories } from "@/data/mockData";
 import { FilterX, SlidersHorizontal } from "lucide-react";
 import { Product, SubCategory } from "@/types/product";
 import { cn } from "@/lib/utils";
+import { useCategories } from "@/hooks/useCategories";
+import { useProductsByCategory } from "@/hooks/useProducts";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const CategoryPage = () => {
   const { slug } = useParams<{ slug: string }>();
-  const category = categories.find((c) => c.slug === slug);
+  const { categories, isLoading: categoriesLoading, error: categoriesError } = useCategories();
+  const { data: categoryProducts = [], isLoading: productsLoading, error: productsError } = useProductsByCategory(slug || "");
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
 
-  // Get all products for this category
-  const categoryProducts = category
-    ? products.filter((p) => p.categoryId === category.id)
-    : [];
+  // Find the current category
+  const category = categories.find((c) => c.slug === slug);
 
   // Get subcategories for this category
-  const categorySubCategories = category
-    ? subCategories.filter((sc) => sc.categoryId === category.id)
-    : [];
+  const categorySubCategories = category?.subCategories || [];
 
   // Get all available colors from products
   const availableColors = Array.from(
@@ -114,6 +115,46 @@ const CategoryPage = () => {
     selectedSubCategories.length > 0 ||
     selectedColors.length > 0 ||
     selectedSizes.length > 0;
+
+  // Loading state
+  if (categoriesLoading || productsLoading) {
+    return (
+      <MainLayout>
+        <div className="bg-gray-50 py-6">
+          <div className="container-custom">
+            <Skeleton className="h-8 w-48" />
+          </div>
+        </div>
+        <div className="container-custom py-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            {Array(6).fill(0).map((_, index) => (
+              <div key={index} className="space-y-3">
+                <Skeleton className="aspect-[3/4] w-full rounded-md" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Error state
+  if (categoriesError || productsError) {
+    return (
+      <MainLayout>
+        <div className="container-custom py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Failed to load category data. Please refresh the page or try again later.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </MainLayout>
+    );
+  }
 
   // If category doesn't exist
   if (!category) {
@@ -270,7 +311,7 @@ const CategoryPage = () => {
                   </Button>
                 </div>
 
-                {/* Subcategories */}
+                {/* Mobile Subcategories */}
                 {categorySubCategories.length > 0 && (
                   <div className="mb-4">
                     <h3 className="font-medium mb-2">Subcategories</h3>
@@ -296,7 +337,7 @@ const CategoryPage = () => {
 
                 <Separator className="my-4" />
 
-                {/* Colors */}
+                {/* Mobile Colors */}
                 <div className="mb-4">
                   <h3 className="font-medium mb-2">Colors</h3>
                   <div className="flex flex-wrap gap-2">
@@ -323,7 +364,7 @@ const CategoryPage = () => {
 
                 <Separator className="my-4" />
 
-                {/* Sizes */}
+                {/* Mobile Sizes */}
                 <div className="mb-4">
                   <h3 className="font-medium mb-2">Sizes</h3>
                   <div className="flex flex-wrap gap-2">
@@ -393,8 +434,6 @@ const CategoryPage = () => {
   );
 };
 
-export default CategoryPage;
-
 // X component for the mobile filter close button
 const X = ({ size }: { size: number }) => {
   return (
@@ -414,3 +453,5 @@ const X = ({ size }: { size: number }) => {
     </svg>
   );
 };
+
+export default CategoryPage;
