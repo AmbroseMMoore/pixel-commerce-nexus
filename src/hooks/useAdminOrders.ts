@@ -38,20 +38,24 @@ export interface AdminOrder {
 export const useAdminOrders = () => {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
 
   const fetchOrders = async () => {
-    if (!user || !isAdmin) {
-      console.log('User not authenticated or not admin');
+    console.log('Starting to fetch orders...');
+    console.log('User:', user);
+
+    if (!user) {
+      console.log('No authenticated user');
       setOrders([]);
       setIsLoading(false);
       return;
     }
 
     try {
-      console.log('Fetching orders...');
+      setIsLoading(true);
+      console.log('Fetching orders from Supabase...');
       
-      // First, get all orders
+      // Fetch all orders
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
@@ -62,10 +66,10 @@ export const useAdminOrders = () => {
         throw ordersError;
       }
 
-      console.log('Orders data:', ordersData);
+      console.log('Raw orders data:', ordersData);
 
       if (!ordersData || ordersData.length === 0) {
-        console.log('No orders found');
+        console.log('No orders found in database');
         setOrders([]);
         setIsLoading(false);
         return;
@@ -75,6 +79,8 @@ export const useAdminOrders = () => {
       const ordersWithDetails = await Promise.all(
         ordersData.map(async (order) => {
           try {
+            console.log('Fetching details for order:', order.id);
+
             // Fetch customer details
             const { data: customerData, error: customerError } = await supabase
               .from('customers')
@@ -83,7 +89,7 @@ export const useAdminOrders = () => {
               .single();
 
             if (customerError) {
-              console.error('Error fetching customer:', customerError);
+              console.error('Error fetching customer for order', order.id, ':', customerError);
             }
 
             // Fetch order items
@@ -101,24 +107,34 @@ export const useAdminOrders = () => {
               .eq('order_id', order.id);
 
             if (itemsError) {
-              console.error('Error fetching order items:', itemsError);
+              console.error('Error fetching order items for order', order.id, ':', itemsError);
             }
 
             // Fetch product, color, and size details for each item
             const itemsWithDetails = await Promise.all(
               (orderItemsData || []).map(async (item) => {
-                const [productResult, colorResult, sizeResult] = await Promise.all([
-                  supabase.from('products').select('title').eq('id', item.product_id).single(),
-                  supabase.from('product_colors').select('name').eq('id', item.color_id).single(),
-                  supabase.from('product_sizes').select('name').eq('id', item.size_id).single()
-                ]);
+                try {
+                  const [productResult, colorResult, sizeResult] = await Promise.all([
+                    supabase.from('products').select('title').eq('id', item.product_id).maybeSingle(),
+                    supabase.from('product_colors').select('name').eq('id', item.color_id).maybeSingle(),
+                    supabase.from('product_sizes').select('name').eq('id', item.size_id).maybeSingle()
+                  ]);
 
-                return {
-                  ...item,
-                  product: productResult.data,
-                  color: colorResult.data,
-                  size: sizeResult.data
-                };
+                  return {
+                    ...item,
+                    product: productResult.data,
+                    color: colorResult.data,
+                    size: sizeResult.data
+                  };
+                } catch (error) {
+                  console.error('Error fetching item details:', error);
+                  return {
+                    ...item,
+                    product: null,
+                    color: null,
+                    size: null
+                  };
+                }
               })
             );
 
@@ -128,7 +144,7 @@ export const useAdminOrders = () => {
               order_items: itemsWithDetails
             };
           } catch (error) {
-            console.error('Error processing order details:', error);
+            console.error('Error processing order details for order', order.id, ':', error);
             return {
               ...order,
               customer: null,
@@ -144,7 +160,7 @@ export const useAdminOrders = () => {
       console.error('Error fetching admin orders:', error);
       toast({
         title: "Error",
-        description: "Failed to load orders. Please check the console for more details.",
+        description: "Failed to load orders. Please check your permissions and try again.",
         variant: "destructive"
       });
     } finally {
@@ -178,8 +194,9 @@ export const useAdminOrders = () => {
   };
 
   useEffect(() => {
+    // Always try to fetch orders when component mounts or user changes
     fetchOrders();
-  }, [user, isAdmin]);
+  }, [user]);
 
   return {
     orders,

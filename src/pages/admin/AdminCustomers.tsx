@@ -21,6 +21,7 @@ const AdminCustomers = () => {
   );
 
   const handleRefresh = () => {
+    console.log('Refreshing customers data...');
     refetch();
   };
 
@@ -70,14 +71,17 @@ const AdminCustomers = () => {
                   <TableBody>
                     {isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center">
+                        <TableCell colSpan={8} className="text-center py-8">
                           Loading customers...
                         </TableCell>
                       </TableRow>
                     ) : filteredCustomers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center">
-                          {customers.length === 0 ? "No customers found. Customers will appear here when users register and place orders." : "No customers match your search."}
+                        <TableCell colSpan={8} className="text-center py-8">
+                          {customers.length === 0 
+                            ? "No customers found. Check console for details or try refreshing." 
+                            : "No customers match your search."
+                          }
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -114,6 +118,13 @@ const AdminCustomers = () => {
                     )}
                   </TableBody>
                 </Table>
+              </div>
+
+              {/* Debug info - remove this after testing */}
+              <div className="mt-4 p-4 bg-gray-100 rounded text-sm text-gray-600">
+                <p>Debug: Found {customers.length} customers total</p>
+                <p>Filtered: {filteredCustomers.length} customers</p>
+                <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
               </div>
             </CardContent>
           </Card>

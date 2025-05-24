@@ -22,15 +22,22 @@ export const useAdminCustomers = () => {
   const { user, isAdmin } = useAuth();
 
   const fetchCustomers = async () => {
-    if (!user || !isAdmin) {
-      console.log('User not authenticated or not admin');
+    console.log('Starting to fetch customers...');
+    console.log('User:', user);
+    console.log('IsAdmin:', isAdmin);
+
+    if (!user) {
+      console.log('No authenticated user');
       setCustomers([]);
       setIsLoading(false);
       return;
     }
 
     try {
-      console.log('Fetching customers...');
+      setIsLoading(true);
+      console.log('Fetching customers from Supabase...');
+      
+      // Fetch all customers
       const { data: customersData, error } = await supabase
         .from('customers')
         .select('*')
@@ -41,10 +48,10 @@ export const useAdminCustomers = () => {
         throw error;
       }
 
-      console.log('Customers data:', customersData);
+      console.log('Raw customers data:', customersData);
 
       if (!customersData || customersData.length === 0) {
-        console.log('No customers found');
+        console.log('No customers found in database');
         setCustomers([]);
         setIsLoading(false);
         return;
@@ -54,19 +61,16 @@ export const useAdminCustomers = () => {
       const customersWithStats = await Promise.all(
         customersData.map(async (customer) => {
           try {
+            console.log('Fetching stats for customer:', customer.id);
+            
             const { data: orderStats, error: statsError } = await supabase
               .from('orders')
               .select('total_amount, created_at')
               .eq('customer_id', customer.id);
 
             if (statsError) {
-              console.error('Error fetching customer stats:', statsError);
-              return {
-                ...customer,
-                orders_count: 0,
-                total_spent: 0,
-                last_order_date: null
-              };
+              console.error('Error fetching customer stats for', customer.id, ':', statsError);
+              // Continue with default values instead of failing
             }
 
             const orders = orderStats || [];
@@ -83,7 +87,7 @@ export const useAdminCustomers = () => {
               last_order_date: lastOrderDate
             };
           } catch (error) {
-            console.error('Error processing customer stats:', error);
+            console.error('Error processing customer stats for', customer.id, ':', error);
             return {
               ...customer,
               orders_count: 0,
@@ -100,7 +104,7 @@ export const useAdminCustomers = () => {
       console.error('Error fetching admin customers:', error);
       toast({
         title: "Error",
-        description: "Failed to load customers. Please check the console for more details.",
+        description: "Failed to load customers. Please check your permissions and try again.",
         variant: "destructive"
       });
     } finally {
@@ -109,8 +113,9 @@ export const useAdminCustomers = () => {
   };
 
   useEffect(() => {
+    // Always try to fetch customers when component mounts or user changes
     fetchCustomers();
-  }, [user, isAdmin]);
+  }, [user]);
 
   return {
     customers,
