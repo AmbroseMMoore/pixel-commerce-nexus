@@ -6,56 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { mockUser } from "@/data/mockData";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-
-// Mock orders data
-const mockOrders = [
-  {
-    id: "1",
-    orderNumber: "ORD-12345",
-    date: "2023-05-20",
-    status: "Delivered",
-    total: 129.99,
-    items: 3
-  },
-  {
-    id: "2",
-    orderNumber: "ORD-12340",
-    date: "2023-04-15",
-    status: "Processing",
-    total: 79.99,
-    items: 1
-  }
-];
-
-// Mock wishlist data
-const mockWishlist = [
-  {
-    id: "1",
-    title: "Premium Cotton T-Shirt",
-    price: 29.99,
-    image: "/placeholder.svg"
-  },
-  {
-    id: "2",
-    title: "Slim Fit Jeans",
-    price: 59.99,
-    image: "/placeholder.svg"
-  },
-];
+import { useOrders } from "@/hooks/useOrders";
+import { useAddresses } from "@/hooks/useAddresses";
+import { format } from "date-fns";
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { orders, isLoading: ordersLoading } = useOrders();
+  const { addresses } = useAddresses();
   
-  // Mock user profile data (normally would come from the actual user object)
-  const [name, setName] = useState(user?.name || mockUser.name);
-  const [email, setEmail] = useState(user?.email || mockUser.email);
-  const [phone, setPhone] = useState("+1 (555) 123-4567");
+  // Profile form state
+  const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [phone, setPhone] = useState("");
   
   // Form submission handler
   const handleProfileSubmit = (e: React.FormEvent) => {
@@ -70,7 +38,7 @@ const ProfilePage = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate("/login");
+      navigate("/auth");
       toast({
         title: "Logged out",
         description: "You have been logged out successfully.",
@@ -85,9 +53,9 @@ const ProfilePage = () => {
     }
   };
   
-  // If not authenticated, redirect to login
-  if (!user && !mockUser) {
-    navigate("/login");
+  // If not authenticated, redirect to auth
+  if (!user) {
+    navigate("/auth");
     return null;
   }
 
@@ -100,7 +68,7 @@ const ProfilePage = () => {
             <Card>
               <CardContent className="p-6 text-center">
                 <Avatar className="w-24 h-24 mx-auto mb-4">
-                  <AvatarImage src={user?.avatar || mockUser.avatar} alt={name} />
+                  <AvatarImage src={user?.avatar} alt={name} />
                   <AvatarFallback>{name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <h2 className="text-xl font-bold">{name}</h2>
@@ -119,10 +87,9 @@ const ProfilePage = () => {
           {/* Main Content */}
           <div>
             <Tabs defaultValue="orders" className="space-y-4">
-              <TabsList className="grid grid-cols-4 mb-4">
+              <TabsList className="grid grid-cols-3 mb-4">
                 <TabsTrigger value="orders">Orders</TabsTrigger>
-                <TabsTrigger value="wishlist">Wishlist</TabsTrigger>
-                <TabsTrigger value="returns">Returns</TabsTrigger>
+                <TabsTrigger value="addresses">Addresses</TabsTrigger>
                 <TabsTrigger value="profile">Profile</TabsTrigger>
               </TabsList>
               
@@ -136,7 +103,11 @@ const ProfilePage = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {mockOrders.length === 0 ? (
+                    {ordersLoading ? (
+                      <div className="text-center py-6">
+                        <p className="text-gray-500">Loading orders...</p>
+                      </div>
+                    ) : orders.length === 0 ? (
                       <div className="text-center py-6">
                         <p className="text-gray-500">You haven't placed any orders yet.</p>
                         <Button className="mt-4" asChild>
@@ -145,27 +116,53 @@ const ProfilePage = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {mockOrders.map((order) => (
+                        {orders.map((order) => (
                           <div key={order.id} className="border rounded-lg p-4">
                             <div className="flex flex-col sm:flex-row justify-between mb-2">
                               <div>
-                                <p className="font-medium">{order.orderNumber}</p>
-                                <p className="text-sm text-gray-500">{order.date}</p>
+                                <p className="font-medium">{order.order_number}</p>
+                                <p className="text-sm text-gray-500">
+                                  {format(new Date(order.created_at), 'MMM dd, yyyy')}
+                                </p>
                               </div>
                               <div className="mt-2 sm:mt-0">
-                                <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800">
-                                  {order.status}
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                  order.status === 'delivered' 
+                                    ? 'bg-green-100 text-green-800'
+                                    : order.status === 'processing'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                                 </span>
                               </div>
                             </div>
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                               <p className="text-sm">
-                                {order.items} {order.items === 1 ? 'item' : 'items'} · ${order.total.toFixed(2)}
+                                {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'items'} · ${order.total_amount.toFixed(2)}
                               </p>
-                              <Button variant="outline" size="sm" className="mt-2 sm:mt-0">
-                                View Details
-                              </Button>
+                              <div className="mt-2 sm:mt-0 space-x-2">
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  order.payment_status === 'paid'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  Payment: {order.payment_status}
+                                </span>
+                              </div>
                             </div>
+                            {order.order_items.length > 0 && (
+                              <div className="mt-3 pt-3 border-t">
+                                <p className="text-sm font-medium mb-2">Items:</p>
+                                <div className="space-y-1">
+                                  {order.order_items.map((item, index) => (
+                                    <p key={index} className="text-sm text-gray-600">
+                                      {item.product.title} - {item.color.name} / {item.size.name} (Qty: {item.quantity})
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -174,68 +171,50 @@ const ProfilePage = () => {
                 </Card>
               </TabsContent>
               
-              {/* Wishlist Tab */}
-              <TabsContent value="wishlist">
+              {/* Addresses Tab */}
+              <TabsContent value="addresses">
                 <Card>
                   <CardHeader>
-                    <CardTitle>My Wishlist</CardTitle>
+                    <CardTitle>My Addresses</CardTitle>
                     <CardDescription>
-                      Items you've saved for later
+                      Manage your delivery addresses
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {mockWishlist.length === 0 ? (
+                    {addresses.length === 0 ? (
                       <div className="text-center py-6">
-                        <p className="text-gray-500">Your wishlist is empty.</p>
-                        <Button className="mt-4" asChild>
-                          <a href="/">Browse Products</a>
+                        <p className="text-gray-500">No addresses saved yet.</p>
+                        <Button className="mt-4" onClick={() => navigate('/checkout')}>
+                          Add Address
                         </Button>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {mockWishlist.map((item) => (
-                          <div key={item.id} className="border rounded-lg overflow-hidden">
-                            <div className="aspect-square relative">
-                              <img 
-                                src={item.image} 
-                                alt={item.title} 
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="p-4">
-                              <h3 className="font-medium">{item.title}</h3>
-                              <p className="text-sm text-gray-600">${item.price.toFixed(2)}</p>
-                              <div className="flex gap-2 mt-2">
-                                <Button size="sm" variant="secondary" className="flex-1">
-                                  Add to Cart
-                                </Button>
-                                <Button size="sm" variant="outline" className="flex-1">
-                                  Remove
-                                </Button>
+                      <div className="space-y-4">
+                        {addresses.map((address) => (
+                          <div key={address.id} className="border rounded-lg p-4">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium">{address.full_name}</p>
+                                <p className="text-sm text-gray-600">
+                                  {address.address_line_1}
+                                  {address.address_line_2 && `, ${address.address_line_2}`}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {address.city}, {address.state} {address.postal_code}
+                                </p>
+                                <p className="text-sm text-gray-600">{address.country}</p>
+                                <p className="text-sm text-gray-600">Phone: {address.phone_number}</p>
                               </div>
+                              {address.is_default && (
+                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                                  Default
+                                </span>
+                              )}
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              {/* Returns Tab */}
-              <TabsContent value="returns">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Returns & Cancellations</CardTitle>
-                    <CardDescription>
-                      Manage your return requests and cancellations
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-center py-6">
-                    <p className="text-gray-500 mb-4">You don't have any return or cancellation requests.</p>
-                    <p className="text-sm text-gray-500">
-                      If you need to return or cancel an order, please navigate to your order details and select the appropriate option.
-                    </p>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -270,6 +249,7 @@ const ProfilePage = () => {
                             value={email} 
                             onChange={(e) => setEmail(e.target.value)} 
                             required
+                            disabled
                           />
                         </div>
                       </div>
