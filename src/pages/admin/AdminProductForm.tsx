@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +18,8 @@ import { createProduct, updateProduct } from "@/services/adminApi";
 import AdminLayout from "@/components/layout/AdminLayout";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useQuery } from "@tanstack/react-query";
-import { fetchProductBySlug } from "@/services/api";
+import { fetchProducts } from "@/services/api";
+import { Product } from "@/types/product";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const formSchema = z.object({
@@ -55,7 +55,8 @@ const AdminProductForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { categories, isLoading: categoriesLoading } = useCategories();
+  const { categories } = useCategories();
+  const [existingProduct, setExistingProduct] = useState<Product | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Simplified product state for variants and specs
@@ -63,12 +64,45 @@ const AdminProductForm = () => {
   const [colorVariants, setColorVariants] = useState<Array<{name: string, colorCode: string}>>([]);
   const [sizeVariants, setSizeVariants] = useState<Array<{size: string, stock: number}>>([]);
 
-  // Only fetch product if we're editing (id exists)
-  const { data: existingProduct, isLoading: productLoading, error: productError } = useQuery({
-    queryKey: ["product", id],
-    queryFn: () => fetchProductBySlug(id!),
-    enabled: !!id,
+  const { data: products, isLoading } = useQuery({
+    queryKey: ["products"],
+    queryFn: fetchProducts,
   });
+
+  // Move the data handling to a useEffect to fix the build error
+  useEffect(() => {
+    if (id && products) {
+      const product = products.find(p => p.id === id);
+      if (product) {
+        setExistingProduct(product);
+        // Handle specifications properly - check if it's an array or object
+        const productSpecs = product.specifications;
+        if (Array.isArray(productSpecs)) {
+          setSpecifications(productSpecs);
+        } else if (productSpecs && typeof productSpecs === 'object') {
+          // Convert object to array of strings
+          setSpecifications(Object.entries(productSpecs).map(([key, value]) => `${key}: ${value}`));
+        } else {
+          setSpecifications([]);
+        }
+        
+        // Set initial form values using correct property names
+        form.reset({
+          name: product.title, // Use title instead of name
+          slug: product.slug,
+          description: product.shortDescription || product.longDescription || "", // Use available description
+          price: product.price.original.toString(),
+          categoryId: product.categoryId,
+          subCategoryId: product.subCategoryId,
+          isFeatured: product.isFeatured || false,
+          isTrending: product.isTrending || false,
+          isActive: !product.isOutOfStock, // Use inverse of isOutOfStock
+          images: product.colorVariants?.[0]?.images || [],
+          specifications: Array.isArray(productSpecs) ? productSpecs : [],
+        });
+      }
+    }
+  }, [id, products]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -87,39 +121,6 @@ const AdminProductForm = () => {
     },
     mode: "onChange",
   });
-
-  // Handle form initialization for editing
-  useEffect(() => {
-    if (id && existingProduct) {
-      // Handle specifications properly - check if it's an array or object
-      const productSpecs = existingProduct.specifications;
-      let specsArray: string[] = [];
-      
-      if (Array.isArray(productSpecs)) {
-        specsArray = productSpecs;
-      } else if (productSpecs && typeof productSpecs === 'object') {
-        // Convert object to array of strings
-        specsArray = Object.entries(productSpecs).map(([key, value]) => `${key}: ${value}`);
-      }
-      
-      setSpecifications(specsArray);
-      
-      // Set initial form values using correct property names
-      form.reset({
-        name: existingProduct.title,
-        slug: existingProduct.slug,
-        description: existingProduct.shortDescription || existingProduct.longDescription || "",
-        price: existingProduct.price.original.toString(),
-        categoryId: existingProduct.categoryId,
-        subCategoryId: existingProduct.subCategoryId,
-        isFeatured: existingProduct.isFeatured || false,
-        isTrending: existingProduct.isTrending || false,
-        isActive: !existingProduct.isOutOfStock,
-        images: existingProduct.colorVariants?.[0]?.images || [],
-        specifications: specsArray,
-      });
-    }
-  }, [id, existingProduct, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
@@ -216,29 +217,12 @@ const AdminProductForm = () => {
     setSizeVariants([...sizeVariants, { size: '', stock: 0 }]);
   };
 
-  if (categoriesLoading || (id && productLoading)) {
+  if (isLoading) {
     return (
       <AdminProtectedRoute>
         <AdminLayout>
           <div className="flex h-screen items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        </AdminLayout>
-      </AdminProtectedRoute>
-    );
-  }
-
-  if (id && productError) {
-    return (
-      <AdminProtectedRoute>
-        <AdminLayout>
-          <div className="container mx-auto py-10">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Failed to load product. Please try again or go back to the products list.
-              </AlertDescription>
-            </Alert>
           </div>
         </AdminLayout>
       </AdminProtectedRoute>

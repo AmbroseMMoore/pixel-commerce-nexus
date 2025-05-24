@@ -32,8 +32,7 @@ const FeaturedProducts = ({
             ))
           ) : products.length === 0 ? (
             <div className="col-span-full text-center py-8">
-              <p className="text-gray-500">No featured products available yet.</p>
-              <p className="text-sm text-gray-400 mt-2">Featured products will appear here once they are added.</p>
+              <p className="text-gray-500">No products found.</p>
             </div>
           ) : (
             // Actual products
