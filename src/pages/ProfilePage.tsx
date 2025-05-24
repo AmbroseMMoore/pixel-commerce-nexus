@@ -49,7 +49,7 @@ const mockWishlist = [
 ];
 
 const ProfilePage = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   
   // Mock user profile data (normally would come from the actual user object)
@@ -67,17 +67,26 @@ const ProfilePage = () => {
   };
   
   // Handle logout
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully.",
-    });
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully.",
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to logout. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   // If not authenticated, redirect to login
-  if (!isAuthenticated && !mockUser) {
+  if (!user && !mockUser) {
     navigate("/login");
     return null;
   }

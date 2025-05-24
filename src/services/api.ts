@@ -79,6 +79,8 @@ export const fetchProducts = async (): Promise<Product[]> => {
     specifications: {},
     isLowStock: product.stock_quantity <= 10,
     isOutOfStock: product.stock_quantity <= 0,
+    isFeatured: product.is_featured || false,
+    isTrending: product.is_trending || false,
     createdAt: new Date(product.created_at),
     updatedAt: new Date(product.updated_at)
   }));
@@ -127,6 +129,8 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
     specifications: {},
     isLowStock: product.stock_quantity <= 10,
     isOutOfStock: product.stock_quantity <= 0,
+    isFeatured: product.is_featured || false,
+    isTrending: product.is_trending || false,
     createdAt: new Date(product.created_at),
     updatedAt: new Date(product.updated_at)
   }));
@@ -186,6 +190,8 @@ export const fetchProductsByCategory = async (categorySlug: string): Promise<Pro
     specifications: {},
     isLowStock: product.stock_quantity <= 10,
     isOutOfStock: product.stock_quantity <= 0,
+    isFeatured: product.is_featured || false,
+    isTrending: product.is_trending || false,
     createdAt: new Date(product.created_at),
     updatedAt: new Date(product.updated_at)
   }));
@@ -236,6 +242,8 @@ export const fetchProductBySlug = async (slug: string): Promise<Product> => {
     specifications: {},
     isLowStock: data.stock_quantity <= 10,
     isOutOfStock: data.stock_quantity <= 0,
+    isFeatured: data.is_featured || false,
+    isTrending: data.is_trending || false,
     createdAt: new Date(data.created_at),
     updatedAt: new Date(data.updated_at)
   };

@@ -134,6 +134,8 @@ const generateSampleProducts = () => {
         },
         isLowStock: Math.random() > 0.7,
         isOutOfStock: false,
+        isFeatured: Math.random() > 0.7,
+        isTrending: Math.random() > 0.8,
         createdAt: new Date(),
         updatedAt: new Date()
       });
