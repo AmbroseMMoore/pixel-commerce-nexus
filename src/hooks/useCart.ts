@@ -17,6 +17,7 @@ export interface CartItem {
     price_original: number;
     price_discounted?: number;
     slug: string;
+    image_url?: string;
   };
   color: {
     name: string;
@@ -50,9 +51,9 @@ export const useCart = () => {
           color_id,
           size_id,
           quantity,
-          product:products(title, price_original, price_discounted, slug),
-          color:product_colors(name, color_code),
-          size:product_sizes(name)
+          product:product_id(title, price_original, price_discounted, slug),
+          color:color_id(name, color_code),
+          size:size_id(name)
         `)
         .eq('customer_id', user.id);
 
@@ -72,12 +73,22 @@ export const useCart = () => {
             console.error('Error fetching product images:', imagesError);
             return {
               ...item,
+              product: {
+                ...item.product,
+                image_url: "/placeholder.svg"
+              },
               product_images: []
             };
           }
 
+          const primaryImage = images?.find(img => img.is_primary) || images?.[0];
+          
           return {
             ...item,
+            product: {
+              ...item.product,
+              image_url: primaryImage?.image_url || "/placeholder.svg"
+            },
             product_images: images || []
           };
         })
@@ -234,9 +245,11 @@ export const useCart = () => {
     isLoading,
     error,
     addToCart: addToCartMutation.mutate,
-    updateCartItem: updateCartMutation.mutate,
+    updateQuantity: updateCartMutation.mutate,
     removeFromCart: removeFromCartMutation.mutate,
     clearCart: clearCartMutation.mutate,
+    getCartTotal: () => cartTotal,
+    getCartCount: () => cartCount,
     isAddingToCart: addToCartMutation.isPending,
     isUpdatingCart: updateCartMutation.isPending,
     isRemovingFromCart: removeFromCartMutation.isPending,

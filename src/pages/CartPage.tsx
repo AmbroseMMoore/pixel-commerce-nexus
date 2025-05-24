@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
 const CartPage = () => {
-  const { cartItems, updateQuantity, removeFromCart, isLoading, getCartTotal, getCartCount } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, isLoading, cartTotal, cartCount } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -18,7 +18,7 @@ const CartPage = () => {
     if (newQuantity < 1) {
       removeFromCart(itemId);
     } else {
-      updateQuantity(itemId, newQuantity);
+      updateQuantity({ itemId, quantity: newQuantity });
     }
   };
 
@@ -79,7 +79,7 @@ const CartPage = () => {
   return (
     <MainLayout>
       <div className="container max-w-4xl py-8">
-        <h1 className="text-2xl font-bold mb-6">Shopping Cart ({getCartCount()} items)</h1>
+        <h1 className="text-2xl font-bold mb-6">Shopping Cart ({cartCount} items)</h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
@@ -158,8 +158,8 @@ const CartPage = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
-                  <span>Subtotal ({getCartCount()} items)</span>
-                  <span>₹{getCartTotal().toFixed(2)}</span>
+                  <span>Subtotal ({cartCount} items)</span>
+                  <span>₹{cartTotal.toFixed(2)}</span>
                 </div>
                 
                 <div className="flex justify-between">
@@ -170,7 +170,7 @@ const CartPage = () => {
                 <div className="border-t pt-4">
                   <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span>₹{getCartTotal().toFixed(2)}</span>
+                    <span>₹{cartTotal.toFixed(2)}</span>
                   </div>
                 </div>
                 

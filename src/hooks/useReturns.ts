@@ -55,21 +55,64 @@ export const useReturns = () => {
           status,
           return_type,
           created_at,
-          updated_at,
-          order:orders(order_number, created_at),
-          order_item:order_items(
-            quantity,
-            unit_price,
-            product:products(title),
-            color:product_colors(name),
-            size:product_sizes(name)
-          )
+          updated_at
         `)
         .eq('customer_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setReturns(data || []);
+
+      // Fetch related data separately
+      const returnsWithDetails = await Promise.all(
+        (data || []).map(async (returnItem) => {
+          // Fetch order details
+          const { data: order } = await supabase
+            .from('orders')
+            .select('order_number, created_at')
+            .eq('id', returnItem.order_id)
+            .single();
+
+          // Fetch order item details
+          const { data: orderItem } = await supabase
+            .from('order_items')
+            .select('quantity, unit_price, product_id, color_id, size_id')
+            .eq('id', returnItem.order_item_id)
+            .single();
+
+          let orderItemDetails = {
+            product: { title: '' },
+            color: { name: '' },
+            size: { name: '' },
+            quantity: 0,
+            unit_price: 0
+          };
+
+          if (orderItem) {
+            // Fetch product, color, and size details
+            const [productRes, colorRes, sizeRes] = await Promise.all([
+              supabase.from('products').select('title').eq('id', orderItem.product_id).single(),
+              supabase.from('product_colors').select('name').eq('id', orderItem.color_id).single(),
+              supabase.from('product_sizes').select('name').eq('id', orderItem.size_id).single()
+            ]);
+
+            orderItemDetails = {
+              product: { title: productRes.data?.title || '' },
+              color: { name: colorRes.data?.name || '' },
+              size: { name: sizeRes.data?.name || '' },
+              quantity: orderItem.quantity,
+              unit_price: orderItem.unit_price
+            };
+          }
+
+          return {
+            ...returnItem,
+            order: order || { order_number: '', created_at: '' },
+            order_item: orderItemDetails
+          };
+        })
+      );
+
+      setReturns(returnsWithDetails);
     } catch (error) {
       console.error('Error fetching returns:', error);
       toast({

@@ -48,15 +48,46 @@ export const useWishlist = () => {
           product_id,
           color_id,
           size_id,
-          created_at,
-          product:products(id, title, slug, price_original, price_discounted),
-          color:product_colors(id, name, color_code),
-          size:product_sizes(id, name)
+          created_at
         `)
         .eq('customer_id', user.id);
 
       if (error) throw error;
-      setWishlistItems(data || []);
+
+      // Fetch related data separately
+      const wishlistWithDetails = await Promise.all(
+        (data || []).map(async (item) => {
+          // Fetch product details
+          const { data: product } = await supabase
+            .from('products')
+            .select('id, title, slug, price_original, price_discounted')
+            .eq('id', item.product_id)
+            .single();
+
+          // Fetch color details
+          const { data: color } = await supabase
+            .from('product_colors')
+            .select('id, name, color_code')
+            .eq('id', item.color_id)
+            .single();
+
+          // Fetch size details
+          const { data: size } = await supabase
+            .from('product_sizes')
+            .select('id, name')
+            .eq('id', item.size_id)
+            .single();
+
+          return {
+            ...item,
+            product: product || { id: '', title: '', slug: '', price_original: 0 },
+            color: color || { id: '', name: '', color_code: '' },
+            size: size || { id: '', name: '' }
+          };
+        })
+      );
+
+      setWishlistItems(wishlistWithDetails);
     } catch (error) {
       console.error('Error fetching wishlist:', error);
       toast({
