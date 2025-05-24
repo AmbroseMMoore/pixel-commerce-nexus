@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, ShoppingCart, User, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCart } from "@/hooks/useCart";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Using the uploaded CuteBae logo
 const logoImage = "/lovable-uploads/c6e052b5-993b-4562-beed-1f882a5a2880.png";
@@ -19,14 +21,23 @@ const categories = [
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [cartItemCount, setCartItemCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+  const { cartCount } = useCart();
+  const { user } = useAuth();
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchTerm.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchTerm)}`);
+    }
+  };
+
+  const handleAuthClick = () => {
+    if (user) {
+      navigate('/profile');
+    } else {
+      navigate('/auth');
     }
   };
 
@@ -84,16 +95,15 @@ const Header = () => {
               />
             </form>
 
-            <Link to="/login" className="hidden sm:block">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                aria-label="Account"
-                className="text-custom-purple hover:text-custom-pink"
-              >
-                <User size={20} />
-              </Button>
-            </Link>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              aria-label="Account"
+              className="text-custom-purple hover:text-custom-pink hidden sm:block"
+              onClick={handleAuthClick}
+            >
+              <User size={20} />
+            </Button>
 
             <Link to="/cart" className="relative">
               <Button 
@@ -103,9 +113,9 @@ const Header = () => {
                 className="text-custom-purple hover:text-custom-pink"
               >
                 <ShoppingCart size={20} />
-                {cartItemCount > 0 && (
+                {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-custom-pink text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {cartItemCount}
+                    {cartCount}
                   </span>
                 )}
               </Button>
@@ -138,14 +148,16 @@ const Header = () => {
                 {category.name}
               </Link>
             ))}
-            <Link
-              to="/login"
+            <button
+              onClick={() => {
+                handleAuthClick();
+                setIsMenuOpen(false);
+              }}
               className="flex items-center text-gray-600 py-2"
-              onClick={() => setIsMenuOpen(false)}
             >
               <User size={18} className="mr-2" />
-              <span>Login</span>
-            </Link>
+              <span>{user ? 'Profile' : 'Login'}</span>
+            </button>
           </div>
         </div>
       )}

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,7 +11,8 @@ import Index from "./pages/Index";
 import ProductDetailsPage from "./pages/ProductDetailsPage";
 import CategoryPage from "./pages/CategoryPage";
 import CartPage from "./pages/CartPage";
-import LoginPage from "./pages/LoginPage";
+import AuthPage from "./pages/AuthPage";
+import CheckoutPage from "./pages/CheckoutPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -28,8 +30,6 @@ import ProfilePage from "./pages/ProfilePage";
 
 // Auth Provider
 import { AuthProvider } from "./contexts/AuthContext";
-import { useEffect } from "react";
-import { toast } from "sonner";
 
 // Admin Protected Route
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
@@ -50,8 +50,12 @@ const App = () => (
             <Route path="/product/:slug" element={<ProductDetailsPage />} />
             <Route path="/category/:slug" element={<CategoryPage />} />
             <Route path="/cart" element={<CartPage />} />
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            
+            {/* Legacy login route redirect */}
+            <Route path="/login" element={<Navigate to="/auth" replace />} />
             
             {/* Logout routes */}
             <Route path="/logout" element={<AdminLogout />} />
