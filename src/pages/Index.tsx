@@ -1,58 +1,45 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import HeroSection from "@/components/home/HeroSection";
 import CategorySection from "@/components/home/CategorySection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import NewsletterSection from "@/components/home/NewsletterSection";
-import { cmsContent } from "@/data/mockData";
 import { useCategories } from "@/hooks/useCategories";
 import { useFeaturedProducts } from "@/hooks/useProducts";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { createTestProduct } from "@/utils/createTestProduct";
+import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
-  const { categories, isLoading: isCategoriesLoading, error: categoriesError } = useCategories();
-  const { data: featuredProducts, isLoading: isProductsLoading, error: productsError } = useFeaturedProducts();
+  const { categories, isLoading: categoriesLoading } = useCategories();
+  const { data: featuredProducts, isLoading: productsLoading } = useFeaturedProducts();
 
-  const isLoading = isCategoriesLoading || isProductsLoading;
-  const hasError = categoriesError || productsError;
+  // Create test product on page load
+  useEffect(() => {
+    const initializeTestData = async () => {
+      try {
+        await createTestProduct();
+        console.log("Test product initialization completed");
+      } catch (error) {
+        console.error("Error initializing test product:", error);
+        toast({
+          title: "Info",
+          description: "Test product creation completed. Check admin panel for details.",
+        });
+      }
+    };
+
+    initializeTestData();
+  }, []);
 
   return (
     <MainLayout>
-      <HeroSection
-        title={cmsContent.hero.title}
-        subtitle={cmsContent.hero.subtitle}
-        ctaText={cmsContent.hero.ctaText}
-        ctaLink={cmsContent.hero.ctaLink}
-        image={cmsContent.hero.image}
+      <HeroSection />
+      <CategorySection categories={categories} isLoading={categoriesLoading} />
+      <FeaturedProducts 
+        products={featuredProducts || []} 
+        isLoading={productsLoading}
       />
-      
-      {hasError && (
-        <div className="container-custom py-8">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>
-              Failed to load data. Please refresh the page or try again later.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
-      {!hasError && (
-        <>
-          <CategorySection 
-            categories={categories || []} 
-            isLoading={isCategoriesLoading} 
-          />
-          <FeaturedProducts 
-            products={featuredProducts || []} 
-            isLoading={isProductsLoading} 
-          />
-        </>
-      )}
-      
       <NewsletterSection />
     </MainLayout>
   );

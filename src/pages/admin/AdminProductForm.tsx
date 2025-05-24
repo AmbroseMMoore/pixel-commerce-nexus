@@ -23,14 +23,14 @@ import { fetchProductBySlug } from "@/services/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Product name must be at least 2 characters.",
+  title: z.string().min(2, {
+    message: "Product title must be at least 2 characters.",
   }),
   slug: z.string().optional(),
-  description: z.string().min(10, {
+  shortDescription: z.string().min(10, {
     message: "Description must be at least 10 characters.",
   }),
-  price: z.string().refine((value) => {
+  priceOriginal: z.string().refine((value) => {
     try {
       const num = parseFloat(value);
       return !isNaN(num) && num > 0;
@@ -43,12 +43,21 @@ const formSchema = z.object({
   categoryId: z.string().min(1, {
     message: "You need to select a category.",
   }),
-  subCategoryId: z.string().optional(),
+  subcategoryId: z.string().min(1, {
+    message: "You need to select a subcategory.",
+  }),
   isFeatured: z.boolean().default(false),
   isTrending: z.boolean().default(false),
-  isActive: z.boolean().default(true),
-  images: z.array(z.string()).optional(),
-  specifications: z.array(z.string()).optional(),
+  stockQuantity: z.string().refine((value) => {
+    try {
+      const num = parseInt(value);
+      return !isNaN(num) && num >= 0;
+    } catch (e) {
+      return false;
+    }
+  }, {
+    message: "Stock quantity must be a valid number.",
+  }),
 });
 
 const AdminProductForm = () => {
@@ -57,11 +66,7 @@ const AdminProductForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { categories, isLoading: categoriesLoading } = useCategories();
   const [formError, setFormError] = useState<string | null>(null);
-
-  // Simplified product state for variants and specs
-  const [specifications, setSpecifications] = useState<string[]>([]);
-  const [colorVariants, setColorVariants] = useState<Array<{name: string, colorCode: string}>>([]);
-  const [sizeVariants, setSizeVariants] = useState<Array<{size: string, stock: number}>>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
   // Only fetch product if we're editing (id exists)
   const { data: existingProduct, isLoading: productLoading, error: productError } = useQuery({
@@ -73,17 +78,15 @@ const AdminProductForm = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      title: "",
       slug: "",
-      description: "",
-      price: "",
+      shortDescription: "",
+      priceOriginal: "",
       categoryId: "",
-      subCategoryId: "",
+      subcategoryId: "",
       isFeatured: false,
       isTrending: false,
-      isActive: true,
-      images: [],
-      specifications: [],
+      stockQuantity: "0",
     },
     mode: "onChange",
   });
@@ -91,32 +94,18 @@ const AdminProductForm = () => {
   // Handle form initialization for editing
   useEffect(() => {
     if (id && existingProduct) {
-      // Handle specifications properly - check if it's an array or object
-      const productSpecs = existingProduct.specifications;
-      let specsArray: string[] = [];
+      setSelectedCategoryId(existingProduct.categoryId);
       
-      if (Array.isArray(productSpecs)) {
-        specsArray = productSpecs;
-      } else if (productSpecs && typeof productSpecs === 'object') {
-        // Convert object to array of strings
-        specsArray = Object.entries(productSpecs).map(([key, value]) => `${key}: ${value}`);
-      }
-      
-      setSpecifications(specsArray);
-      
-      // Set initial form values using correct property names
       form.reset({
-        name: existingProduct.title,
+        title: existingProduct.title,
         slug: existingProduct.slug,
-        description: existingProduct.shortDescription || existingProduct.longDescription || "",
-        price: existingProduct.price.original.toString(),
+        shortDescription: existingProduct.shortDescription || existingProduct.longDescription || "",
+        priceOriginal: existingProduct.price.original.toString(),
         categoryId: existingProduct.categoryId,
-        subCategoryId: existingProduct.subCategoryId,
+        subcategoryId: existingProduct.subCategoryId,
         isFeatured: existingProduct.isFeatured || false,
         isTrending: existingProduct.isTrending || false,
-        isActive: !existingProduct.isOutOfStock,
-        images: existingProduct.colorVariants?.[0]?.images || [],
-        specifications: specsArray,
+        stockQuantity: "0",
       });
     }
   }, [id, existingProduct, form]);
@@ -127,10 +116,16 @@ const AdminProductForm = () => {
 
     try {
       const productData = {
-        ...values,
-        price: parseFloat(values.price),
-        slug: values.slug || values.name.toLowerCase().replace(/\s+/g, '-'),
-        specifications,
+        title: values.title,
+        slug: values.slug || values.title.toLowerCase().replace(/\s+/g, '-'),
+        short_description: values.shortDescription,
+        price_original: parseFloat(values.priceOriginal),
+        category_id: values.categoryId,
+        subcategory_id: values.subcategoryId,
+        is_featured: values.isFeatured,
+        is_trending: values.isTrending,
+        stock_quantity: parseInt(values.stockQuantity),
+        specifications: {},
       };
 
       if (id) {
@@ -162,59 +157,9 @@ const AdminProductForm = () => {
     }
   };
 
-  const handleRemoveSpecification = (index: number) => {
-    const updatedSpecifications = [...specifications];
-    updatedSpecifications.splice(index, 1);
-    setSpecifications(updatedSpecifications);
-  };
-
-  const handleSpecificationChange = (index: number, value: string) => {
-    const updatedSpecifications = [...specifications];
-    updatedSpecifications[index] = value;
-    setSpecifications(updatedSpecifications);
-  };
-
-  const handleAddSpecification = () => {
-    setSpecifications([...specifications, '']);
-  };
-
-  const handleRemoveColor = (index: number) => {
-    const updatedColorVariants = [...colorVariants];
-    updatedColorVariants.splice(index, 1);
-    setColorVariants(updatedColorVariants);
-  };
-
-  const handleColorChange = (index: number, field: string, value: string) => {
-    const updatedColorVariants = [...colorVariants];
-    updatedColorVariants[index] = {
-      ...updatedColorVariants[index],
-      [field]: value
-    };
-    setColorVariants(updatedColorVariants);
-  };
-
-  const handleAddColor = () => {
-    setColorVariants([...colorVariants, { name: '', colorCode: '' }]);
-  };
-
-  const handleRemoveSize = (index: number) => {
-    const updatedSizeVariants = [...sizeVariants];
-    updatedSizeVariants.splice(index, 1);
-    setSizeVariants(updatedSizeVariants);
-  };
-
-  const handleSizeChange = (index: number, field: string, value: any) => {
-    const updatedSizeVariants = [...sizeVariants];
-    updatedSizeVariants[index] = {
-      ...updatedSizeVariants[index],
-      [field]: field === 'stock' ? parseInt(value) || 0 : value
-    };
-    setSizeVariants(updatedSizeVariants);
-  };
-
-  const handleAddSize = () => {
-    setSizeVariants([...sizeVariants, { size: '', stock: 0 }]);
-  };
+  // Get subcategories for selected category
+  const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
+  const subcategories = selectedCategory?.subCategories || [];
 
   if (categoriesLoading || (id && productLoading)) {
     return (
@@ -268,12 +213,12 @@ const AdminProductForm = () => {
                 <div className="grid md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="name"
+                    name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Product Name</FormLabel>
+                        <FormLabel>Product Title</FormLabel>
                         <FormControl>
-                          <Input placeholder="Product Name" {...field} />
+                          <Input placeholder="Product Title" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -293,9 +238,10 @@ const AdminProductForm = () => {
                     )}
                   />
                 </div>
+
                 <FormField
                   control={form.control}
-                  name="description"
+                  name="shortDescription"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Description</FormLabel>
@@ -310,10 +256,11 @@ const AdminProductForm = () => {
                     </FormItem>
                   )}
                 />
+
                 <div className="grid md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="price"
+                    name="priceOriginal"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Price</FormLabel>
@@ -326,11 +273,34 @@ const AdminProductForm = () => {
                   />
                   <FormField
                     control={form.control}
+                    name="stockQuantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Stock Quantity</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Stock Quantity" type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
                     name="categoryId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select 
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            setSelectedCategoryId(value);
+                            form.setValue("subcategoryId", ""); // Reset subcategory when category changes
+                          }} 
+                          defaultValue={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a category" />
@@ -348,8 +318,33 @@ const AdminProductForm = () => {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="subcategoryId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Subcategory</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a subcategory" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {subcategories.map((subcategory) => (
+                              <SelectItem key={subcategory.id} value={subcategory.id}>
+                                {subcategory.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <div className="grid md:grid-cols-3 gap-4">
+
+                <div className="grid md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="isFeatured"
@@ -390,119 +385,6 @@ const AdminProductForm = () => {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="isActive"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel>Active</FormLabel>
-                          <div className="text-sm text-muted-foreground">
-                            Is this product active?
-                          </div>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Specifications */}
-                <div className="space-y-2">
-                  <Label>Specifications</Label>
-                  {specifications.map((spec, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <Input
-                        type="text"
-                        placeholder={`Specification ${index + 1}`}
-                        value={spec}
-                        onChange={(e) => handleSpecificationChange(index, e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveSpecification(index)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddSpecification}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Specification
-                  </Button>
-                </div>
-
-                {/* Color Variants */}
-                <div className="space-y-2">
-                  <Label>Color Variants</Label>
-                  {colorVariants.map((color, index) => (
-                    <div key={index} className="grid grid-cols-3 gap-4 items-center">
-                      <Input
-                        type="text"
-                        placeholder="Color Name"
-                        value={color.name}
-                        onChange={(e) => handleColorChange(index, 'name', e.target.value)}
-                      />
-                      <Input
-                        type="color"
-                        value={color.colorCode}
-                        onChange={(e) => handleColorChange(index, 'colorCode', e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveColor(index)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddColor}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Color Variant
-                  </Button>
-                </div>
-
-                {/* Size Variants */}
-                <div className="space-y-2">
-                  <Label>Size Variants</Label>
-                  {sizeVariants.map((size, index) => (
-                    <div key={index} className="grid grid-cols-3 gap-4 items-center">
-                      <Input
-                        type="text"
-                        placeholder="Size"
-                        value={size.size}
-                        onChange={(e) => handleSizeChange(index, 'size', e.target.value)}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Stock"
-                        value={size.stock}
-                        onChange={(e) => handleSizeChange(index, 'stock', e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveSize(index)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddSize}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Size Variant
-                  </Button>
                 </div>
 
                 <CardFooter className="pt-6">
