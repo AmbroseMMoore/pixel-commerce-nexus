@@ -23,36 +23,67 @@ export const useAdminCustomers = () => {
 
   const fetchCustomers = async () => {
     if (!user || !isAdmin) {
+      console.log('User not authenticated or not admin');
       setCustomers([]);
       setIsLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase
+      console.log('Fetching customers...');
+      const { data: customersData, error } = await supabase
         .from('customers')
-        .select(`
-          id,
-          name,
-          last_name,
-          email,
-          mobile_number,
-          created_at
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching customers:', error);
+        throw error;
+      }
+
+      console.log('Customers data:', customersData);
+
+      if (!customersData || customersData.length === 0) {
+        console.log('No customers found');
+        setCustomers([]);
+        setIsLoading(false);
+        return;
+      }
 
       // Fetch order statistics for each customer
       const customersWithStats = await Promise.all(
-        (data || []).map(async (customer) => {
-          const { data: orderStats, error: statsError } = await supabase
-            .from('orders')
-            .select('total_amount, created_at')
-            .eq('customer_id', customer.id);
+        customersData.map(async (customer) => {
+          try {
+            const { data: orderStats, error: statsError } = await supabase
+              .from('orders')
+              .select('total_amount, created_at')
+              .eq('customer_id', customer.id);
 
-          if (statsError) {
-            console.error('Error fetching customer stats:', statsError);
+            if (statsError) {
+              console.error('Error fetching customer stats:', statsError);
+              return {
+                ...customer,
+                orders_count: 0,
+                total_spent: 0,
+                last_order_date: null
+              };
+            }
+
+            const orders = orderStats || [];
+            const ordersCount = orders.length;
+            const totalSpent = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+            const lastOrderDate = orders.length > 0 
+              ? orders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at
+              : null;
+
+            return {
+              ...customer,
+              orders_count: ordersCount,
+              total_spent: totalSpent,
+              last_order_date: lastOrderDate
+            };
+          } catch (error) {
+            console.error('Error processing customer stats:', error);
             return {
               ...customer,
               orders_count: 0,
@@ -60,29 +91,16 @@ export const useAdminCustomers = () => {
               last_order_date: null
             };
           }
-
-          const orders = orderStats || [];
-          const ordersCount = orders.length;
-          const totalSpent = orders.reduce((sum, order) => sum + Number(order.total_amount), 0);
-          const lastOrderDate = orders.length > 0 
-            ? orders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at
-            : null;
-
-          return {
-            ...customer,
-            orders_count: ordersCount,
-            total_spent: totalSpent,
-            last_order_date: lastOrderDate
-          };
         })
       );
 
+      console.log('Customers with stats:', customersWithStats);
       setCustomers(customersWithStats);
     } catch (error) {
       console.error('Error fetching admin customers:', error);
       toast({
         title: "Error",
-        description: "Failed to load customers.",
+        description: "Failed to load customers. Please check the console for more details.",
         variant: "destructive"
       });
     } finally {

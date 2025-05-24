@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Eye, Mail } from "lucide-react";
+import { Search, Eye, Mail, RefreshCw } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useAdminCustomers } from "@/hooks/useAdminCustomers";
 import { format } from "date-fns";
 
 const AdminCustomers = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const { customers, isLoading } = useAdminCustomers();
+  const { customers, isLoading, refetch } = useAdminCustomers();
   
   const filteredCustomers = customers.filter(customer => 
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -20,12 +20,20 @@ const AdminCustomers = () => {
     customer.mobile_number.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleRefresh = () => {
+    refetch();
+  };
+
   return (
     <AdminProtectedRoute>
       <AdminLayout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Customers</h1>
+            <Button onClick={handleRefresh} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
           </div>
 
           <Card>
@@ -69,7 +77,7 @@ const AdminCustomers = () => {
                     ) : filteredCustomers.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center">
-                          No customers found.
+                          {customers.length === 0 ? "No customers found. Customers will appear here when users register and place orders." : "No customers match your search."}
                         </TableCell>
                       </TableRow>
                     ) : (

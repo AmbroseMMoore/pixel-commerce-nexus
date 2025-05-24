@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Eye } from "lucide-react";
+import { Search, Eye, RefreshCw } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useAdminOrders } from "@/hooks/useAdminOrders";
 
@@ -33,7 +33,7 @@ const getStatusColor = (status: string) => {
 const AdminOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const { orders, isLoading } = useAdminOrders();
+  const { orders, isLoading, refetch } = useAdminOrders();
   
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -48,12 +48,20 @@ const AdminOrders = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const handleRefresh = () => {
+    refetch();
+  };
+
   return (
     <AdminProtectedRoute>
       <AdminLayout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Orders</h1>
+            <Button onClick={handleRefresh} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
           </div>
 
           <Card>
@@ -116,7 +124,7 @@ const AdminOrders = () => {
                     ) : filteredOrders.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center">
-                          No orders found.
+                          {orders.length === 0 ? "No orders found. Orders will appear here when customers place orders." : "No orders match your search criteria."}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -125,12 +133,12 @@ const AdminOrders = () => {
                           <TableCell className="font-medium">{order.order_number}</TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{order.customer?.name}</div>
-                              <div className="text-sm text-gray-500">{order.customer?.email}</div>
+                              <div className="font-medium">{order.customer?.name || 'Unknown Customer'}</div>
+                              <div className="text-sm text-gray-500">{order.customer?.email || 'No email'}</div>
                             </div>
                           </TableCell>
                           <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                          <TableCell>₹{order.total_amount.toFixed(2)}</TableCell>
+                          <TableCell>₹{Number(order.total_amount).toFixed(2)}</TableCell>
                           <TableCell>
                             <span
                               className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.status)}`}
@@ -140,7 +148,7 @@ const AdminOrders = () => {
                           </TableCell>
                           <TableCell>
                             <Badge variant={order.payment_status === "paid" ? "default" : order.payment_status === "refunded" ? "secondary" : "outline"}>
-                              {order.payment_status?.toUpperCase()}
+                              {order.payment_status?.toUpperCase() || 'PENDING'}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
