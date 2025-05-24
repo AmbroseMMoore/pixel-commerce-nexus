@@ -1,275 +1,458 @@
 
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Loader2, AlertCircle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { Trash2, Plus, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { useCategories } from "@/hooks/useCategories";
-import { createProduct, updateProduct } from "@/services/adminApi";
-import AdminLayout from "@/components/layout/AdminLayout";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
+import { useCategories } from "@/hooks/useCategories";
 import { useQuery } from "@tanstack/react-query";
 import { fetchProductBySlug } from "@/services/api";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
-const formSchema = z.object({
-  title: z.string().min(2, {
-    message: "Product title must be at least 2 characters.",
-  }),
-  slug: z.string().optional(),
-  shortDescription: z.string().min(10, {
-    message: "Description must be at least 10 characters.",
-  }),
-  priceOriginal: z.string().refine((value) => {
-    try {
-      const num = parseFloat(value);
-      return !isNaN(num) && num > 0;
-    } catch (e) {
-      return false;
-    }
-  }, {
-    message: "Price must be a valid number and greater than 0.",
-  }),
-  categoryId: z.string().min(1, {
-    message: "You need to select a category.",
-  }),
-  subcategoryId: z.string().min(1, {
-    message: "You need to select a subcategory.",
-  }),
-  isFeatured: z.boolean().default(false),
-  isTrending: z.boolean().default(false),
-  stockQuantity: z.string().refine((value) => {
-    try {
-      const num = parseInt(value);
-      return !isNaN(num) && num >= 0;
-    } catch (e) {
-      return false;
-    }
-  }, {
-    message: "Stock quantity must be a valid number.",
-  }),
-});
+interface ColorVariant {
+  id: string;
+  name: string;
+  colorCode: string;
+  images: string[];
+}
+
+interface SizeVariant {
+  id: string;
+  name: string;
+  inStock: boolean;
+}
+
+interface Specification {
+  key: string;
+  value: string;
+}
 
 const AdminProductForm = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { categories, isLoading: categoriesLoading } = useCategories();
-  const [formError, setFormError] = useState<string | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const queryClient = useQueryClient();
+  const isEditMode = !!id;
 
-  // Product variant states
-  const [specifications, setSpecifications] = useState<string[]>([]);
-  const [colorVariants, setColorVariants] = useState<Array<{name: string, colorCode: string}>>([]);
-  const [sizeVariants, setSizeVariants] = useState<Array<{size: string, stock: number}>>([]);
-
-  // Only fetch product if we're editing (id exists)
-  const { data: existingProduct, isLoading: productLoading, error: productError } = useQuery({
+  // Fetch data
+  const { categories, isLoading: isCategoriesLoading } = useCategories();
+  const { data: existingProduct, isLoading: isProductLoading } = useQuery({
     queryKey: ["product", id],
     queryFn: () => fetchProductBySlug(id!),
     enabled: !!id,
   });
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      title: "",
-      slug: "",
-      shortDescription: "",
-      priceOriginal: "",
-      categoryId: "",
-      subcategoryId: "",
-      isFeatured: false,
-      isTrending: false,
-      stockQuantity: "0",
-    },
-    mode: "onChange",
-  });
+  // Form submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Basic product info
+  const [title, setTitle] = useState("");
+  const [shortDescription, setShortDescription] = useState("");
+  const [longDescription, setLongDescription] = useState("");
+  const [originalPrice, setOriginalPrice] = useState("");
+  const [discountedPrice, setDiscountedPrice] = useState("");
+  const [mainCategoryId, setMainCategoryId] = useState("");
+  const [subCategoryId, setSubCategoryId] = useState("");
+  const [isLowStock, setIsLowStock] = useState(false);
+  const [isOutOfStock, setIsOutOfStock] = useState(false);
+  const [isFeatured, setIsFeatured] = useState(false);
+  const [isTrending, setIsTrending] = useState(false);
+  const [slug, setSlug] = useState("");
 
-  // Handle form initialization for editing
+  // Get subcategories for selected category
+  const selectedCategory = categories.find(cat => cat.id === mainCategoryId);
+  const subcategories = selectedCategory?.subCategories || [];
+
+  // Variants
+  const [colorVariants, setColorVariants] = useState<ColorVariant[]>([
+    { id: "color-1", name: "Black", colorCode: "#000000", images: [] }
+  ]);
+
+  const [sizeVariants, setSizeVariants] = useState<SizeVariant[]>([
+    { id: "size-1", name: "S", inStock: true },
+    { id: "size-2", name: "M", inStock: true },
+    { id: "size-3", name: "L", inStock: true },
+  ]);
+
+  // Specifications
+  const [specifications, setSpecifications] = useState<Specification[]>([
+    { key: "Material", value: "" },
+    { key: "Care Instructions", value: "" },
+  ]);
+
+  // Populate form with existing product data if in edit mode
   useEffect(() => {
-    if (id && existingProduct) {
-      setSelectedCategoryId(existingProduct.categoryId);
-      
-      // Set specifications and variants if they exist
+    if (isEditMode && existingProduct) {
+      setTitle(existingProduct.title);
+      setShortDescription(existingProduct.shortDescription);
+      setLongDescription(existingProduct.longDescription || "");
+      setOriginalPrice(existingProduct.price.original.toString());
+      setDiscountedPrice(existingProduct.price.discounted?.toString() || "");
+      setMainCategoryId(existingProduct.categoryId);
+      setSubCategoryId(existingProduct.subCategoryId);
+      setIsLowStock(existingProduct.isLowStock);
+      setIsOutOfStock(existingProduct.isOutOfStock);
+      setIsFeatured(existingProduct.isFeatured || false);
+      setIsTrending(existingProduct.isTrending || false);
+      setSlug(existingProduct.slug);
+
+      // Set color variants from existing product
+      if (existingProduct.colorVariants && existingProduct.colorVariants.length > 0) {
+        setColorVariants(existingProduct.colorVariants.map(variant => ({
+          id: variant.id,
+          name: variant.name,
+          colorCode: variant.colorCode,
+          images: variant.images || []
+        })));
+      }
+
+      // Set size variants from existing product
+      if (existingProduct.sizeVariants && existingProduct.sizeVariants.length > 0) {
+        setSizeVariants(existingProduct.sizeVariants.map(variant => ({
+          id: variant.id,
+          name: variant.name,
+          inStock: variant.inStock
+        })));
+      }
+
+      // Set specifications from existing product
       if (existingProduct.specifications) {
         if (Array.isArray(existingProduct.specifications)) {
-          setSpecifications(existingProduct.specifications);
+          setSpecifications(existingProduct.specifications.map((spec, index) => ({
+            key: `Specification ${index + 1}`,
+            value: spec
+          })));
         } else if (typeof existingProduct.specifications === 'object') {
-          setSpecifications(Object.values(existingProduct.specifications));
+          setSpecifications(Object.entries(existingProduct.specifications).map(([key, value]) => ({
+            key,
+            value: value as string
+          })));
         }
       }
-
-      // Set color and size variants if they exist
-      if (existingProduct.colorVariants) {
-        setColorVariants(existingProduct.colorVariants.map(variant => ({
-          name: variant.name,
-          colorCode: variant.colorCode
-        })));
-      }
-
-      if (existingProduct.sizeVariants) {
-        setSizeVariants(existingProduct.sizeVariants.map(variant => ({
-          size: variant.name,
-          stock: variant.inStock ? 10 : 0 // Default stock if in stock
-        })));
-      }
-      
-      form.reset({
-        title: existingProduct.title,
-        slug: existingProduct.slug,
-        shortDescription: existingProduct.shortDescription || existingProduct.longDescription || "",
-        priceOriginal: existingProduct.price.original.toString(),
-        categoryId: existingProduct.categoryId,
-        subcategoryId: existingProduct.subCategoryId,
-        isFeatured: existingProduct.isFeatured || false,
-        isTrending: existingProduct.isTrending || false,
-        stockQuantity: "0",
-      });
     }
-  }, [id, existingProduct, form]);
+  }, [isEditMode, existingProduct]);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  // Generate slug when title changes
+  useEffect(() => {
+    if (!isEditMode && title) {
+      const newSlug = title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      setSlug(newSlug);
+    }
+  }, [title, isEditMode]);
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate form
+    if (!title || !shortDescription || !originalPrice || !mainCategoryId || !subCategoryId) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
-    setFormError(null);
-
+    
     try {
+      // Create specifications object from array
+      const specsObj: Record<string, string> = {};
+      specifications.forEach(spec => {
+        if (spec.key && spec.value) {
+          specsObj[spec.key] = spec.value;
+        }
+      });
+
+      // Prepare product data
       const productData = {
-        title: values.title,
-        slug: values.slug || values.title.toLowerCase().replace(/\s+/g, '-'),
-        short_description: values.shortDescription,
-        price_original: parseFloat(values.priceOriginal),
-        category_id: values.categoryId,
-        subcategory_id: values.subcategoryId,
-        is_featured: values.isFeatured,
-        is_trending: values.isTrending,
-        stock_quantity: parseInt(values.stockQuantity),
-        specifications: specifications.length > 0 ? specifications : {},
+        title,
+        slug,
+        short_description: shortDescription,
+        long_description: longDescription,
+        price_original: parseFloat(originalPrice),
+        price_discounted: discountedPrice ? parseFloat(discountedPrice) : null,
+        category_id: mainCategoryId,
+        subcategory_id: subCategoryId,
+        stock_quantity: isOutOfStock ? 0 : isLowStock ? 5 : 100,
+        is_featured: isFeatured,
+        is_trending: isTrending,
+        is_low_stock: isLowStock,
+        is_out_of_stock: isOutOfStock,
+        specifications: specsObj,
+        updated_at: new Date().toISOString()
       };
 
-      if (id) {
+      let productId = id;
+      
+      if (isEditMode) {
         // Update existing product
-        await updateProduct(id, productData);
+        const { error: productError } = await supabase
+          .from('products')
+          .update(productData)
+          .eq('id', id);
+          
+        if (productError) throw productError;
+        productId = id;
+        
         toast({
-          title: "Success",
-          description: "Product updated successfully.",
+          title: "Product Updated",
+          description: `${title} has been successfully updated.`
         });
       } else {
         // Create new product
-        await createProduct(productData);
+        const { data: newProduct, error: productError } = await supabase
+          .from('products')
+          .insert(productData)
+          .select()
+          .single();
+          
+        if (productError) throw productError;
+        productId = newProduct.id;
+        
         toast({
-          title: "Success",
-          description: "Product created successfully.",
+          title: "Product Created",
+          description: `${title} has been successfully created.`
         });
       }
+
+      // Handle color variants
+      if (!isEditMode) {
+        // For new products, delete any existing variants first (cleanup)
+        await supabase.from('product_colors').delete().eq('product_id', productId);
+        await supabase.from('product_sizes').delete().eq('product_id', productId);
+        await supabase.from('product_images').delete().eq('product_id', productId);
+      }
+
+      // Add/Update color variants
+      for (const colorVariant of colorVariants) {
+        if (colorVariant.name && colorVariant.colorCode) {
+          const colorData = {
+            product_id: productId,
+            name: colorVariant.name,
+            color_code: colorVariant.colorCode
+          };
+
+          let colorId;
+          if (isEditMode && !colorVariant.id.startsWith('color-')) {
+            // Update existing color variant
+            const { error: colorError } = await supabase
+              .from('product_colors')
+              .update(colorData)
+              .eq('id', colorVariant.id);
+              
+            if (colorError) throw colorError;
+            colorId = colorVariant.id;
+          } else {
+            // Create new color variant
+            const { data: newColor, error: colorError } = await supabase
+              .from('product_colors')
+              .insert(colorData)
+              .select()
+              .single();
+              
+            if (colorError) throw colorError;
+            colorId = newColor.id;
+          }
+
+          // Handle images for this color
+          for (const imageUrl of colorVariant.images) {
+            if (imageUrl) {
+              const { error: imageError } = await supabase
+                .from('product_images')
+                .insert({
+                  product_id: productId,
+                  color_id: colorId,
+                  image_url: imageUrl,
+                  is_primary: colorVariant.images.indexOf(imageUrl) === 0
+                });
+                
+              if (imageError) {
+                console.error('Error saving image:', imageError);
+                // Don't throw here, just log the error
+              }
+            }
+          }
+        }
+      }
+
+      // Add/Update size variants
+      for (const sizeVariant of sizeVariants) {
+        if (sizeVariant.name) {
+          const sizeData = {
+            product_id: productId,
+            name: sizeVariant.name,
+            in_stock: sizeVariant.inStock
+          };
+
+          if (isEditMode && !sizeVariant.id.startsWith('size-')) {
+            // Update existing size variant
+            const { error: sizeError } = await supabase
+              .from('product_sizes')
+              .update(sizeData)
+              .eq('id', sizeVariant.id);
+              
+            if (sizeError) throw sizeError;
+          } else {
+            // Create new size variant
+            const { error: sizeError } = await supabase
+              .from('product_sizes')
+              .insert(sizeData);
+              
+            if (sizeError) throw sizeError;
+          }
+        }
+      }
+
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      
+      // Redirect back to products page
       navigate("/admin/products");
-    } catch (error: any) {
-      console.error("Error submitting form:", error);
-      setFormError(error.message || "An error occurred. Please try again.");
+    } catch (error) {
+      console.error("Error saving product:", error);
       toast({
         title: "Error",
-        description: error.message || "An error occurred. Please try again.",
-        variant: "destructive",
+        description: "There was an error saving the product. Please try again.",
+        variant: "destructive"
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Specification handlers
-  const handleAddSpecification = () => {
-    setSpecifications([...specifications, '']);
+  // Add a color variant
+  const addColorVariant = () => {
+    setColorVariants([
+      ...colorVariants, 
+      { 
+        id: `color-${Date.now()}`, 
+        name: "", 
+        colorCode: "#ffffff", 
+        images: [] 
+      }
+    ]);
   };
 
-  const handleRemoveSpecification = (index: number) => {
-    const updatedSpecifications = [...specifications];
-    updatedSpecifications.splice(index, 1);
-    setSpecifications(updatedSpecifications);
+  // Remove a color variant
+  const removeColorVariant = (id: string) => {
+    setColorVariants(colorVariants.filter(variant => variant.id !== id));
   };
 
-  const handleSpecificationChange = (index: number, value: string) => {
-    const updatedSpecifications = [...specifications];
-    updatedSpecifications[index] = value;
-    setSpecifications(updatedSpecifications);
+  // Update color variant
+  const updateColorVariant = (id: string, field: keyof ColorVariant, value: any) => {
+    setColorVariants(colorVariants.map(variant => 
+      variant.id === id ? { ...variant, [field]: value } : variant
+    ));
   };
 
-  // Color variant handlers
-  const handleAddColor = () => {
-    setColorVariants([...colorVariants, { name: '', colorCode: '#000000' }]);
+  // Handle image upload
+  const handleImageUpload = (colorId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const imageUrls = Array.from(e.target.files).map(file => 
+        URL.createObjectURL(file)
+      );
+
+      setColorVariants(colorVariants.map(variant => {
+        if (variant.id === colorId) {
+          // Limit to 6 images
+          const currentImages = [...variant.images];
+          const newImages = [...currentImages, ...imageUrls].slice(0, 6);
+          return { ...variant, images: newImages };
+        }
+        return variant;
+      }));
+    }
   };
 
-  const handleRemoveColor = (index: number) => {
-    const updatedColorVariants = [...colorVariants];
-    updatedColorVariants.splice(index, 1);
-    setColorVariants(updatedColorVariants);
+  // Remove image
+  const removeImage = (colorId: string, imageUrl: string) => {
+    setColorVariants(colorVariants.map(variant => {
+      if (variant.id === colorId) {
+        return {
+          ...variant,
+          images: variant.images.filter(img => img !== imageUrl)
+        };
+      }
+      return variant;
+    }));
   };
 
-  const handleColorChange = (index: number, field: string, value: string) => {
-    const updatedColorVariants = [...colorVariants];
-    updatedColorVariants[index] = {
-      ...updatedColorVariants[index],
+  // Add a size variant
+  const addSizeVariant = () => {
+    setSizeVariants([
+      ...sizeVariants,
+      { id: `size-${Date.now()}`, name: "", inStock: true }
+    ]);
+  };
+
+  // Remove a size variant
+  const removeSizeVariant = (id: string) => {
+    setSizeVariants(sizeVariants.filter(variant => variant.id !== id));
+  };
+
+  // Update size variant
+  const updateSizeVariant = (id: string, field: keyof SizeVariant, value: any) => {
+    setSizeVariants(sizeVariants.map(variant => 
+      variant.id === id ? { ...variant, [field]: value } : variant
+    ));
+  };
+
+  // Add a specification
+  const addSpecification = () => {
+    setSpecifications([
+      ...specifications,
+      { key: "", value: "" }
+    ]);
+  };
+
+  // Remove a specification
+  const removeSpecification = (index: number) => {
+    const newSpecifications = [...specifications];
+    newSpecifications.splice(index, 1);
+    setSpecifications(newSpecifications);
+  };
+
+  // Update specification
+  const updateSpecification = (index: number, field: keyof Specification, value: string) => {
+    const newSpecifications = [...specifications];
+    newSpecifications[index] = {
+      ...newSpecifications[index],
       [field]: value
     };
-    setColorVariants(updatedColorVariants);
+    setSpecifications(newSpecifications);
   };
 
-  // Size variant handlers
-  const handleAddSize = () => {
-    setSizeVariants([...sizeVariants, { size: '', stock: 0 }]);
-  };
+  // Display loading state
+  const isLoading = isCategoriesLoading || (isEditMode && isProductLoading);
 
-  const handleRemoveSize = (index: number) => {
-    const updatedSizeVariants = [...sizeVariants];
-    updatedSizeVariants.splice(index, 1);
-    setSizeVariants(updatedSizeVariants);
-  };
-
-  const handleSizeChange = (index: number, field: string, value: any) => {
-    const updatedSizeVariants = [...sizeVariants];
-    updatedSizeVariants[index] = {
-      ...updatedSizeVariants[index],
-      [field]: field === 'stock' ? parseInt(value) || 0 : value
-    };
-    setSizeVariants(updatedSizeVariants);
-  };
-
-  // Get subcategories for selected category
-  const selectedCategory = categories.find(cat => cat.id === selectedCategoryId);
-  const subcategories = selectedCategory?.subCategories || [];
-
-  if (categoriesLoading || (id && productLoading)) {
+  if (isLoading) {
     return (
       <AdminProtectedRoute>
         <AdminLayout>
-          <div className="flex h-screen items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        </AdminLayout>
-      </AdminProtectedRoute>
-    );
-  }
-
-  if (id && productError) {
-    return (
-      <AdminProtectedRoute>
-        <AdminLayout>
-          <div className="container mx-auto py-10">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Failed to load product. Please try again or go back to the products list.
-              </AlertDescription>
-            </Alert>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-8 w-64" />
+              <div className="flex gap-2">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
           </div>
         </AdminLayout>
       </AdminProtectedRoute>
@@ -279,310 +462,396 @@ const AdminProductForm = () => {
   return (
     <AdminProtectedRoute>
       <AdminLayout>
-        <div className="container mx-auto py-10">
-          <Card>
-            <CardHeader>
-              <CardTitle>{id ? "Edit Product" : "Create New Product"}</CardTitle>
-              <CardDescription>
-                {id ? "Edit the product details." : "Enter the product details."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  {formError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{formError}</AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="title"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Product Title</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Product Title" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="slug"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Slug (optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Product Slug" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">
+              {isEditMode ? "Edit Product" : "Add New Product"}
+            </h1>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate("/admin/products")}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isEditMode ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  isEditMode ? "Update Product" : "Create Product"
+                )}
+              </Button>
+            </div>
+          </div>
 
-                  <FormField
-                    control={form.control}
-                    name="shortDescription"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Product Description"
-                            className="resize-none"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+          <form onSubmit={handleSubmit}>
+            <Tabs defaultValue="basic">
+              <TabsList className="mb-4">
+                <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                <TabsTrigger value="colors">Color Variants</TabsTrigger>
+                <TabsTrigger value="sizes">Size Variants</TabsTrigger>
+                <TabsTrigger value="specifications">Specifications</TabsTrigger>
+              </TabsList>
 
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="priceOriginal"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Price</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Product Price" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="stockQuantity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Stock Quantity</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Stock Quantity" type="number" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="categoryId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Category</FormLabel>
-                          <Select 
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              setSelectedCategoryId(value);
-                              form.setValue("subcategoryId", ""); // Reset subcategory when category changes
-                            }} 
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a category" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {categories.map((category) => (
-                                <SelectItem key={category.id} value={category.id}>
-                                  {category.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="subcategoryId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subcategory</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a subcategory" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {subcategories.map((subcategory) => (
-                                <SelectItem key={subcategory.id} value={subcategory.id}>
-                                  {subcategory.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="isFeatured"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel>Featured</FormLabel>
-                            <div className="text-sm text-muted-foreground">
-                              Should this product be featured?
-                            </div>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="isTrending"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel>Trending</FormLabel>
-                            <div className="text-sm text-muted-foreground">
-                              Should this product be trending?
-                            </div>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Specifications */}
-                  <div className="space-y-2">
-                    <Label>Specifications</Label>
-                    {specifications.map((spec, index) => (
-                      <div key={index} className="flex items-center space-x-2">
+              {/* Basic Info Tab */}
+              <TabsContent value="basic">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Basic Product Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="title">Product Title *</Label>
                         <Input
-                          type="text"
-                          placeholder={`Specification ${index + 1}`}
-                          value={spec}
-                          onChange={(e) => handleSpecificationChange(index, e.target.value)}
-                          className="flex-1"
+                          id="title"
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          placeholder="Enter product title"
+                          required
                         />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveSpecification(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
                       </div>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddSpecification}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Specification
-                    </Button>
-                  </div>
 
-                  {/* Color Variants */}
-                  <div className="space-y-2">
-                    <Label>Color Variants</Label>
-                    {colorVariants.map((color, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-4 items-center">
+                      <div className="space-y-2">
+                        <Label htmlFor="originalPrice">Original Price (₹) *</Label>
                         <Input
-                          type="text"
-                          placeholder="Color Name"
-                          value={color.name}
-                          onChange={(e) => handleColorChange(index, 'name', e.target.value)}
-                        />
-                        <Input
-                          type="color"
-                          value={color.colorCode}
-                          onChange={(e) => handleColorChange(index, 'colorCode', e.target.value)}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveColor(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddColor}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Color Variant
-                    </Button>
-                  </div>
-
-                  {/* Size Variants */}
-                  <div className="space-y-2">
-                    <Label>Size Variants</Label>
-                    {sizeVariants.map((size, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-4 items-center">
-                        <Input
-                          type="text"
-                          placeholder="Size"
-                          value={size.size}
-                          onChange={(e) => handleSizeChange(index, 'size', e.target.value)}
-                        />
-                        <Input
+                          id="originalPrice"
                           type="number"
-                          placeholder="Stock"
-                          value={size.stock}
-                          onChange={(e) => handleSizeChange(index, 'stock', e.target.value)}
+                          min="0"
+                          step="0.01"
+                          value={originalPrice}
+                          onChange={(e) => setOriginalPrice(e.target.value)}
+                          placeholder="999.00"
+                          required
                         />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveSize(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
                       </div>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={handleAddSize}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Size Variant
-                    </Button>
-                  </div>
+                    </div>
 
-                  <CardFooter className="pt-6">
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Submitting...
-                        </>
-                      ) : (
-                        "Submit"
-                      )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="mainCategory">Main Category *</Label>
+                        <Select 
+                          value={mainCategoryId} 
+                          onValueChange={(value) => {
+                            setMainCategoryId(value);
+                            setSubCategoryId("");
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map(category => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="discountedPrice">Sale Price (₹)</Label>
+                        <Input
+                          id="discountedPrice"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={discountedPrice}
+                          onChange={(e) => setDiscountedPrice(e.target.value)}
+                          placeholder="799.00"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="subCategory">Sub Category *</Label>
+                        <Select 
+                          value={subCategoryId} 
+                          onValueChange={setSubCategoryId}
+                          disabled={!mainCategoryId || !subcategories || subcategories.length === 0}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select subcategory" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {subcategories?.map(subCategory => (
+                              <SelectItem key={subCategory.id} value={subCategory.id}>
+                                {subCategory.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2 flex items-end gap-4">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="featured"
+                            checked={isFeatured}
+                            onCheckedChange={setIsFeatured}
+                          />
+                          <Label htmlFor="featured">Featured</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id="trending"
+                            checked={isTrending}
+                            onCheckedChange={setIsTrending}
+                          />
+                          <Label htmlFor="trending">Trending</Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="low-stock"
+                          checked={isLowStock}
+                          onCheckedChange={setIsLowStock}
+                        />
+                        <Label htmlFor="low-stock">Low Stock</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="out-of-stock"
+                          checked={isOutOfStock}
+                          onCheckedChange={setIsOutOfStock}
+                        />
+                        <Label htmlFor="out-of-stock">Out of Stock</Label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="slug">Slug (URL path)</Label>
+                      <Input
+                        id="slug"
+                        value={slug}
+                        onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""))}
+                        placeholder="product-url-slug"
+                        disabled={isEditMode}
+                        className={isEditMode ? "bg-gray-100" : ""}
+                      />
+                      <p className="text-xs text-gray-500">
+                        This will be used in the product URL. Auto-generated from title if left empty.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="shortDescription">Short Description *</Label>
+                      <Textarea
+                        id="shortDescription"
+                        value={shortDescription}
+                        onChange={(e) => setShortDescription(e.target.value)}
+                        placeholder="Brief description of the product"
+                        rows={2}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="longDescription">Long Description</Label>
+                      <Textarea
+                        id="longDescription"
+                        value={longDescription}
+                        onChange={(e) => setLongDescription(e.target.value)}
+                        placeholder="Detailed product description"
+                        rows={6}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Color Variants Tab */}
+              <TabsContent value="colors">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Color Variants</CardTitle>
+                    <Button onClick={addColorVariant} type="button" variant="outline">
+                      <Plus className="mr-2 h-4 w-4" /> Add Color
                     </Button>
-                  </CardFooter>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {colorVariants.map((variant, index) => (
+                        <div key={variant.id} className="border rounded-md p-4">
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-medium">Color #{index + 1}</h3>
+                            <Button
+                              onClick={() => removeColorVariant(variant.id)}
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={colorVariants.length === 1}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="space-y-2">
+                              <Label htmlFor={`color-name-${variant.id}`}>Color Name</Label>
+                              <Input
+                                id={`color-name-${variant.id}`}
+                                value={variant.name}
+                                onChange={(e) => updateColorVariant(variant.id, "name", e.target.value)}
+                                placeholder="e.g. Navy Blue"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`color-code-${variant.id}`}>Color Code</Label>
+                              <div className="flex gap-2 items-center">
+                                <Input
+                                  id={`color-code-${variant.id}`}
+                                  type="color"
+                                  value={variant.colorCode}
+                                  onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
+                                  className="w-12 h-10 p-1"
+                                />
+                                <Input
+                                  value={variant.colorCode}
+                                  onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
+                                  placeholder="#000000"
+                                  className="flex-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Images (up to 6)</Label>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => handleImageUpload(variant.id, e)}
+                              disabled={variant.images.length >= 6}
+                            />
+                            <p className="text-xs text-gray-500">
+                              {variant.images.length}/6 images uploaded
+                            </p>
+                          </div>
+
+                          {variant.images.length > 0 && (
+                            <div className="grid grid-cols-3 gap-2 mt-3">
+                              {variant.images.map((image, imgIndex) => (
+                                <div key={imgIndex} className="relative">
+                                  <img
+                                    src={image}
+                                    alt={`Color ${variant.name} - Image ${imgIndex + 1}`}
+                                    className="w-full h-32 object-cover rounded border"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    className="absolute top-1 right-1 h-6 w-6 p-0"
+                                    onClick={() => removeImage(variant.id, image)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Size Variants Tab */}
+              <TabsContent value="sizes">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Size Variants</CardTitle>
+                    <Button onClick={addSizeVariant} type="button" variant="outline">
+                      <Plus className="mr-2 h-4 w-4" /> Add Size
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {sizeVariants.map((variant) => (
+                        <div key={variant.id} className="border rounded-md p-4 flex items-center justify-between">
+                          <div className="flex gap-4 items-center">
+                            <Input
+                              value={variant.name}
+                              onChange={(e) => updateSizeVariant(variant.id, "name", e.target.value)}
+                              placeholder="Size name (S, M, L, XL, etc.)"
+                              className="w-20"
+                            />
+                            <div className="flex items-center">
+                              <Switch
+                                id={`size-stock-${variant.id}`}
+                                checked={variant.inStock}
+                                onCheckedChange={(checked) => updateSizeVariant(variant.id, "inStock", checked)}
+                              />
+                              <Label htmlFor={`size-stock-${variant.id}`} className="ml-2">
+                                In Stock
+                              </Label>
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => removeSizeVariant(variant.id)}
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={sizeVariants.length === 1}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Specifications Tab */}
+              <TabsContent value="specifications">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Technical Specifications</CardTitle>
+                    <Button onClick={addSpecification} type="button" variant="outline">
+                      <Plus className="mr-2 h-4 w-4" /> Add Specification
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {specifications.map((spec, index) => (
+                        <div key={index} className="flex gap-4 items-center">
+                          <Input
+                            value={spec.key}
+                            onChange={(e) => updateSpecification(index, "key", e.target.value)}
+                            placeholder="Specification name"
+                            className="w-1/3"
+                          />
+                          <Input
+                            value={spec.value}
+                            onChange={(e) => updateSpecification(index, "value", e.target.value)}
+                            placeholder="Specification value"
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={() => removeSpecification(index)}
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </form>
         </div>
       </AdminLayout>
     </AdminProtectedRoute>
