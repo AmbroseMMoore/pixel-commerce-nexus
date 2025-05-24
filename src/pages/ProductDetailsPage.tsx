@@ -6,32 +6,63 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Minus, Plus, Heart } from "lucide-react";
-import { products } from "@/data/mockData";
-import { Product, ColorVariant, SizeVariant } from "@/types/product";
+import { ColorVariant, SizeVariant } from "@/types/product";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useProduct } from "@/hooks/useProducts";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ProductDetailsPage = () => {
   const { slug } = useParams<{ slug: string }>();
-  const product = products.find((p) => p.slug === slug);
+  const { data: product, isLoading, error } = useProduct(slug || "");
 
-  const [selectedColor, setSelectedColor] = useState<ColorVariant | null>(
-    product?.colorVariants[0] || null
-  );
-  const [selectedSize, setSelectedSize] = useState<SizeVariant | null>(
-    product?.sizeVariants.find((s) => s.inStock) || null
-  );
+  const [selectedColor, setSelectedColor] = useState<ColorVariant | null>(null);
+  const [selectedSize, setSelectedSize] = useState<SizeVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  if (!product || !selectedColor) {
+  // Set default selections when product loads
+  React.useEffect(() => {
+    if (product && product.colorVariants.length > 0) {
+      setSelectedColor(product.colorVariants[0]);
+      const firstAvailableSize = product.sizeVariants.find((s) => s.inStock);
+      setSelectedSize(firstAvailableSize || product.sizeVariants[0] || null);
+    }
+  }, [product]);
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="container-custom py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <Skeleton className="aspect-square w-full rounded-lg" />
+              <div className="grid grid-cols-6 gap-2">
+                {Array(6).fill(0).map((_, i) => (
+                  <Skeleton key={i} className="aspect-square rounded-md" />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-6">
+              <Skeleton className="h-8 w-3/4" />
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-40 w-full" />
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error || !product || !selectedColor) {
     return (
       <MainLayout>
         <div className="container-custom py-16 text-center">
           <h1 className="text-2xl font-semibold mb-4">Product Not Found</h1>
           <p>The product you're looking for doesn't exist or has been removed.</p>
           <Button asChild className="mt-4">
-            <a href="/category/all">Browse Products</a>
+            <a href="/category/boys">Browse Products</a>
           </Button>
         </div>
       </MainLayout>
@@ -73,9 +104,12 @@ const ProductDetailsPage = () => {
           <div className="space-y-4">
             <div className="aspect-square overflow-hidden rounded-lg bg-gray-100">
               <img
-                src={selectedColor.images[currentImageIndex]}
+                src={selectedColor.images[currentImageIndex] || "/placeholder.svg"}
                 alt={`${product.title} - ${selectedColor.name}`}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = "/placeholder.svg";
+                }}
               />
             </div>
 
@@ -93,9 +127,12 @@ const ProductDetailsPage = () => {
                   onClick={() => setCurrentImageIndex(index)}
                 >
                   <img
-                    src={image}
+                    src={image || "/placeholder.svg"}
                     alt={`${product.title} thumbnail ${index + 1}`}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.svg";
+                    }}
                   />
                 </button>
               ))}

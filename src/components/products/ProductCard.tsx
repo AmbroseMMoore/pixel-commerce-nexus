@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
+import { useLogging } from "@/hooks/useLogging";
 
 interface ProductCardProps {
   product: Product;
@@ -30,6 +31,7 @@ export const ProductCardSkeleton = ({ className }: ProductCardSkeletonProps) => 
 
 const ProductCard = ({ product, className }: ProductCardProps) => {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const { logInfo, logError, logFormSuccess } = useLogging();
   
   // Use first color variant's first image as the product thumbnail
   const thumbnailImage = product.colorVariants[0]?.images[0] || "";
@@ -45,14 +47,35 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
     
     setIsAddingToCart(true);
     
-    // Simulate adding to cart (in a real app, this would call a cart service)
-    setTimeout(() => {
-      toast({
-        title: "Added to Cart",
-        description: `${product.title} has been added to your cart.`,
+    try {
+      logInfo('add_to_cart_attempt', { 
+        productId: product.id, 
+        productTitle: product.title,
+        source: 'product_card'
+      });
+
+      // Simulate adding to cart (in a real app, this would call a cart service)
+      setTimeout(() => {
+        toast({
+          title: "Added to Cart",
+          description: `${product.title} has been added to your cart.`,
+        });
+        
+        logFormSuccess('cart', 'add_to_cart_success', {
+          productId: product.id,
+          productTitle: product.title,
+          price: product.price
+        });
+        
+        setIsAddingToCart(false);
+      }, 600);
+    } catch (error) {
+      logError('add_to_cart_error', { 
+        productId: product.id, 
+        error: error instanceof Error ? error.message : error 
       });
       setIsAddingToCart(false);
-    }, 600);
+    }
   };
   
   // Handle adding to wishlist
@@ -60,20 +83,53 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
     e.preventDefault();
     e.stopPropagation();
     
-    toast({
-      title: "Added to Wishlist",
-      description: `${product.title} has been added to your wishlist.`,
+    try {
+      logInfo('add_to_wishlist_attempt', { 
+        productId: product.id, 
+        productTitle: product.title 
+      });
+
+      toast({
+        title: "Added to Wishlist",
+        description: `${product.title} has been added to your wishlist.`,
+      });
+
+      logFormSuccess('wishlist', 'add_to_wishlist_success', {
+        productId: product.id,
+        productTitle: product.title
+      });
+    } catch (error) {
+      logError('add_to_wishlist_error', { 
+        productId: product.id, 
+        error: error instanceof Error ? error.message : error 
+      });
+    }
+  };
+
+  // Log product view when card is clicked
+  const handleProductClick = () => {
+    logInfo('product_card_clicked', {
+      productId: product.id,
+      productTitle: product.title,
+      productSlug: product.slug
     });
   };
   
   return (
     <div className={cn("group", className)}>
       <div className="aspect-[3/4] overflow-hidden relative rounded-md mb-3">
-        <Link to={`/product/${product.slug}`}>
+        <Link to={`/product/${product.slug}`} onClick={handleProductClick}>
           <img 
-            src={thumbnailImage || "https://via.placeholder.com/300x400?text=No+Image"} 
+            src={thumbnailImage || "/placeholder.svg"} 
             alt={product.title} 
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={(e) => {
+              e.currentTarget.src = "/placeholder.svg";
+              logError('product_image_load_error', {
+                productId: product.id,
+                imageUrl: thumbnailImage
+              });
+            }}
           />
         </Link>
         
@@ -127,6 +183,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       <div>
         <Link 
           to={`/product/${product.slug}`}
+          onClick={handleProductClick}
           className="text-sm font-medium text-gray-700 hover:text-brand transition-colors mb-1 line-clamp-2"
         >
           {product.title}
