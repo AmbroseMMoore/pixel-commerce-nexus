@@ -52,14 +52,38 @@ export const useCart = () => {
           quantity,
           product:products(title, price_original, price_discounted, slug),
           color:product_colors(name, color_code),
-          size:product_sizes(name),
-          product_images!inner(image_url, is_primary)
+          size:product_sizes(name)
         `)
-        .eq('customer_id', user.id)
-        .eq('product_images.color_id', 'color_id');
+        .eq('customer_id', user.id);
 
       if (error) throw error;
-      return data as CartItem[];
+
+      // Fetch product images separately for each cart item
+      const cartItemsWithImages = await Promise.all(
+        (data || []).map(async (item) => {
+          const { data: images, error: imagesError } = await supabase
+            .from('product_images')
+            .select('image_url, is_primary')
+            .eq('product_id', item.product_id)
+            .eq('color_id', item.color_id)
+            .order('is_primary', { ascending: false });
+
+          if (imagesError) {
+            console.error('Error fetching product images:', imagesError);
+            return {
+              ...item,
+              product_images: []
+            };
+          }
+
+          return {
+            ...item,
+            product_images: images || []
+          };
+        })
+      );
+
+      return cartItemsWithImages as CartItem[];
     },
     enabled: !!user?.id,
   });
