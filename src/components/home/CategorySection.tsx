@@ -10,17 +10,26 @@ interface CategorySectionProps {
 }
 
 const CategorySection = ({ categories, isLoading = false }: CategorySectionProps) => {
-  // Create an array of 6 items for the skeleton loader
   const skeletonArray = Array(6).fill(0);
-  
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.target as HTMLImageElement;
+    // Only set fallback once to prevent infinite loop
+    if (!target.dataset.fallback) {
+      target.dataset.fallback = "true";
+      target.src = "https://placehold.co/300x300?text=Category";
+    }
+  };
+
   return (
     <section className="py-12 bg-white">
       <div className="container-custom">
-        <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">Shop by Category</h2>
-        
+        <h2 className="text-2xl md:text-3xl font-bold mb-8 text-center">
+          Shop by Category
+        </h2>
+
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {isLoading ? (
-            // Skeleton loader
             skeletonArray.map((_, index) => (
               <div key={index} className="flex flex-col items-center">
                 <Skeleton className="aspect-square w-full rounded-lg mb-2" />
@@ -31,10 +40,11 @@ const CategorySection = ({ categories, isLoading = false }: CategorySectionProps
           ) : categories.length === 0 ? (
             <div className="col-span-full text-center py-8">
               <p className="text-gray-500">No categories available yet.</p>
-              <p className="text-sm text-gray-400 mt-2">Categories will appear here once they are added.</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Categories will appear here once they are added.
+              </p>
             </div>
           ) : (
-            // Actual categories
             categories.map((category) => (
               <Link
                 key={category.id}
@@ -43,13 +53,13 @@ const CategorySection = ({ categories, isLoading = false }: CategorySectionProps
               >
                 <div className="aspect-square relative overflow-hidden rounded-lg mb-2">
                   <img
-                    src={category.image || "https://via.placeholder.com/300x300?text=Category"}
+                    src={
+                      category.image ||
+                      "https://placehold.co/300x300?text=Category"
+                    }
                     alt={category.name}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "https://via.placeholder.com/300x300?text=Category";
-                    }}
+                    onError={handleImageError}
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-30 transition-opacity"></div>
                 </div>
