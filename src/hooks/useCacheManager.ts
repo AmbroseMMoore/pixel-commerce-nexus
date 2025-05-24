@@ -55,7 +55,7 @@ export const useCacheManager = () => {
     return {
       totalQueries: queries.length,
       staleQueries: queries.filter(q => q.isStale()).length,
-      fetchingQueries: queries.filter(q => q.state.isFetching).length,
+      fetchingQueries: queries.filter(q => q.state.status === 'pending').length,
       supabaseStats: supabaseManager.getStats(),
     };
   };

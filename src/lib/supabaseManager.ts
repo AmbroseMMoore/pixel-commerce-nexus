@@ -4,9 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 class SupabaseConnectionManager {
   private activeConnections = new Set<string>();
   private connectionCount = 0;
-  private maxConnections = 10;
+  private maxConnections = 15; // Increased limit
   private lastCleanup = Date.now();
-  private cleanupInterval = 5 * 60 * 1000; // 5 minutes
+  private cleanupInterval = 3 * 60 * 1000; // 3 minutes
 
   // Track active queries
   trackConnection(queryKey: string) {
@@ -73,8 +73,15 @@ if (typeof window !== 'undefined') {
     supabaseManager.forceCleanup();
   });
   
-  // Periodic cleanup every 10 minutes
+  // Periodic cleanup every 5 minutes (reduced from 10)
   setInterval(() => {
     supabaseManager.cleanup();
-  }, 10 * 60 * 1000);
+  }, 5 * 60 * 1000);
+  
+  // Additional cleanup on page visibility change
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      supabaseManager.cleanup();
+    }
+  });
 }
