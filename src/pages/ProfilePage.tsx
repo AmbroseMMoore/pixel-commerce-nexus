@@ -12,13 +12,18 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { useOrders } from "@/hooks/useOrders";
 import { useAddresses } from "@/hooks/useAddresses";
+import { useWishlist } from "@/hooks/useWishlist";
+import { useReturns } from "@/hooks/useReturns";
 import { format } from "date-fns";
+import { Heart, Package, RotateCcw } from "lucide-react";
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { orders, isLoading: ordersLoading } = useOrders();
   const { addresses } = useAddresses();
+  const { wishlistItems, isLoading: wishlistLoading, removeFromWishlist } = useWishlist();
+  const { returns, isLoading: returnsLoading } = useReturns();
   
   // Profile form state
   const [name, setName] = useState(user?.name || "");
@@ -87,8 +92,10 @@ const ProfilePage = () => {
           {/* Main Content */}
           <div>
             <Tabs defaultValue="orders" className="space-y-4">
-              <TabsList className="grid grid-cols-3 mb-4">
+              <TabsList className="grid grid-cols-5 mb-4">
                 <TabsTrigger value="orders">Orders</TabsTrigger>
+                <TabsTrigger value="wishlist">Wishlist</TabsTrigger>
+                <TabsTrigger value="returns">Returns</TabsTrigger>
                 <TabsTrigger value="addresses">Addresses</TabsTrigger>
                 <TabsTrigger value="profile">Profile</TabsTrigger>
               </TabsList>
@@ -109,6 +116,7 @@ const ProfilePage = () => {
                       </div>
                     ) : orders.length === 0 ? (
                       <div className="text-center py-6">
+                        <Package className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                         <p className="text-gray-500">You haven't placed any orders yet.</p>
                         <Button className="mt-4" asChild>
                           <a href="/">Start Shopping</a>
@@ -139,7 +147,7 @@ const ProfilePage = () => {
                             </div>
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                               <p className="text-sm">
-                                {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'items'} · ${order.total_amount.toFixed(2)}
+                                {order.order_items.length} {order.order_items.length === 1 ? 'item' : 'items'} · ₹{order.total_amount.toFixed(2)}
                               </p>
                               <div className="mt-2 sm:mt-0 space-x-2">
                                 <span className={`text-xs px-2 py-1 rounded ${
@@ -163,6 +171,118 @@ const ProfilePage = () => {
                                 </div>
                               </div>
                             )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Wishlist Tab */}
+              <TabsContent value="wishlist">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>My Wishlist</CardTitle>
+                    <CardDescription>
+                      Items you've saved for later
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {wishlistLoading ? (
+                      <div className="text-center py-6">
+                        <p className="text-gray-500">Loading wishlist...</p>
+                      </div>
+                    ) : wishlistItems.length === 0 ? (
+                      <div className="text-center py-6">
+                        <Heart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <p className="text-gray-500">Your wishlist is empty.</p>
+                        <Button className="mt-4" asChild>
+                          <a href="/">Browse Products</a>
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {wishlistItems.map((item) => (
+                          <div key={item.id} className="border rounded-lg p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <h3 className="font-medium text-sm">{item.product.title}</h3>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => removeFromWishlist(item.id)}
+                              >
+                                ×
+                              </Button>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-2">
+                              {item.color.name} / {item.size.name}
+                            </p>
+                            <p className="font-semibold">
+                              ₹{item.product.price_discounted 
+                                ? item.product.price_discounted.toFixed(2) 
+                                : item.product.price_original.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              Added {format(new Date(item.created_at), 'MMM dd, yyyy')}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Returns Tab */}
+              <TabsContent value="returns">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Returns & Replacements</CardTitle>
+                    <CardDescription>
+                      Track your return and replacement requests
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {returnsLoading ? (
+                      <div className="text-center py-6">
+                        <p className="text-gray-500">Loading returns...</p>
+                      </div>
+                    ) : returns.length === 0 ? (
+                      <div className="text-center py-6">
+                        <RotateCcw className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <p className="text-gray-500">No return requests found.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {returns.map((returnItem) => (
+                          <div key={returnItem.id} className="border rounded-lg p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <p className="font-medium">{returnItem.order.order_number}</p>
+                                <p className="text-sm text-gray-500">
+                                  {returnItem.order_item.product.title} - {returnItem.order_item.color.name} / {returnItem.order_item.size.name}
+                                </p>
+                              </div>
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                returnItem.status === 'approved'
+                                  ? 'bg-green-100 text-green-800'
+                                  : returnItem.status === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {returnItem.status.charAt(0).toUpperCase() + returnItem.status.slice(1)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-2">
+                              <strong>Type:</strong> {returnItem.return_type === 'return' ? 'Return' : 'Replacement'}
+                            </p>
+                            <p className="text-sm text-gray-600 mb-2">
+                              <strong>Reason:</strong> {returnItem.reason}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              Requested on {format(new Date(returnItem.created_at), 'MMM dd, yyyy')}
+                            </p>
                           </div>
                         ))}
                       </div>

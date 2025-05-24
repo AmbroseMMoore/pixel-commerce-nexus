@@ -7,54 +7,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Search, Eye, Mail } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-
-// Mock data for customers
-const mockCustomers = [
-  { 
-    id: "1", 
-    name: "John Doe", 
-    email: "john.doe@example.com", 
-    phone: "+1 (123) 456-7890",
-    orders: 5,
-    totalSpent: 345.67,
-    lastOrderDate: "2023-05-15"
-  },
-  { 
-    id: "2", 
-    name: "Jane Smith", 
-    email: "jane.smith@example.com", 
-    phone: "+1 (234) 567-8901",
-    orders: 3,
-    totalSpent: 230.50,
-    lastOrderDate: "2023-04-22"
-  },
-  { 
-    id: "3", 
-    name: "Robert Johnson", 
-    email: "robert.johnson@example.com", 
-    phone: "+1 (345) 678-9012",
-    orders: 8,
-    totalSpent: 567.89,
-    lastOrderDate: "2023-05-20"
-  },
-  { 
-    id: "4", 
-    name: "Sarah Williams", 
-    email: "sarah.williams@example.com", 
-    phone: "+1 (456) 789-0123",
-    orders: 1,
-    totalSpent: 75.25,
-    lastOrderDate: "2023-03-10"
-  }
-];
+import { useAdminCustomers } from "@/hooks/useAdminCustomers";
+import { format } from "date-fns";
 
 const AdminCustomers = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const { customers, isLoading } = useAdminCustomers();
   
-  const filteredCustomers = mockCustomers.filter(customer => 
+  const filteredCustomers = customers.filter(customer => 
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone.toLowerCase().includes(searchTerm.toLowerCase())
+    customer.mobile_number.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -92,25 +55,42 @@ const AdminCustomers = () => {
                       <TableHead>Orders</TableHead>
                       <TableHead>Total Spent</TableHead>
                       <TableHead>Last Order</TableHead>
+                      <TableHead>Joined</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCustomers.length === 0 ? (
+                    {isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center">
+                        <TableCell colSpan={8} className="text-center">
+                          Loading customers...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredCustomers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center">
                           No customers found.
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredCustomers.map((customer) => (
                         <TableRow key={customer.id}>
-                          <TableCell className="font-medium">{customer.name}</TableCell>
+                          <TableCell className="font-medium">
+                            {customer.name} {customer.last_name}
+                          </TableCell>
                           <TableCell>{customer.email}</TableCell>
-                          <TableCell>{customer.phone}</TableCell>
-                          <TableCell>{customer.orders}</TableCell>
-                          <TableCell>${customer.totalSpent.toFixed(2)}</TableCell>
-                          <TableCell>{customer.lastOrderDate}</TableCell>
+                          <TableCell>{customer.mobile_number}</TableCell>
+                          <TableCell>{customer.orders_count}</TableCell>
+                          <TableCell>₹{customer.total_spent.toFixed(2)}</TableCell>
+                          <TableCell>
+                            {customer.last_order_date 
+                              ? format(new Date(customer.last_order_date), 'MMM dd, yyyy')
+                              : 'Never'
+                            }
+                          </TableCell>
+                          <TableCell>
+                            {format(new Date(customer.created_at), 'MMM dd, yyyy')}
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button size="sm" variant="ghost">

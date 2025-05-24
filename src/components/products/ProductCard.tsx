@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { useLogging } from "@/hooks/useLogging";
 import { useCart } from "@/hooks/useCart";
+import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface ProductCardProps {
@@ -33,6 +34,7 @@ export const ProductCardSkeleton = ({ className }: ProductCardSkeletonProps) => 
 
 const ProductCard = ({ product, className }: ProductCardProps) => {
   const { addToCart, isAddingToCart } = useCart();
+  const { addToWishlist } = useWishlist();
   const { user } = useAuth();
   const { logInfo, logError, logFormSuccess } = useLogging();
   
@@ -110,6 +112,19 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       });
       return;
     }
+
+    // Use first available color and size for wishlist
+    const firstColor = product.colorVariants[0];
+    const firstSize = product.sizeVariants[0];
+    
+    if (!firstColor || !firstSize) {
+      toast({
+        title: "Product unavailable",
+        description: "This product is currently not available.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
       logInfo('add_to_wishlist_attempt', { 
@@ -117,10 +132,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
         productTitle: product.title 
       });
 
-      toast({
-        title: "Added to Wishlist",
-        description: `${product.title} has been added to your wishlist.`,
-      });
+      addToWishlist(product.id, firstColor.id, firstSize.id);
 
       logFormSuccess('wishlist', 'add_to_wishlist_success', {
         productId: product.id,

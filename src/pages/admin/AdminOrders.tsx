@@ -9,88 +9,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, Eye } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-import { OrderStatus, PaymentStatus, type Order } from "@/types/user";
+import { useAdminOrders } from "@/hooks/useAdminOrders";
 
-// Mock data for orders
-const mockOrders: Partial<Order>[] = [
-  { 
-    id: "1", 
-    orderNumber: "ORD-12345",
-    userId: "user-1",
-    status: OrderStatus.DELIVERED,
-    paymentStatus: PaymentStatus.PAID,
-    totalAmount: 129.99,
-    createdAt: new Date("2023-05-20")
-  },
-  { 
-    id: "2", 
-    orderNumber: "ORD-12344",
-    userId: "user-2",
-    status: OrderStatus.PROCESSING,
-    paymentStatus: PaymentStatus.PAID,
-    totalAmount: 79.50,
-    createdAt: new Date("2023-05-19")
-  },
-  { 
-    id: "3", 
-    orderNumber: "ORD-12343",
-    userId: "user-3",
-    status: OrderStatus.SHIPPED,
-    paymentStatus: PaymentStatus.PAID,
-    totalAmount: 199.95,
-    createdAt: new Date("2023-05-18")
-  },
-  { 
-    id: "4", 
-    orderNumber: "ORD-12342",
-    userId: "user-4",
-    status: OrderStatus.CANCELLED,
-    paymentStatus: PaymentStatus.REFUNDED,
-    totalAmount: 49.99,
-    createdAt: new Date("2023-05-17")
-  },
-  { 
-    id: "5", 
-    orderNumber: "ORD-12341",
-    userId: "user-5",
-    status: OrderStatus.PENDING,
-    paymentStatus: PaymentStatus.PENDING,
-    totalAmount: 89.99,
-    createdAt: new Date("2023-05-16")
-  },
-  { 
-    id: "6", 
-    orderNumber: "ORD-12340",
-    userId: "user-1",
-    status: OrderStatus.RETURNED,
-    paymentStatus: PaymentStatus.REFUNDED,
-    totalAmount: 149.95,
-    createdAt: new Date("2023-05-15")
-  }
-];
-
-// Mock customer data
-const mockCustomerMap: Record<string, string> = {
-  "user-1": "John Doe",
-  "user-2": "Jane Smith",
-  "user-3": "Robert Johnson",
-  "user-4": "Sarah Williams",
-  "user-5": "Michael Brown"
-};
-
-const getStatusColor = (status: OrderStatus) => {
-  switch (status) {
-    case OrderStatus.DELIVERED:
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'delivered':
       return "bg-green-100 text-green-700";
-    case OrderStatus.PROCESSING:
+    case 'processing':
       return "bg-blue-100 text-blue-700";
-    case OrderStatus.SHIPPED:
+    case 'shipped':
       return "bg-purple-100 text-purple-700";
-    case OrderStatus.CANCELLED:
+    case 'cancelled':
       return "bg-red-100 text-red-700";
-    case OrderStatus.PENDING:
+    case 'pending':
       return "bg-yellow-100 text-yellow-700";
-    case OrderStatus.RETURNED:
+    case 'returned':
       return "bg-orange-100 text-orange-700";
     default:
       return "bg-gray-100 text-gray-700";
@@ -100,11 +33,13 @@ const getStatusColor = (status: OrderStatus) => {
 const AdminOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { orders, isLoading } = useAdminOrders();
   
-  const filteredOrders = mockOrders.filter(order => {
+  const filteredOrders = orders.filter(order => {
     const matchesSearch = 
-      order.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      mockCustomerMap[order.userId || ""]?.toLowerCase().includes(searchTerm.toLowerCase());
+      order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer?.email?.toLowerCase().includes(searchTerm.toLowerCase());
       
     const matchesStatus = 
       statusFilter === "all" || 
@@ -147,12 +82,12 @@ const AdminOrders = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value={OrderStatus.PENDING}>Pending</SelectItem>
-                      <SelectItem value={OrderStatus.PROCESSING}>Processing</SelectItem>
-                      <SelectItem value={OrderStatus.SHIPPED}>Shipped</SelectItem>
-                      <SelectItem value={OrderStatus.DELIVERED}>Delivered</SelectItem>
-                      <SelectItem value={OrderStatus.CANCELLED}>Cancelled</SelectItem>
-                      <SelectItem value={OrderStatus.RETURNED}>Returned</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
+                      <SelectItem value="shipped">Shipped</SelectItem>
+                      <SelectItem value="delivered">Delivered</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="returned">Returned</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -172,7 +107,13 @@ const AdminOrders = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredOrders.length === 0 ? (
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center">
+                          Loading orders...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredOrders.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center">
                           No orders found.
@@ -181,20 +122,25 @@ const AdminOrders = () => {
                     ) : (
                       filteredOrders.map((order) => (
                         <TableRow key={order.id}>
-                          <TableCell className="font-medium">{order.orderNumber}</TableCell>
-                          <TableCell>{mockCustomerMap[order.userId || ""]}</TableCell>
-                          <TableCell>{order.createdAt?.toLocaleDateString()}</TableCell>
-                          <TableCell>${order.totalAmount?.toFixed(2)}</TableCell>
+                          <TableCell className="font-medium">{order.order_number}</TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{order.customer?.name}</div>
+                              <div className="text-sm text-gray-500">{order.customer?.email}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell>₹{order.total_amount.toFixed(2)}</TableCell>
                           <TableCell>
                             <span
-                              className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.status as OrderStatus)}`}
+                              className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(order.status)}`}
                             >
-                              {order.status}
+                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                             </span>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={order.paymentStatus === "PAID" ? "default" : order.paymentStatus === "REFUNDED" ? "secondary" : "outline"}>
-                              {order.paymentStatus}
+                            <Badge variant={order.payment_status === "paid" ? "default" : order.payment_status === "refunded" ? "secondary" : "outline"}>
+                              {order.payment_status?.toUpperCase()}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">

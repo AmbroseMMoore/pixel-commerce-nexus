@@ -499,6 +499,42 @@ export type Database = {
         }
         Relationships: []
       }
+      returns: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          order_id: string
+          order_item_id: string
+          reason: string
+          return_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          order_id: string
+          order_item_id: string
+          reason: string
+          return_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          order_id?: string
+          order_item_id?: string
+          reason?: string
+          return_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subcategories: {
         Row: {
           category_id: string
@@ -530,6 +566,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      wishlists: {
+        Row: {
+          color_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          product_id: string
+          size_id: string
+        }
+        Insert: {
+          color_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          product_id: string
+          size_id: string
+        }
+        Update: {
+          color_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          product_id?: string
+          size_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
