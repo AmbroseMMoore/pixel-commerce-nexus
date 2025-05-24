@@ -43,14 +43,22 @@ const AdminLogin = () => {
       }
 
       if (data.user) {
-        // Check if this is the admin email
-        const adminEmails = ["mail.trulle@gmail.com"];
-        
-        if (adminEmails.includes(email)) {
+        // Get user profile to check role
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          throw new Error("Error loading user profile");
+        }
+
+        if (profile && profile.role === 'admin') {
           const user = {
             id: data.user.id,
-            name: data.user.user_metadata?.name || data.user.email || "Admin",
-            email: data.user.email!,
+            name: profile.name || profile.email,
+            email: profile.email,
             isAdmin: true
           };
           
@@ -123,8 +131,8 @@ const AdminLogin = () => {
               />
             </div>
             <div className="text-sm text-muted-foreground pt-2">
-              <p>Admin: mail.trulle@gmail.com</p>
-              <p>Password: mmee1122</p>
+              <p>Admin: kon22kuruvi@gmail.com</p>
+              <p>Password: Moore@9600</p>
             </div>
           </CardContent>
           <CardFooter>

@@ -26,7 +26,7 @@ const AdminHeader = () => {
     }
   };
 
-  // Use email if name is not available
+  // Use name from profile or email as fallback
   const displayName = user?.name || user?.email || "Admin";
   const avatarInitial = displayName.charAt(0).toUpperCase();
 

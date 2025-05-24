@@ -136,11 +136,15 @@ export type Database = {
           created_at: string | null
           id: string
           is_featured: boolean | null
+          is_low_stock: boolean | null
+          is_out_of_stock: boolean | null
+          is_trending: boolean | null
           long_description: string | null
           price_discounted: number | null
           price_original: number
           short_description: string | null
           slug: string
+          specifications: Json | null
           stock_quantity: number
           subcategory_id: string
           title: string
@@ -151,11 +155,15 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_featured?: boolean | null
+          is_low_stock?: boolean | null
+          is_out_of_stock?: boolean | null
+          is_trending?: boolean | null
           long_description?: string | null
           price_discounted?: number | null
           price_original: number
           short_description?: string | null
           slug: string
+          specifications?: Json | null
           stock_quantity?: number
           subcategory_id: string
           title: string
@@ -166,11 +174,15 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_featured?: boolean | null
+          is_low_stock?: boolean | null
+          is_out_of_stock?: boolean | null
+          is_trending?: boolean | null
           long_description?: string | null
           price_discounted?: number | null
           price_original?: number
           short_description?: string | null
           slug?: string
+          specifications?: Json | null
           stock_quantity?: number
           subcategory_id?: string
           title?: string
@@ -192,6 +204,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string | null
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          name?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       subcategories: {
         Row: {
@@ -230,7 +269,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
