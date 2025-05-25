@@ -10,41 +10,40 @@ import { Plus, Search, Edit, Trash2, Eye, Loader2 } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useProducts } from "@/hooks/useProducts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/integrations/supabase/client";
+import { deleteProduct } from "@/services/adminApi";
 import { toast } from "@/hooks/use-toast";
 
 const AdminProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { data: products, isLoading, error, refetch } = useProducts();
   
   const filteredProducts = products?.filter(product => 
     product.title.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
+  const handleDelete = async (id: string, title: string) => {
+    if (confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+      setDeletingId(id);
       try {
-        const { error } = await supabase
-          .from('products')
-          .delete()
-          .eq('id', id);
-          
-        if (error) throw error;
+        await deleteProduct(id);
         
         toast({
           title: "Product Deleted",
-          description: "The product has been successfully deleted."
+          description: `"${title}" has been successfully deleted.`
         });
         
         // Refresh the product list
         refetch();
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting product:", error);
         toast({
           title: "Error",
-          description: "There was an error deleting the product. Please try again.",
+          description: error.message || "There was an error deleting the product. Please try again.",
           variant: "destructive"
         });
+      } finally {
+        setDeletingId(null);
       }
     }
   };
@@ -208,9 +207,14 @@ const AdminProducts = () => {
                               <Button 
                                 size="sm" 
                                 variant="ghost" 
-                                onClick={() => handleDelete(product.id)}
+                                onClick={() => handleDelete(product.id, product.title)}
+                                disabled={deletingId === product.id}
                               >
-                                <Trash2 className="h-4 w-4 text-red-500" />
+                                {deletingId === product.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin text-red-500" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                )}
                               </Button>
                             </div>
                           </TableCell>
