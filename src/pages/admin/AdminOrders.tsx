@@ -49,6 +49,7 @@ const AdminOrders = () => {
   });
 
   const handleRefresh = () => {
+    console.log('Refreshing orders data...');
     refetch();
   };
 
@@ -117,13 +118,13 @@ const AdminOrders = () => {
                   <TableBody>
                     {isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center">
+                        <TableCell colSpan={7} className="text-center py-8">
                           Loading orders...
                         </TableCell>
                       </TableRow>
                     ) : filteredOrders.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center">
+                        <TableCell colSpan={7} className="text-center py-8">
                           {orders.length === 0 ? "No orders found. Orders will appear here when customers place orders." : "No orders match your search criteria."}
                         </TableCell>
                       </TableRow>

@@ -22,26 +22,17 @@ export const useAdminCustomers = () => {
   const { user, isAdmin } = useAuth();
 
   const fetchCustomers = async () => {
-    if (!user || !isAdmin) {
-      console.log('User not authenticated or not admin');
-      setCustomers([]);
-      setIsLoading(false);
-      return;
-    }
-
     try {
       setIsLoading(true);
-      console.log('Fetching customers from Supabase...');
+      console.log('Starting to fetch customers...', { user: !!user, isAdmin });
       
-      // Check auth session first
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.log('No active session');
+      if (!user || !isAdmin) {
+        console.log('User not authenticated or not admin, skipping fetch');
         setCustomers([]);
-        setIsLoading(false);
         return;
       }
-      
+
+      // Fetch customers data
       const { data: customersData, error } = await supabase
         .from('customers')
         .select('*')
@@ -52,81 +43,71 @@ export const useAdminCustomers = () => {
         throw error;
       }
 
-      console.log('Raw customers data:', customersData);
+      console.log('Fetched customers:', customersData?.length || 0, 'customers');
 
       if (!customersData || customersData.length === 0) {
         console.log('No customers found in database');
         setCustomers([]);
-        setIsLoading(false);
         return;
       }
 
-      // Fetch order statistics in batches to improve performance
-      const batchSize = 10;
-      const customersWithStats = [];
-      
-      for (let i = 0; i < customersData.length; i += batchSize) {
-        const batch = customersData.slice(i, i + batchSize);
-        const batchResults = await Promise.all(
-          batch.map(async (customer) => {
-            try {
-              const { data: orderStats, error: statsError } = await supabase
-                .from('orders')
-                .select('total_amount, created_at')
-                .eq('customer_id', customer.id);
+      // Process customers with order statistics
+      const customersWithStats = await Promise.all(
+        customersData.map(async (customer) => {
+          try {
+            // Fetch order statistics for this customer
+            const { data: orderStats, error: statsError } = await supabase
+              .from('orders')
+              .select('total_amount, created_at')
+              .eq('customer_id', customer.id);
 
-              if (statsError) {
-                console.error('Error fetching customer stats for', customer.id, ':', statsError);
-                return {
-                  ...customer,
-                  orders_count: 0,
-                  total_spent: 0,
-                  last_order_date: null
-                };
-              }
-
-              const orders = orderStats || [];
-              const ordersCount = orders.length;
-              const totalSpent = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
-              const lastOrderDate = orders.length > 0 
-                ? orders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at
-                : null;
-
-              return {
-                ...customer,
-                orders_count: ordersCount,
-                total_spent: totalSpent,
-                last_order_date: lastOrderDate
-              };
-            } catch (error) {
-              console.error('Error processing customer stats for', customer.id, ':', error);
-              return {
-                ...customer,
-                orders_count: 0,
-                total_spent: 0,
-                last_order_date: null
-              };
+            if (statsError) {
+              console.error('Error fetching order stats for customer', customer.id, ':', statsError);
+              // Continue with zero stats instead of failing
             }
-          })
-        );
-        customersWithStats.push(...batchResults);
-      }
 
-      console.log('Customers with stats:', customersWithStats);
+            const orders = orderStats || [];
+            const ordersCount = orders.length;
+            const totalSpent = orders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+            const lastOrderDate = orders.length > 0 
+              ? orders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at
+              : null;
+
+            return {
+              ...customer,
+              orders_count: ordersCount,
+              total_spent: totalSpent,
+              last_order_date: lastOrderDate
+            };
+          } catch (error) {
+            console.error('Error processing customer stats for', customer.id, ':', error);
+            return {
+              ...customer,
+              orders_count: 0,
+              total_spent: 0,
+              last_order_date: null
+            };
+          }
+        })
+      );
+
+      console.log('Processed customers with stats:', customersWithStats.length);
       setCustomers(customersWithStats);
     } catch (error) {
-      console.error('Error fetching admin customers:', error);
+      console.error('Error in fetchCustomers:', error);
       toast({
         title: "Error",
-        description: "Failed to load customers. Please check your permissions and try again.",
+        description: "Failed to load customers. Please try again.",
         variant: "destructive"
       });
+      setCustomers([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    console.log('useAdminCustomers effect triggered', { user: !!user, isAdmin });
     if (user && isAdmin) {
       fetchCustomers();
     } else {
