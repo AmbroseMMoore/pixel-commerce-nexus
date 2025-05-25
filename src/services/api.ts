@@ -1,13 +1,8 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Product, Category, SubCategory } from "@/types/product";
-import { supabaseManager } from "@/lib/supabaseManager";
 
-// Helper function to track API calls
-const trackApiCall = (queryKey: string) => {
-  supabaseManager.trackConnection(queryKey);
-  return () => supabaseManager.untrackConnection(queryKey);
-};
+// Simplified API calls without aggressive connection tracking
 
 // Categories API
 export const fetchCategories = async (): Promise<Category[]> => {
@@ -17,13 +12,12 @@ export const fetchCategories = async (): Promise<Category[]> => {
 
   if (error) throw error;
   
-  // Format the data to match our Category type
   return (data || []).map(category => ({
     id: category.id,
     name: category.name,
     slug: category.slug,
     image: category.image,
-    subCategories: [] // Will be populated by fetchSubCategories
+    subCategories: []
   }));
 };
 
@@ -35,7 +29,6 @@ export const fetchSubCategories = async (): Promise<SubCategory[]> => {
 
   if (error) throw error;
   
-  // Format the data to match our SubCategory type
   return (data || []).map(subCategory => ({
     id: subCategory.id,
     name: subCategory.name,
@@ -80,141 +73,104 @@ const transformProductData = (product: any): Product => {
   };
 };
 
-// Updated Products API with connection tracking
+// Simplified Products API
 export const fetchProducts = async (): Promise<Product[]> => {
-  const cleanup = trackApiCall('products-all');
-  
-  try {
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        *,
-        product_colors (
-          id, name, color_code,
-          product_images (id, image_url, is_primary)
-        ),
-        product_sizes (id, name, in_stock)
-      `);
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_colors (
+        id, name, color_code,
+        product_images (id, image_url, is_primary)
+      ),
+      product_sizes (id, name, in_stock)
+    `);
 
-    if (error) throw error;
-    
-    return (data || []).map(transformProductData);
-  } finally {
-    cleanup();
-  }
+  if (error) throw error;
+  return (data || []).map(transformProductData);
 };
 
-// Updated Featured Products with connection tracking
 export const fetchFeaturedProducts = async (): Promise<Product[]> => {
-  const cleanup = trackApiCall('products-featured');
-  
-  try {
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        *,
-        product_colors (
-          id, name, color_code,
-          product_images (id, image_url, is_primary)
-        ),
-        product_sizes (id, name, in_stock)
-      `)
-      .eq('is_featured', true);
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_colors (
+        id, name, color_code,
+        product_images (id, image_url, is_primary)
+      ),
+      product_sizes (id, name, in_stock)
+    `)
+    .eq('is_featured', true);
 
-    if (error) throw error;
-    
-    return (data || []).map(transformProductData);
-  } finally {
-    cleanup();
-  }
+  if (error) throw error;
+  return (data || []).map(transformProductData);
 };
 
-// Updated Products by Category with connection tracking
 export const fetchProductsByCategory = async (categorySlug: string): Promise<Product[]> => {
-  const cleanup = trackApiCall(`products-category-${categorySlug}`);
-  
-  try {
-    // First, get the category ID from the slug
-    const { data: categoryData, error: categoryError } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('slug', categorySlug)
-      .single();
+  // First, get the category ID from the slug
+  const { data: categoryData, error: categoryError } = await supabase
+    .from('categories')
+    .select('id')
+    .eq('slug', categorySlug)
+    .single();
 
-    if (categoryError) throw categoryError;
-    if (!categoryData) throw new Error("Category not found");
+  if (categoryError) throw categoryError;
+  if (!categoryData) throw new Error("Category not found");
 
-    // Then, get the products for that category
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        *,
-        product_colors (
-          id, name, color_code,
-          product_images (id, image_url, is_primary)
-        ),
-        product_sizes (id, name, in_stock)
-      `)
-      .eq('category_id', categoryData.id);
+  // Then, get the products for that category
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_colors (
+        id, name, color_code,
+        product_images (id, image_url, is_primary)
+      ),
+      product_sizes (id, name, in_stock)
+    `)
+    .eq('category_id', categoryData.id);
 
-    if (error) throw error;
-    
-    return (data || []).map(transformProductData);
-  } finally {
-    cleanup();
-  }
+  if (error) throw error;
+  return (data || []).map(transformProductData);
 };
 
-// Updated Single Product by Slug with connection tracking
 export const fetchProductBySlug = async (slug: string): Promise<Product> => {
-  const cleanup = trackApiCall(`product-slug-${slug}`);
-  
-  try {
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        *,
-        product_colors (
-          id, name, color_code,
-          product_images (id, image_url, is_primary)
-        ),
-        product_sizes (id, name, in_stock)
-      `)
-      .eq('slug', slug)
-      .single();
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_colors (
+        id, name, color_code,
+        product_images (id, image_url, is_primary)
+      ),
+      product_sizes (id, name, in_stock)
+    `)
+    .eq('slug', slug)
+    .single();
 
-    if (error) throw error;
-    if (!data) throw new Error("Product not found");
-    
-    return transformProductData(data);
-  } finally {
-    cleanup();
-  }
+  if (error) throw error;
+  if (!data) throw new Error("Product not found");
+  
+  return transformProductData(data);
 };
 
-// Updated Single Product by ID with connection tracking
 export const fetchProductById = async (id: string): Promise<Product> => {
-  const cleanup = trackApiCall(`product-id-${id}`);
-  
-  try {
-    const { data, error } = await supabase
-      .from('products')
-      .select(`
-        *,
-        product_colors (
-          id, name, color_code,
-          product_images (id, image_url, is_primary)
-        ),
-        product_sizes (id, name, in_stock)
-      `)
-      .eq('id', id)
-      .single();
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      *,
+      product_colors (
+        id, name, color_code,
+        product_images (id, image_url, is_primary)
+      ),
+      product_sizes (id, name, in_stock)
+    `)
+    .eq('id', id)
+    .single();
 
-    if (error) throw error;
-    if (!data) throw new Error("Product not found");
-    
-    return transformProductData(data);
-  } finally {
-    cleanup();
-  }
+  if (error) throw error;
+  if (!data) throw new Error("Product not found");
+  
+  return transformProductData(data);
 };

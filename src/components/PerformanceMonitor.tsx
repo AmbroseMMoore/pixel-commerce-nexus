@@ -12,18 +12,23 @@ const PerformanceMonitor = () => {
   useEffect(() => {
     if (showMonitor) {
       const updateStats = () => {
-        setStats(getCacheStats());
+        try {
+          setStats(getCacheStats());
+        } catch (error) {
+          console.warn('Failed to get cache stats:', error);
+        }
       };
 
       updateStats();
-      const interval = setInterval(updateStats, 2000);
+      // Less frequent updates
+      const interval = setInterval(updateStats, 5000);
 
       return () => clearInterval(interval);
     }
   }, [showMonitor, getCacheStats]);
 
-  // Only show in development or for admin users
-  if (process.env.NODE_ENV === 'production' && !window.location.href.includes('admin')) {
+  // Only show in development
+  if (process.env.NODE_ENV === 'production') {
     return null;
   }
 
@@ -36,7 +41,7 @@ const PerformanceMonitor = () => {
           onClick={() => setShowMonitor(true)}
           className="bg-white shadow-lg"
         >
-          Monitor
+          📊 Monitor
         </Button>
       ) : (
         <Card className="w-80 bg-white shadow-lg">
@@ -56,15 +61,16 @@ const PerformanceMonitor = () => {
             {stats && (
               <>
                 <div>Total Queries: {stats.totalQueries}</div>
+                <div>Active Queries: {stats.activeQueries}</div>
                 <div>Stale Queries: {stats.staleQueries}</div>
                 <div>Fetching: {stats.fetchingQueries}</div>
                 <div>Supabase Connections: {stats.supabaseStats.activeConnections}</div>
-                <div className="space-x-2">
+                <div className="pt-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={clearCache}
-                    className="text-xs"
+                    className="text-xs w-full"
                   >
                     Clear Cache
                   </Button>
