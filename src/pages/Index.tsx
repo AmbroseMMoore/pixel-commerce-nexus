@@ -4,16 +4,19 @@ import MainLayout from "@/components/layout/MainLayout";
 import HeroSlider from "@/components/home/HeroSlider";
 import CategorySection from "@/components/home/CategorySection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
+import NewArrivals from "@/components/home/NewArrivals";
 import CustomerReviewSlider from "@/components/home/CustomerReviewSlider";
 import NewsletterSection from "@/components/home/NewsletterSection";
 import { useCategories } from "@/hooks/useCategories";
 import { useFeaturedProducts } from "@/hooks/useProducts";
+import { useNewArrivals } from "@/hooks/useNewArrivals";
 import { useCacheManager } from "@/hooks/useCacheManager";
 import { useLogging } from "@/hooks/useLogging";
 
 const Index = () => {
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { data: featuredProducts, isLoading: productsLoading } = useFeaturedProducts();
+  const { data: newArrivals, isLoading: newArrivalsLoading } = useNewArrivals();
   const { getCacheStats } = useCacheManager();
   const { logInfo, logError } = useLogging();
 
@@ -58,7 +61,6 @@ const Index = () => {
       }
     });
 
-    // Track load performance
     const handleLoad = () => {
       const loadTime = performance.now() - startTime;
       logInfo('homepage_performance', {
@@ -79,7 +81,6 @@ const Index = () => {
     };
   }, [categoriesLoading, productsLoading, logInfo]);
 
-  // Log cache stats periodically for monitoring (only in development)
   useEffect(() => {
     if (process.env.NODE_ENV !== 'development') return;
     
@@ -93,13 +94,11 @@ const Index = () => {
       }
     };
 
-    // Log stats every 5 minutes
     const interval = setInterval(logStats, 5 * 60 * 1000);
     
     return () => clearInterval(interval);
   }, [getCacheStats, logInfo, logError]);
 
-  // Log data loading errors
   useEffect(() => {
     if (categoriesLoading === false && (!categories || categories.length === 0)) {
       logError('categories_load_empty', { categoriesCount: categories?.length || 0 });
@@ -112,14 +111,20 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <HeroSlider slides={heroSlides} />
-      <CategorySection categories={categories} isLoading={categoriesLoading} />
-      <FeaturedProducts 
-        products={featuredProducts || []} 
-        isLoading={productsLoading}
-      />
-      <CustomerReviewSlider />
-      <NewsletterSection />
+      <div className="home-page">
+        <HeroSlider slides={heroSlides} />
+        <CategorySection categories={categories} isLoading={categoriesLoading} />
+        <NewArrivals 
+          products={newArrivals || []} 
+          isLoading={newArrivalsLoading}
+        />
+        <FeaturedProducts 
+          products={featuredProducts || []} 
+          isLoading={productsLoading}
+        />
+        <CustomerReviewSlider />
+        <NewsletterSection />
+      </div>
     </MainLayout>
   );
 };

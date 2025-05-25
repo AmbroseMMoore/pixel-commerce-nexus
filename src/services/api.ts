@@ -73,6 +73,7 @@ const transformProductData = (product: any): Product => {
     isOutOfStock: product.stock_quantity <= 0,
     isFeatured: product.is_featured || false,
     isTrending: product.is_trending || false,
+    isNewArrival: product.is_new_arrival || false,
     createdAt: new Date(product.created_at),
     updatedAt: new Date(product.updated_at)
   };
