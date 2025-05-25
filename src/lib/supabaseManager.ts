@@ -4,9 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 class SupabaseConnectionManager {
   private activeConnections = new Set<string>();
   private connectionCount = 0;
-  private maxConnections = 15;
+  private maxConnections = 20; // Increased limit
   private lastCleanup = Date.now();
-  private cleanupInterval = 10 * 60 * 1000; // Increased to 10 minutes
+  private cleanupInterval = 15 * 60 * 1000; // Reduced to 15 minutes
 
   trackConnection(queryKey: string) {
     this.connectionCount++;
@@ -33,20 +33,26 @@ class SupabaseConnectionManager {
     this.connectionCount = 0;
     this.lastCleanup = Date.now();
     
-    // Only refresh auth if there's an active session
+    // Only refresh auth if there's an active session and avoid throwing errors
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session && session.access_token) {
-        const { error } = await supabase.auth.refreshSession();
-        if (error && error.message !== 'Auth session missing!') {
-          console.warn('Auth refresh failed:', error);
+        // Check if token is still valid before attempting refresh
+        const tokenExpiry = session.expires_at ? session.expires_at * 1000 : 0;
+        const now = Date.now();
+        
+        // Only refresh if token expires within next 5 minutes
+        if (tokenExpiry - now < 5 * 60 * 1000) {
+          console.log('Refreshing auth session...');
+          const { error } = await supabase.auth.refreshSession();
+          if (error) {
+            console.warn('Auth refresh failed (this is normal if session expired):', error.message);
+          }
         }
       }
     } catch (error) {
       // Silently handle auth errors to prevent console spam
-      if (error instanceof Error && !error.message.includes('Auth session missing')) {
-        console.warn('Auth cleanup error:', error);
-      }
+      console.warn('Auth cleanup warning:', error instanceof Error ? error.message : 'Unknown error');
     }
   }
 
@@ -70,16 +76,16 @@ if (typeof window !== 'undefined') {
     supabaseManager.forceCleanup();
   });
   
-  // Reduced cleanup frequency to every 10 minutes
+  // Reduced cleanup frequency to every 15 minutes
   setInterval(() => {
     supabaseManager.cleanup();
-  }, 10 * 60 * 1000);
+  }, 15 * 60 * 1000);
   
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       // Only cleanup if we haven't cleaned up recently
       const timeSinceLastCleanup = Date.now() - supabaseManager.getStats().lastCleanup;
-      if (timeSinceLastCleanup > 5 * 60 * 1000) { // 5 minutes
+      if (timeSinceLastCleanup > 10 * 60 * 1000) { // 10 minutes
         supabaseManager.cleanup();
       }
     }

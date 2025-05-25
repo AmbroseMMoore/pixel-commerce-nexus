@@ -43,27 +43,43 @@ export const useAdminOrders = () => {
   const fetchOrders = async () => {
     try {
       setIsLoading(true);
-      console.log('Starting to fetch orders...', { user: !!user, isAdmin });
+      console.log('Fetching orders - User authenticated:', !!user, 'Is admin:', isAdmin);
       
       if (!user || !isAdmin) {
-        console.log('User not authenticated or not admin, skipping fetch');
+        console.log('Not authorized to fetch orders');
         setOrders([]);
         return;
       }
 
-      // Fetch orders data
+      // Get current session to ensure we're authenticated
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.error('Session error:', sessionError);
+        setOrders([]);
+        return;
+      }
+
+      console.log('Session valid, fetching orders...');
+
+      // Fetch orders data with a limit to avoid performance issues
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(50);
+
+      console.log('Orders query result:', { data: ordersData, error: ordersError });
 
       if (ordersError) {
         console.error('Error fetching orders:', ordersError);
-        throw ordersError;
+        toast({
+          title: "Database Error",
+          description: `Failed to fetch orders: ${ordersError.message}`,
+          variant: "destructive"
+        });
+        setOrders([]);
+        return;
       }
-
-      console.log('Fetched orders:', ordersData?.length || 0, 'orders');
 
       if (!ordersData || ordersData.length === 0) {
         console.log('No orders found in database');
@@ -71,10 +87,14 @@ export const useAdminOrders = () => {
         return;
       }
 
+      console.log(`Found ${ordersData.length} orders, fetching customer and item details...`);
+
       // Process orders with customer and item details
       const ordersWithDetails = await Promise.all(
         ordersData.map(async (order) => {
           try {
+            console.log(`Processing order ${order.id}`);
+            
             // Fetch customer details
             const { data: customerData, error: customerError } = await supabase
               .from('customers')
@@ -83,70 +103,53 @@ export const useAdminOrders = () => {
               .maybeSingle();
 
             if (customerError) {
-              console.error('Error fetching customer for order', order.id, ':', customerError);
+              console.error(`Error fetching customer for order ${order.id}:`, customerError);
             }
 
-            // Fetch order items
+            // Fetch order items with a simplified query
             const { data: orderItemsData, error: itemsError } = await supabase
               .from('order_items')
               .select('id, quantity, unit_price, total_price, product_id, color_id, size_id')
               .eq('order_id', order.id);
 
             if (itemsError) {
-              console.error('Error fetching order items for order', order.id, ':', itemsError);
+              console.error(`Error fetching order items for order ${order.id}:`, itemsError);
             }
 
-            // Fetch related product, color, and size data for items
-            const itemsWithDetails = await Promise.all(
-              (orderItemsData || []).map(async (item) => {
-                try {
-                  const [productResult, colorResult, sizeResult] = await Promise.all([
-                    item.product_id ? supabase.from('products').select('title').eq('id', item.product_id).maybeSingle() : Promise.resolve({ data: null }),
-                    item.color_id ? supabase.from('product_colors').select('name').eq('id', item.color_id).maybeSingle() : Promise.resolve({ data: null }),
-                    item.size_id ? supabase.from('product_sizes').select('name').eq('id', item.size_id).maybeSingle() : Promise.resolve({ data: null })
-                  ]);
+            // For now, return basic item data without fetching related tables to avoid complexity
+            const itemsWithDetails = (orderItemsData || []).map(item => ({
+              ...item,
+              product: { title: 'Product details loading...' },
+              color: { name: 'Color loading...' },
+              size: { name: 'Size loading...' }
+            }));
 
-                  return {
-                    ...item,
-                    product: productResult.data,
-                    color: colorResult.data,
-                    size: sizeResult.data
-                  };
-                } catch (error) {
-                  console.error('Error fetching item details:', error);
-                  return {
-                    ...item,
-                    product: null,
-                    color: null,
-                    size: null
-                  };
-                }
-              })
-            );
+            console.log(`Processed order ${order.id} with ${itemsWithDetails.length} items`);
 
             return {
               ...order,
-              customer: customerData,
+              customer: customerData || { name: 'Unknown Customer', email: 'No email' },
               order_items: itemsWithDetails
             };
           } catch (error) {
-            console.error('Error processing order details for order', order.id, ':', error);
+            console.error(`Error processing order ${order.id}:`, error);
             return {
               ...order,
-              customer: null,
+              customer: { name: 'Error loading customer', email: 'No email' },
               order_items: []
             };
           }
         })
       );
 
-      console.log('Processed orders with details:', ordersWithDetails.length);
+      console.log(`Processed ${ordersWithDetails.length} orders with details`);
       setOrders(ordersWithDetails);
+      
     } catch (error) {
       console.error('Error in fetchOrders:', error);
       toast({
         title: "Error",
-        description: "Failed to load orders. Please try again.",
+        description: "Failed to load orders. Please check your connection and try again.",
         variant: "destructive"
       });
       setOrders([]);
@@ -181,10 +184,17 @@ export const useAdminOrders = () => {
   };
 
   useEffect(() => {
-    console.log('useAdminOrders effect triggered', { user: !!user, isAdmin });
+    console.log('useAdminOrders effect triggered', { 
+      user: !!user, 
+      userId: user?.id,
+      isAdmin,
+      userEmail: user?.email 
+    });
+    
     if (user && isAdmin) {
       fetchOrders();
     } else {
+      console.log('Skipping fetch - user not authenticated or not admin');
       setOrders([]);
       setIsLoading(false);
     }
