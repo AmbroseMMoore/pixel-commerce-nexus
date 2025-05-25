@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -34,48 +34,57 @@ export interface AdminOrder {
   }>;
 }
 
-export const useAdminOrders = () => {
+interface UseAdminOrdersResult {
+  orders: AdminOrder[];
+  isLoading: boolean;
+  error: string | null;
+  updateOrderStatus: (orderId: string, status: string) => Promise<void>;
+  refetch: () => Promise<void>;
+}
+
+export const useAdminOrders = (): UseAdminOrdersResult => {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
-      console.log('=== Starting orders fetch ===');
       setIsLoading(true);
+      setError(null);
       
-      // First fetch orders
-      console.log('Fetching orders...');
+      console.log('🔄 Fetching orders with related data...');
+      
+      // Optimized query with joins
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          customers!inner (
+            name,
+            email
+          )
+        `)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (ordersError) {
         console.error('❌ Error fetching orders:', ordersError);
         throw ordersError;
       }
 
-      if (!ordersData) {
-        console.log('⚠️ No orders data returned');
+      if (!ordersData || ordersData.length === 0) {
+        console.log('⚠️ No orders found');
         setOrders([]);
         return;
       }
 
-      console.log('✅ Orders fetched:', ordersData.length);
+      console.log(`✅ Fetched ${ordersData.length} orders`);
 
-      // Process orders with customer and item data
+      // Process orders with items
       const ordersWithDetails = await Promise.all(
         ordersData.map(async (order) => {
           try {
-            // Fetch customer data
-            const { data: customerData } = await supabase
-              .from('customers')
-              .select('name, email')
-              .eq('id', order.customer_id)
-              .single();
-
-            // Fetch order items
+            // Fetch order items with product details
             const { data: itemsData } = await supabase
               .from('order_items')
               .select(`
@@ -83,32 +92,27 @@ export const useAdminOrders = () => {
                 quantity,
                 unit_price,
                 total_price,
-                product_id,
-                color_id,
-                size_id
+                products!inner (
+                  title
+                ),
+                product_colors (
+                  name
+                ),
+                product_sizes (
+                  name
+                )
               `)
               .eq('order_id', order.id);
 
-            // Fetch product, color, and size details for items
-            const itemsWithDetails = await Promise.all(
-              (itemsData || []).map(async (item) => {
-                const [productData, colorData, sizeData] = await Promise.all([
-                  supabase.from('products').select('title').eq('id', item.product_id).single(),
-                  supabase.from('product_colors').select('name').eq('id', item.color_id).single(),
-                  supabase.from('product_sizes').select('name').eq('id', item.size_id).single()
-                ]);
-
-                return {
-                  id: item.id,
-                  quantity: item.quantity || 0,
-                  unit_price: Number(item.unit_price || 0),
-                  total_price: Number(item.total_price || 0),
-                  product: productData.data ? { title: productData.data.title } : { title: 'Unknown Product' },
-                  color: colorData.data ? { name: colorData.data.name } : { name: 'N/A' },
-                  size: sizeData.data ? { name: sizeData.data.name } : { name: 'N/A' }
-                };
-              })
-            );
+            const processedItems = (itemsData || []).map(item => ({
+              id: item.id,
+              quantity: item.quantity || 0,
+              unit_price: Number(item.unit_price || 0),
+              total_price: Number(item.total_price || 0),
+              product: item.products ? { title: item.products.title } : { title: 'Unknown Product' },
+              color: item.product_colors ? { name: item.product_colors.name } : { name: 'N/A' },
+              size: item.product_sizes ? { name: item.product_sizes.name } : { name: 'N/A' }
+            }));
 
             return {
               id: order.id,
@@ -120,14 +124,14 @@ export const useAdminOrders = () => {
               payment_method: order.payment_method || 'unknown',
               created_at: order.created_at,
               updated_at: order.updated_at,
-              customer: customerData ? {
-                name: customerData.name || 'Unknown Customer',
-                email: customerData.email || 'No email'
+              customer: order.customers ? {
+                name: order.customers.name || 'Unknown Customer',
+                email: order.customers.email || 'No email'
               } : { name: 'Unknown Customer', email: 'No email' },
-              order_items: itemsWithDetails
+              order_items: processedItems
             };
           } catch (error) {
-            console.error('Error processing order:', order.id, error);
+            console.error(`Error processing order ${order.id}:`, error);
             return {
               id: order.id,
               order_number: order.order_number || `ORD-${order.id.slice(0, 8)}`,
@@ -145,28 +149,34 @@ export const useAdminOrders = () => {
         })
       );
 
-      console.log('✅ Processed orders with details:', ordersWithDetails.length);
+      console.log('✅ Successfully processed all orders');
       setOrders(ordersWithDetails);
       
     } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to load orders';
       console.error('❌ Error in fetchOrders:', error);
+      setError(errorMessage);
+      
       toast({
-        title: "Error",
-        description: `Failed to load orders: ${error.message}`,
+        title: "Error Loading Orders",
+        description: errorMessage,
         variant: "destructive"
       });
-      setOrders([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
+  const updateOrderStatus = useCallback(async (orderId: string, status: string) => {
     try {
-      console.log('Updating order status:', orderId, status);
+      console.log(`🔄 Updating order ${orderId} status to ${status}`);
+      
       const { error } = await supabase
         .from('orders')
-        .update({ status, updated_at: new Date().toISOString() })
+        .update({ 
+          status, 
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', orderId);
 
       if (error) throw error;
@@ -176,25 +186,27 @@ export const useAdminOrders = () => {
         description: "Order status has been updated successfully.",
       });
 
-      fetchOrders();
+      // Refresh orders list
+      await fetchOrders();
+      
     } catch (error: any) {
-      console.error('Error updating order status:', error);
+      console.error('❌ Error updating order status:', error);
       toast({
-        title: "Error",
-        description: "Failed to update order status.",
+        title: "Update Failed",
+        description: error?.message || "Failed to update order status.",
         variant: "destructive"
       });
     }
-  };
+  }, [fetchOrders]);
 
   useEffect(() => {
-    console.log('=== useAdminOrders hook mounted ===');
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
 
   return {
     orders,
     isLoading,
+    error,
     updateOrderStatus,
     refetch: fetchOrders
   };
