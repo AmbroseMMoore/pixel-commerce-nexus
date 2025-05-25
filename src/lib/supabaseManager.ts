@@ -4,53 +4,52 @@ import { supabase } from "@/integrations/supabase/client";
 class SupabaseConnectionManager {
   private activeConnections = new Set<string>();
   private connectionCount = 0;
-  private maxConnections = 15; // Increased limit
+  private maxConnections = 15;
   private lastCleanup = Date.now();
-  private cleanupInterval = 3 * 60 * 1000; // 3 minutes
+  private cleanupInterval = 10 * 60 * 1000; // Increased to 10 minutes
 
-  // Track active queries
   trackConnection(queryKey: string) {
     this.connectionCount++;
     this.activeConnections.add(queryKey);
     
-    // Auto cleanup if too many connections
     if (this.connectionCount > this.maxConnections) {
       this.cleanup();
     }
     
-    // Periodic cleanup
     if (Date.now() - this.lastCleanup > this.cleanupInterval) {
       this.cleanup();
     }
   }
 
-  // Remove connection tracking
   untrackConnection(queryKey: string) {
     this.activeConnections.delete(queryKey);
     this.connectionCount = Math.max(0, this.connectionCount - 1);
   }
 
-  // Cleanup old connections and refresh auth if needed
   async cleanup() {
     console.log('Cleaning up Supabase connections...');
     
-    // Clear old connections
     this.activeConnections.clear();
     this.connectionCount = 0;
     this.lastCleanup = Date.now();
     
-    // Refresh auth session to prevent stale tokens
+    // Only refresh auth if there's an active session
     try {
-      const { error } = await supabase.auth.refreshSession();
-      if (error) {
-        console.warn('Auth refresh failed:', error);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.access_token) {
+        const { error } = await supabase.auth.refreshSession();
+        if (error && error.message !== 'Auth session missing!') {
+          console.warn('Auth refresh failed:', error);
+        }
       }
     } catch (error) {
-      console.warn('Auth refresh error:', error);
+      // Silently handle auth errors to prevent console spam
+      if (error instanceof Error && !error.message.includes('Auth session missing')) {
+        console.warn('Auth cleanup error:', error);
+      }
     }
   }
 
-  // Get connection stats
   getStats() {
     return {
       activeConnections: this.activeConnections.size,
@@ -59,7 +58,6 @@ class SupabaseConnectionManager {
     };
   }
 
-  // Force cleanup
   forceCleanup() {
     return this.cleanup();
   }
@@ -67,21 +65,23 @@ class SupabaseConnectionManager {
 
 export const supabaseManager = new SupabaseConnectionManager();
 
-// Cleanup on page unload
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     supabaseManager.forceCleanup();
   });
   
-  // Periodic cleanup every 5 minutes (reduced from 10)
+  // Reduced cleanup frequency to every 10 minutes
   setInterval(() => {
     supabaseManager.cleanup();
-  }, 5 * 60 * 1000);
+  }, 10 * 60 * 1000);
   
-  // Additional cleanup on page visibility change
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      supabaseManager.cleanup();
+      // Only cleanup if we haven't cleaned up recently
+      const timeSinceLastCleanup = Date.now() - supabaseManager.getStats().lastCleanup;
+      if (timeSinceLastCleanup > 5 * 60 * 1000) { // 5 minutes
+        supabaseManager.cleanup();
+      }
     }
   });
 }
