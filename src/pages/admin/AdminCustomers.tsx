@@ -1,18 +1,19 @@
-
 import React, { useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Eye, Mail, RefreshCw, Users, AlertCircle } from "lucide-react";
+import { Search, Eye, Mail, RefreshCw, Users, AlertCircle, TestTube } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
+import AdminDataTest from "@/components/AdminDataTest";
 import { useAdminCustomers } from "@/hooks/useAdminCustomers";
 import { format } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const AdminCustomers = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
   const { customers, isLoading, refetch } = useAdminCustomers();
   
   const filteredCustomers = customers.filter(customer => 
@@ -35,11 +36,23 @@ const AdminCustomers = () => {
               <Users className="h-6 w-6" />
               <h1 className="text-2xl font-bold">Customers</h1>
             </div>
-            <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? 'Loading...' : 'Refresh'}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setShowDebugPanel(!showDebugPanel)} 
+                variant="outline" 
+                size="sm"
+              >
+                <TestTube className="h-4 w-4 mr-2" />
+                Debug
+              </Button>
+              <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Loading...' : 'Refresh'}
+              </Button>
+            </div>
           </div>
+
+          {showDebugPanel && <AdminDataTest />}
 
           {customers.length === 0 && !isLoading && (
             <Alert>

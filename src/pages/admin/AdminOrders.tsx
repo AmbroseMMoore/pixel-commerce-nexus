@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -7,8 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Eye, RefreshCw } from "lucide-react";
+import { Search, Eye, RefreshCw, TestTube } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
+import AdminDataTest from "@/components/AdminDataTest";
 import { useAdminOrders } from "@/hooks/useAdminOrders";
 
 const getStatusColor = (status: string) => {
@@ -33,6 +33,7 @@ const getStatusColor = (status: string) => {
 const AdminOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
   const { orders, isLoading, refetch } = useAdminOrders();
   
   const filteredOrders = orders.filter(order => {
@@ -59,15 +60,27 @@ const AdminOrders = () => {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">Orders</h1>
-            <Button onClick={handleRefresh} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setShowDebugPanel(!showDebugPanel)} 
+                variant="outline" 
+                size="sm"
+              >
+                <TestTube className="h-4 w-4 mr-2" />
+                Debug
+              </Button>
+              <Button onClick={handleRefresh} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </div>
+
+          {showDebugPanel && <AdminDataTest />}
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle>Order Management</CardTitle>
+              <CardTitle>Order Management ({orders.length} total)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="mb-4 flex flex-col sm:flex-row gap-4">
