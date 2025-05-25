@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Eye, Mail, RefreshCw } from "lucide-react";
+import { Search, Eye, Mail, RefreshCw, Users, AlertCircle } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useAdminCustomers } from "@/hooks/useAdminCustomers";
 import { format } from "date-fns";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const AdminCustomers = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -21,7 +22,7 @@ const AdminCustomers = () => {
   );
 
   const handleRefresh = () => {
-    console.log('Refreshing customers data...');
+    console.log('=== Manual refresh triggered ===');
     refetch();
   };
 
@@ -30,16 +31,29 @@ const AdminCustomers = () => {
       <AdminLayout>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Customers</h1>
-            <Button onClick={handleRefresh} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+            <div className="flex items-center gap-2">
+              <Users className="h-6 w-6" />
+              <h1 className="text-2xl font-bold">Customers</h1>
+            </div>
+            <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? 'Loading...' : 'Refresh'}
             </Button>
           </div>
 
+          {customers.length === 0 && !isLoading && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                No customers found. When users sign up via Google Auth or email, they will appear here automatically.
+                Try refreshing or check the browser console for any errors.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle>Customer Management</CardTitle>
+              <CardTitle>Customer Management ({customers.length} total)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="mb-4">
@@ -72,15 +86,18 @@ const AdminCustomers = () => {
                     {isLoading ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-8">
-                          Loading customers...
+                          <div className="flex items-center justify-center gap-2">
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Loading customers...
+                          </div>
                         </TableCell>
                       </TableRow>
                     ) : filteredCustomers.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-8">
                           {customers.length === 0 
-                            ? "No customers found. Customers will appear here when users register." 
-                            : "No customers match your search."
+                            ? "No customers found. New signups will appear here automatically." 
+                            : "No customers match your search criteria."
                           }
                         </TableCell>
                       </TableRow>
@@ -91,7 +108,7 @@ const AdminCustomers = () => {
                             {customer.name} {customer.last_name}
                           </TableCell>
                           <TableCell>{customer.email}</TableCell>
-                          <TableCell>{customer.mobile_number}</TableCell>
+                          <TableCell>{customer.mobile_number || 'N/A'}</TableCell>
                           <TableCell>{customer.orders_count}</TableCell>
                           <TableCell>₹{customer.total_spent.toFixed(2)}</TableCell>
                           <TableCell>

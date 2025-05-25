@@ -24,42 +24,52 @@ export const useAdminCustomers = () => {
   const fetchCustomers = async () => {
     try {
       setIsLoading(true);
-      console.log('Fetching customers - User authenticated:', !!user, 'Is admin:', isAdmin);
+      console.log('=== Starting customer fetch ===');
+      console.log('User authenticated:', !!user, 'Is admin:', isAdmin);
       
       if (!user || !isAdmin) {
-        console.log('Not authorized to fetch customers');
+        console.log('Not authorized - clearing customers');
         setCustomers([]);
         return;
       }
 
-      // Get current session to ensure we're authenticated
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        console.error('Session error:', sessionError);
-        setCustomers([]);
+      // Test database connection
+      console.log('Testing database connection...');
+      const { data: testData, error: testError } = await supabase
+        .from('customers')
+        .select('count(*)', { count: 'exact', head: true });
+
+      if (testError) {
+        console.error('Database connection test failed:', testError);
+        toast({
+          title: "Database Connection Error",
+          description: "Unable to connect to the database. Please check your connection.",
+          variant: "destructive"
+        });
         return;
       }
 
-      console.log('Session valid, fetching customers...');
+      console.log('Database connection successful, customer count:', testData);
 
-      // Fetch customers data with a simplified query
-      const { data: customersData, error } = await supabase
+      // Fetch customers data
+      console.log('Fetching customers data...');
+      const { data: customersData, error: customersError } = await supabase
         .from('customers')
         .select('*')
         .order('created_at', { ascending: false });
 
-      console.log('Customers query result:', { data: customersData, error });
-
-      if (error) {
-        console.error('Error fetching customers:', error);
+      if (customersError) {
+        console.error('Error fetching customers:', customersError);
         toast({
           title: "Database Error",
-          description: `Failed to fetch customers: ${error.message}`,
+          description: `Failed to fetch customers: ${customersError.message}`,
           variant: "destructive"
         });
         setCustomers([]);
         return;
       }
+
+      console.log('Raw customers data:', customersData);
 
       if (!customersData || customersData.length === 0) {
         console.log('No customers found in database');
@@ -67,23 +77,19 @@ export const useAdminCustomers = () => {
         return;
       }
 
-      console.log(`Found ${customersData.length} customers, calculating order statistics...`);
-
       // Process customers with order statistics
+      console.log(`Processing ${customersData.length} customers...`);
       const customersWithStats = await Promise.all(
         customersData.map(async (customer) => {
           try {
-            console.log(`Fetching orders for customer ${customer.id}`);
-            
-            // Fetch order statistics for this customer
+            // Fetch order statistics
             const { data: orderStats, error: statsError } = await supabase
               .from('orders')
               .select('total_amount, created_at')
               .eq('customer_id', customer.id);
 
             if (statsError) {
-              console.error(`Error fetching orders for customer ${customer.id}:`, statsError);
-              // Continue with zero stats instead of failing
+              console.warn(`Error fetching orders for customer ${customer.id}:`, statsError);
             }
 
             const orders = orderStats || [];
@@ -92,8 +98,6 @@ export const useAdminCustomers = () => {
             const lastOrderDate = orders.length > 0 
               ? orders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at
               : null;
-
-            console.log(`Customer ${customer.id} stats:`, { ordersCount, totalSpent, lastOrderDate });
 
             return {
               ...customer,
@@ -113,14 +117,19 @@ export const useAdminCustomers = () => {
         })
       );
 
-      console.log(`Processed ${customersWithStats.length} customers with statistics`);
+      console.log('Processed customers with stats:', customersWithStats);
       setCustomers(customersWithStats);
       
-    } catch (error) {
-      console.error('Error in fetchCustomers:', error);
       toast({
-        title: "Error",
-        description: "Failed to load customers. Please check your connection and try again.",
+        title: "Success",
+        description: `Loaded ${customersWithStats.length} customers`,
+      });
+      
+    } catch (error) {
+      console.error('Unexpected error in fetchCustomers:', error);
+      toast({
+        title: "Unexpected Error",
+        description: "An unexpected error occurred while loading customers.",
         variant: "destructive"
       });
       setCustomers([]);
@@ -130,8 +139,8 @@ export const useAdminCustomers = () => {
   };
 
   useEffect(() => {
-    console.log('useAdminCustomers effect triggered', { 
-      user: !!user, 
+    console.log('=== useAdminCustomers effect triggered ===', { 
+      hasUser: !!user, 
       userId: user?.id,
       isAdmin,
       userEmail: user?.email 
@@ -140,7 +149,7 @@ export const useAdminCustomers = () => {
     if (user && isAdmin) {
       fetchCustomers();
     } else {
-      console.log('Skipping fetch - user not authenticated or not admin');
+      console.log('Skipping fetch - not authenticated or not admin');
       setCustomers([]);
       setIsLoading(false);
     }

@@ -23,6 +23,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const loadUserProfile = useCallback(async (userId: string) => {
     try {
+      console.log('Loading profile for user:', userId);
+      
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -31,10 +33,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (error) {
         console.error("Error loading profile:", error);
+        // If profile doesn't exist, create it
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, this should be created by the trigger');
+          return null;
+        }
         return null;
       }
 
       if (profile) {
+        console.log('Profile loaded successfully:', profile);
         const userData: User = {
           id: profile.id,
           name: profile.name || profile.email,
@@ -44,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         
         setUser(userData);
         setIsAdmin(profile.role === 'admin');
+        console.log('User set with admin status:', profile.role === 'admin');
         return userData;
       }
     } catch (error) {
@@ -57,6 +66,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const initializeAuth = async () => {
       try {
+        console.log('=== Initializing Auth ===');
+        
         // Get initial session
         const { data: { session }, error } = await supabase.auth.getSession();
         
@@ -67,6 +78,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           }
           return;
         }
+
+        console.log('Initial session:', !!session, session?.user?.email);
 
         if (session?.user && mounted) {
           await loadUserProfile(session.user.id);
@@ -89,13 +102,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth state changed:", event, session?.user?.email);
+        console.log("=== Auth state changed ===", event, session?.user?.email);
         
         if (!mounted) return;
 
         if (event === 'SIGNED_IN' && session?.user) {
+          console.log('User signed in, loading profile...');
           await loadUserProfile(session.user.id);
         } else if (event === 'SIGNED_OUT') {
+          console.log('User signed out, clearing state...');
           setUser(null);
           setIsAdmin(false);
         }
@@ -111,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [loadUserProfile]);
 
   const login = useCallback((userData: User) => {
+    console.log('Manual login:', userData);
     setUser(userData);
     setIsAdmin(userData.isAdmin || false);
     setLoading(false);
@@ -118,6 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = useCallback(async () => {
     try {
+      console.log('Logging out...');
       setLoading(true);
       
       // Clear local state first
@@ -128,7 +145,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error("Logout error:", error);
-        // Don't throw error here, we already cleared local state
+      } else {
+        console.log('Logout successful');
       }
     } catch (error) {
       console.error("Error during logout:", error);
