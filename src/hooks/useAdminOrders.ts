@@ -43,48 +43,11 @@ export const useAdminOrders = () => {
       console.log('=== Starting orders fetch ===');
       setIsLoading(true);
       
-      // Test basic connection
-      console.log('Testing orders table connection...');
-      const { data: testData, error: testError } = await supabase
-        .from('orders')
-        .select('count(*)')
-        .limit(1);
-        
-      if (testError) {
-        console.error('❌ Orders connection test failed:', testError);
-        throw testError;
-      }
-      
-      console.log('✅ Orders connection successful, count test:', testData);
-
-      // Fetch orders with optimized query using joins
-      console.log('Fetching orders with related data...');
+      // First fetch orders
+      console.log('Fetching orders...');
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select(`
-          id,
-          order_number,
-          customer_id,
-          total_amount,
-          status,
-          payment_status,
-          payment_method,
-          created_at,
-          updated_at,
-          customers(
-            name,
-            email
-          ),
-          order_items(
-            id,
-            quantity,
-            unit_price,
-            total_price,
-            products(title),
-            product_colors(name),
-            product_sizes(name)
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -99,36 +62,91 @@ export const useAdminOrders = () => {
         return;
       }
 
-      console.log('✅ Raw orders data:', ordersData);
+      console.log('✅ Orders fetched:', ordersData.length);
 
-      // Process orders with proper structure
-      const processedOrders = ordersData.map((order: any) => ({
-        id: order.id,
-        order_number: order.order_number || `ORD-${order.id.slice(0, 8)}`,
-        customer_id: order.customer_id,
-        total_amount: Number(order.total_amount || 0),
-        status: order.status || 'pending',
-        payment_status: order.payment_status || 'pending',
-        payment_method: order.payment_method || 'unknown',
-        created_at: order.created_at,
-        updated_at: order.updated_at,
-        customer: order.customers ? {
-          name: order.customers.name || 'Unknown Customer',
-          email: order.customers.email || 'No email'
-        } : { name: 'Unknown Customer', email: 'No email' },
-        order_items: (order.order_items || []).map((item: any) => ({
-          id: item.id,
-          quantity: item.quantity || 0,
-          unit_price: Number(item.unit_price || 0),
-          total_price: Number(item.total_price || 0),
-          product: item.products ? { title: item.products.title } : { title: 'Unknown Product' },
-          color: item.product_colors ? { name: item.product_colors.name } : { name: 'N/A' },
-          size: item.product_sizes ? { name: item.product_sizes.name } : { name: 'N/A' }
-        }))
-      }));
+      // Process orders with customer and item data
+      const ordersWithDetails = await Promise.all(
+        ordersData.map(async (order) => {
+          try {
+            // Fetch customer data
+            const { data: customerData } = await supabase
+              .from('customers')
+              .select('name, email')
+              .eq('id', order.customer_id)
+              .single();
 
-      console.log('✅ Processed orders:', processedOrders);
-      setOrders(processedOrders);
+            // Fetch order items
+            const { data: itemsData } = await supabase
+              .from('order_items')
+              .select(`
+                id,
+                quantity,
+                unit_price,
+                total_price,
+                product_id,
+                color_id,
+                size_id
+              `)
+              .eq('order_id', order.id);
+
+            // Fetch product, color, and size details for items
+            const itemsWithDetails = await Promise.all(
+              (itemsData || []).map(async (item) => {
+                const [productData, colorData, sizeData] = await Promise.all([
+                  supabase.from('products').select('title').eq('id', item.product_id).single(),
+                  supabase.from('product_colors').select('name').eq('id', item.color_id).single(),
+                  supabase.from('product_sizes').select('name').eq('id', item.size_id).single()
+                ]);
+
+                return {
+                  id: item.id,
+                  quantity: item.quantity || 0,
+                  unit_price: Number(item.unit_price || 0),
+                  total_price: Number(item.total_price || 0),
+                  product: productData.data ? { title: productData.data.title } : { title: 'Unknown Product' },
+                  color: colorData.data ? { name: colorData.data.name } : { name: 'N/A' },
+                  size: sizeData.data ? { name: sizeData.data.name } : { name: 'N/A' }
+                };
+              })
+            );
+
+            return {
+              id: order.id,
+              order_number: order.order_number || `ORD-${order.id.slice(0, 8)}`,
+              customer_id: order.customer_id,
+              total_amount: Number(order.total_amount || 0),
+              status: order.status || 'pending',
+              payment_status: order.payment_status || 'pending',
+              payment_method: order.payment_method || 'unknown',
+              created_at: order.created_at,
+              updated_at: order.updated_at,
+              customer: customerData ? {
+                name: customerData.name || 'Unknown Customer',
+                email: customerData.email || 'No email'
+              } : { name: 'Unknown Customer', email: 'No email' },
+              order_items: itemsWithDetails
+            };
+          } catch (error) {
+            console.error('Error processing order:', order.id, error);
+            return {
+              id: order.id,
+              order_number: order.order_number || `ORD-${order.id.slice(0, 8)}`,
+              customer_id: order.customer_id,
+              total_amount: Number(order.total_amount || 0),
+              status: order.status || 'pending',
+              payment_status: order.payment_status || 'pending',
+              payment_method: order.payment_method || 'unknown',
+              created_at: order.created_at,
+              updated_at: order.updated_at,
+              customer: { name: 'Unknown Customer', email: 'No email' },
+              order_items: []
+            };
+          }
+        })
+      );
+
+      console.log('✅ Processed orders with details:', ordersWithDetails.length);
+      setOrders(ordersWithDetails);
       
     } catch (error: any) {
       console.error('❌ Error in fetchOrders:', error);
