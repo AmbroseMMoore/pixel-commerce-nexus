@@ -43,7 +43,21 @@ export const useAdminOrders = () => {
       console.log('=== Starting orders fetch ===');
       setIsLoading(true);
       
-      // Fetch orders with related data using proper join syntax
+      // Test basic connection
+      console.log('Testing orders table connection...');
+      const { data: testData, error: testError } = await supabase
+        .from('orders')
+        .select('count(*)')
+        .limit(1);
+        
+      if (testError) {
+        console.error('❌ Orders connection test failed:', testError);
+        throw testError;
+      }
+      
+      console.log('✅ Orders connection successful, count test:', testData);
+
+      // Fetch orders with optimized query using joins
       console.log('Fetching orders with related data...');
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -57,7 +71,7 @@ export const useAdminOrders = () => {
           payment_method,
           created_at,
           updated_at,
-          customers!customer_id(
+          customers(
             name,
             email
           ),
@@ -66,9 +80,9 @@ export const useAdminOrders = () => {
             quantity,
             unit_price,
             total_price,
-            products!product_id(title),
-            product_colors!color_id(name),
-            product_sizes!size_id(name)
+            products(title),
+            product_colors(name),
+            product_sizes(name)
           )
         `)
         .order('created_at', { ascending: false })
