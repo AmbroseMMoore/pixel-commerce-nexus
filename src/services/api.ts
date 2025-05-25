@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Product, Category, SubCategory } from "@/types/product";
 import { supabaseManager } from "@/lib/supabaseManager";
@@ -68,6 +69,7 @@ const transformProductData = (product: any): Product => {
       name: size.name,
       inStock: size.in_stock
     })),
+    ageRanges: product.age_ranges || [],
     specifications: product.specifications || {},
     isLowStock: product.stock_quantity <= 10,
     isOutOfStock: product.stock_quantity <= 0,

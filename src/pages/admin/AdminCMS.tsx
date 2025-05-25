@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,46 +12,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { Plus, Trash2 } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-
-interface HeroSlide {
-  id: string;
-  title: string;
-  subtitle: string;
-  ctaText: string;
-  ctaLink: string;
-  image: string;
-}
+import { HeroSlide, PopupSettings, fetchHeroSlides, saveHeroSlides, fetchPopupSettings, savePopupSettings } from "@/services/cmsApi";
 
 const AdminCMS = () => {
   // Hero slides state
-  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([
+  const [heroSlides, setHeroSlides] = useState<Omit<HeroSlide, 'created_at' | 'updated_at'>[]>([
     {
       id: "1",
       title: "Welcome to CuteBae",
       subtitle: "Discover amazing products for kids",
-      ctaText: "Shop Now",
-      ctaLink: "/category/boys",
-      image: "/placeholder.svg"
-    },
-    {
-      id: "2",
-      title: "Summer Collection 2024", 
-      subtitle: "Fresh styles for the new season",
-      ctaText: "Explore Collection",
-      ctaLink: "/category/girls",
-      image: "/placeholder.svg"
-    },
-    {
-      id: "3",
-      title: "Special Offers",
-      subtitle: "Up to 50% off on selected items",
-      ctaText: "Shop Deals",
-      ctaLink: "/category/boys", 
-      image: "/placeholder.svg"
+      cta_text: "Shop Now",
+      cta_link: "/category/boys",
+      image_url: "/placeholder.svg",
+      order_index: 0,
+      is_active: true
     }
   ]);
 
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const [isLoadingHero, setIsLoadingHero] = useState(false);
 
   // Popup state
   const [popupTitle, setPopupTitle] = useState("Special Offer!");
@@ -60,21 +39,65 @@ const AdminCMS = () => {
   const [popupImageUrl, setPopupImageUrl] = useState("/placeholder.svg");
   const [popupImageFile, setPopupImageFile] = useState<File | null>(null);
   const [popupEnabled, setPopupEnabled] = useState(false);
+  const [isLoadingPopup, setIsLoadingPopup] = useState(false);
 
-  const updateSlide = (index: number, field: keyof HeroSlide, value: string) => {
+  // Load data on component mount
+  useEffect(() => {
+    loadHeroSlides();
+    loadPopupSettings();
+  }, []);
+
+  const loadHeroSlides = async () => {
+    try {
+      const slides = await fetchHeroSlides();
+      if (slides.length > 0) {
+        setHeroSlides(slides.map(slide => ({
+          id: slide.id,
+          title: slide.title,
+          subtitle: slide.subtitle,
+          cta_text: slide.cta_text,
+          cta_link: slide.cta_link,
+          image_url: slide.image_url,
+          order_index: slide.order_index,
+          is_active: slide.is_active
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading hero slides:', error);
+    }
+  };
+
+  const loadPopupSettings = async () => {
+    try {
+      const settings = await fetchPopupSettings();
+      if (settings) {
+        setPopupTitle(settings.title);
+        setPopupDescription(settings.description);
+        setPopupButtonText(settings.button_text);
+        setPopupImageUrl(settings.image_url || "/placeholder.svg");
+        setPopupEnabled(settings.is_enabled);
+      }
+    } catch (error) {
+      console.error('Error loading popup settings:', error);
+    }
+  };
+
+  const updateSlide = (index: number, field: keyof HeroSlide, value: string | number) => {
     const updatedSlides = [...heroSlides];
     updatedSlides[index] = { ...updatedSlides[index], [field]: value };
     setHeroSlides(updatedSlides);
   };
 
   const addSlide = () => {
-    const newSlide: HeroSlide = {
+    const newSlide = {
       id: Date.now().toString(),
       title: "New Slide",
       subtitle: "Add your subtitle here",
-      ctaText: "Shop Now",
-      ctaLink: "/category/boys",
-      image: "/placeholder.svg"
+      cta_text: "Shop Now",
+      cta_link: "/category/boys",
+      image_url: "/placeholder.svg",
+      order_index: heroSlides.length,
+      is_active: true
     };
     setHeroSlides([...heroSlides, newSlide]);
     setActiveSlideIndex(heroSlides.length);
@@ -90,6 +113,10 @@ const AdminCMS = () => {
       return;
     }
     const updatedSlides = heroSlides.filter((_, i) => i !== index);
+    // Update order_index for remaining slides
+    updatedSlides.forEach((slide, i) => {
+      slide.order_index = i;
+    });
     setHeroSlides(updatedSlides);
     if (activeSlideIndex >= updatedSlides.length) {
       setActiveSlideIndex(updatedSlides.length - 1);
@@ -100,7 +127,7 @@ const AdminCMS = () => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       const imageUrl = URL.createObjectURL(file);
-      updateSlide(index, 'image', imageUrl);
+      updateSlide(index, 'image_url', imageUrl);
     }
   };
 
@@ -112,20 +139,60 @@ const AdminCMS = () => {
     }
   };
 
-  const saveHeroSlides = () => {
-    // In a real app, you would save to your backend
-    toast({
-      title: "Hero slides updated",
-      description: "The hero section slides have been successfully updated.",
-    });
+  const saveHeroSlidesToDb = async () => {
+    setIsLoadingHero(true);
+    try {
+      await saveHeroSlides(heroSlides.map(slide => ({
+        title: slide.title,
+        subtitle: slide.subtitle,
+        cta_text: slide.cta_text,
+        cta_link: slide.cta_link,
+        image_url: slide.image_url,
+        order_index: slide.order_index,
+        is_active: true
+      })));
+      
+      toast({
+        title: "Hero slides updated",
+        description: "The hero section slides have been successfully saved to the database.",
+      });
+    } catch (error) {
+      console.error('Error saving hero slides:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save hero slides. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingHero(false);
+    }
   };
 
-  const savePopup = () => {
-    // In a real app, you would upload the image and save the data to your backend
-    toast({
-      title: "Popup settings updated",
-      description: `The popup has been ${popupEnabled ? 'enabled' : 'disabled'} and settings updated.`,
-    });
+  const savePopupToDb = async () => {
+    setIsLoadingPopup(true);
+    try {
+      await savePopupSettings({
+        title: popupTitle,
+        description: popupDescription,
+        button_text: popupButtonText,
+        image_url: popupImageUrl,
+        is_enabled: popupEnabled
+      });
+      
+      toast({
+        title: "Popup settings updated",
+        description: `The popup has been ${popupEnabled ? 'enabled' : 'disabled'} and settings saved to the database.`,
+      });
+    } catch (error) {
+      console.error('Error saving popup settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save popup settings. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingPopup(false);
+    }
   };
 
   const activeSlide = heroSlides[activeSlideIndex];
@@ -209,8 +276,8 @@ const AdminCMS = () => {
                           <Label htmlFor="slideButtonText">Button Text</Label>
                           <Input
                             id="slideButtonText"
-                            value={activeSlide.ctaText}
-                            onChange={(e) => updateSlide(activeSlideIndex, 'ctaText', e.target.value)}
+                            value={activeSlide.cta_text}
+                            onChange={(e) => updateSlide(activeSlideIndex, 'cta_text', e.target.value)}
                           />
                         </div>
 
@@ -218,8 +285,8 @@ const AdminCMS = () => {
                           <Label htmlFor="slideButtonLink">Button Link</Label>
                           <Input
                             id="slideButtonLink"
-                            value={activeSlide.ctaLink}
-                            onChange={(e) => updateSlide(activeSlideIndex, 'ctaLink', e.target.value)}
+                            value={activeSlide.cta_link}
+                            onChange={(e) => updateSlide(activeSlideIndex, 'cta_link', e.target.value)}
                           />
                         </div>
                         
@@ -233,21 +300,23 @@ const AdminCMS = () => {
                           />
                         </div>
                         
-                        <Button onClick={saveHeroSlides}>Save Hero Slides</Button>
+                        <Button onClick={saveHeroSlidesToDb} disabled={isLoadingHero}>
+                          {isLoadingHero ? "Saving..." : "Save Hero Slides"}
+                        </Button>
                       </div>
                       
                       <div className="border rounded-md p-4">
                         <h3 className="font-medium mb-4">Preview - Slide {activeSlideIndex + 1}</h3>
                         <div className="aspect-video bg-gray-100 rounded-2xl overflow-hidden relative" style={{ width: '95%', margin: '0 auto' }}>
                           <img
-                            src={activeSlide.image}
+                            src={activeSlide.image_url}
                             alt="Slide preview"
                             className="w-full h-full object-cover rounded-2xl"
                           />
                           <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white p-6 text-center rounded-2xl">
                             <h2 className="text-2xl md:text-4xl font-bold mb-2 font-holtwood text-black">{activeSlide.title}</h2>
                             <p className="mb-4 max-w-md font-quicksand">{activeSlide.subtitle}</p>
-                            <Button variant="secondary" className="font-quicksand">{activeSlide.ctaText}</Button>
+                            <Button variant="secondary" className="font-quicksand">{activeSlide.cta_text}</Button>
                           </div>
                         </div>
                         <div className="mt-4 text-center">
@@ -318,8 +387,8 @@ const AdminCMS = () => {
                         />
                       </div>
                       
-                      <Button onClick={savePopup} disabled={!popupEnabled}>
-                        Save Popup Settings
+                      <Button onClick={savePopupToDb} disabled={isLoadingPopup}>
+                        {isLoadingPopup ? "Saving..." : "Save Popup Settings"}
                       </Button>
                     </div>
                     

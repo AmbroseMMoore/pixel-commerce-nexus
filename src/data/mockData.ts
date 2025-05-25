@@ -80,6 +80,14 @@ const generateSampleProducts = () => {
   let productsList: Product[] = [];
   let productId = 1001;
   
+  const ageRangesOptions = [
+    ["0-6 months", "6-12 months"],
+    ["1-2 years", "2-3 years"],
+    ["3-5 years", "5-8 years"],
+    ["8-12 years"],
+    ["12+ years"]
+  ];
+  
   subCategories.forEach(subCategory => {
     // Create 1-2 products per subcategory
     const numProducts = Math.floor(Math.random() * 2) + 1;
@@ -87,6 +95,7 @@ const generateSampleProducts = () => {
     for (let i = 0; i < numProducts; i++) {
       const categoryName = categories.find(c => c.id === subCategory.categoryId)?.name || "";
       const productName = `${categoryName} ${subCategory.name} ${i + 1}`;
+      const randomAgeRanges = ageRangesOptions[Math.floor(Math.random() * ageRangesOptions.length)];
       
       productsList.push({
         id: productId.toString(),
@@ -126,6 +135,7 @@ const generateSampleProducts = () => {
           { id: "s3", name: "L", inStock: Math.random() > 0.2 },
           { id: "s4", name: "XL", inStock: Math.random() > 0.4 }
         ],
+        ageRanges: randomAgeRanges,
         specifications: {
           "Material": "Premium Quality",
           "Fit": "Regular",
