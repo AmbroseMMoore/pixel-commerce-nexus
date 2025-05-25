@@ -1,6 +1,6 @@
 
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
+import { supabase, validateSession } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 export interface AdminOrder {
@@ -47,14 +47,20 @@ export const useAdminOrders = (): UseAdminOrdersResult => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      console.log('🔄 Fetching orders with related data...');
+      console.log('🔄 Fetching orders...');
       
-      // Optimized query with joins
+      // Validate session before making request
+      const session = await validateSession();
+      if (!session) {
+        throw new Error('Authentication required');
+      }
+      
+      // Fetch orders with customer data
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`
@@ -131,7 +137,7 @@ export const useAdminOrders = (): UseAdminOrdersResult => {
               order_items: processedItems
             };
           } catch (error) {
-            console.error(`Error processing order ${order.id}:`, error);
+            console.error(`❌ Error processing order ${order.id}:`, error);
             return {
               id: order.id,
               order_number: order.order_number || `ORD-${order.id.slice(0, 8)}`,
@@ -165,11 +171,17 @@ export const useAdminOrders = (): UseAdminOrdersResult => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
-  const updateOrderStatus = useCallback(async (orderId: string, status: string) => {
+  const updateOrderStatus = async (orderId: string, status: string) => {
     try {
       console.log(`🔄 Updating order ${orderId} status to ${status}`);
+      
+      // Validate session before making request
+      const session = await validateSession();
+      if (!session) {
+        throw new Error('Authentication required');
+      }
       
       const { error } = await supabase
         .from('orders')
@@ -197,11 +209,11 @@ export const useAdminOrders = (): UseAdminOrdersResult => {
         variant: "destructive"
       });
     }
-  }, [fetchOrders]);
+  };
 
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+  }, []); // Remove dependencies to prevent infinite loops
 
   return {
     orders,

@@ -1,6 +1,6 @@
 
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
+import { supabase, validateSession } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 export interface AdminCustomer {
@@ -27,14 +27,20 @@ export const useAdminCustomers = (): UseAdminCustomersResult => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCustomers = useCallback(async () => {
+  const fetchCustomers = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      console.log('🔄 Fetching customers with order statistics...');
+      console.log('🔄 Fetching customers...');
       
-      // Fetch customers first
+      // Validate session before making request
+      const session = await validateSession();
+      if (!session) {
+        throw new Error('Authentication required');
+      }
+      
+      // Fetch customers
       const { data: customersData, error: customersError } = await supabase
         .from('customers')
         .select('*')
@@ -51,7 +57,7 @@ export const useAdminCustomers = (): UseAdminCustomersResult => {
         return;
       }
 
-      console.log(`✅ Fetched ${customersData.length} customers, processing order statistics...`);
+      console.log(`✅ Fetched ${customersData.length} customers`);
 
       // Process customers with order statistics
       const customersWithStats = await Promise.all(
@@ -100,7 +106,7 @@ export const useAdminCustomers = (): UseAdminCustomersResult => {
         })
       );
 
-      console.log(`✅ Successfully processed ${customersWithStats.length} customers with order statistics`);
+      console.log(`✅ Successfully processed ${customersWithStats.length} customers`);
       setCustomers(customersWithStats);
       
     } catch (error: any) {
@@ -116,11 +122,11 @@ export const useAdminCustomers = (): UseAdminCustomersResult => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchCustomers();
-  }, [fetchCustomers]);
+  }, []); // Remove dependencies to prevent infinite loops
 
   return {
     customers,

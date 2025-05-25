@@ -7,6 +7,7 @@ export const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 10 * 60 * 1000, // 10 minutes
       retry: (failureCount, error: any) => {
+        // Don't retry auth errors
         if (error?.status >= 400 && error?.status < 500) {
           return false;
         }
@@ -24,19 +25,19 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Gentle cache cleanup - only when really needed
+// Simplified cache cleanup - only when really needed
 if (typeof window !== 'undefined') {
-  // Clean up stale queries every 10 minutes
+  // Basic cleanup every 15 minutes
   setInterval(() => {
     const cache = queryClient.getQueryCache();
     const queries = cache.getAll();
     
-    // Only remove queries older than 15 minutes
-    const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
+    // Only remove very old, unused queries
+    const twentyMinutesAgo = Date.now() - 20 * 60 * 1000;
     let removed = 0;
     
     queries.forEach(query => {
-      if ((query.state.dataUpdatedAt || 0) < fifteenMinutesAgo && query.getObserversCount() === 0) {
+      if ((query.state.dataUpdatedAt || 0) < twentyMinutesAgo && query.getObserversCount() === 0) {
         cache.remove(query);
         removed++;
       }
@@ -45,24 +46,5 @@ if (typeof window !== 'undefined') {
     if (removed > 0) {
       console.log(`🧹 Cleaned up ${removed} stale queries`);
     }
-  }, 10 * 60 * 1000);
-
-  // Memory pressure cleanup (only when necessary)
-  if ('memory' in performance) {
-    setInterval(() => {
-      const memInfo = (performance as any).memory;
-      if (memInfo && memInfo.usedJSHeapSize > 50 * 1024 * 1024) { // 50MB threshold
-        console.log('🚨 High memory usage detected, clearing old cache');
-        const cache = queryClient.getQueryCache();
-        const queries = cache.getAll();
-        
-        // Only clear inactive queries
-        queries.forEach(query => {
-          if (query.getObserversCount() === 0) {
-            cache.remove(query);
-          }
-        });
-      }
-    }, 5 * 60 * 1000);
-  }
+  }, 15 * 60 * 1000);
 }

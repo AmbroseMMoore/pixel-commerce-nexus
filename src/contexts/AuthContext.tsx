@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, validateSession } from "@/integrations/supabase/client";
 import { User } from "@/types/user";
 import { toast } from "@/hooks/use-toast";
 
@@ -23,7 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const loadUserProfile = useCallback(async (userId: string) => {
     try {
-      console.log('Loading profile for user:', userId);
+      console.log('🔄 Loading profile for user:', userId);
       
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -32,17 +32,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         .single();
 
       if (error) {
-        console.error("Error loading profile:", error);
-        // If profile doesn't exist, create it
+        console.error("❌ Error loading profile:", error);
         if (error.code === 'PGRST116') {
-          console.log('Profile not found, this should be created by the trigger');
+          console.log('⚠️ Profile not found, will be created by trigger');
           return null;
         }
-        return null;
+        throw error;
       }
 
       if (profile) {
-        console.log('Profile loaded successfully:', profile);
+        console.log('✅ Profile loaded:', profile);
         const userData: User = {
           id: profile.id,
           name: profile.name || profile.email,
@@ -52,13 +51,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         
         setUser(userData);
         setIsAdmin(profile.role === 'admin');
-        console.log('User set with admin status:', profile.role === 'admin');
+        console.log('✅ User set with admin status:', profile.role === 'admin');
         return userData;
       }
     } catch (error) {
-      console.error("Error loading user profile:", error);
+      console.error("❌ Error loading user profile:", error);
+      // Don't throw here, let the auth flow continue
     }
     return null;
+  }, []);
+
+  const clearAuthState = useCallback(() => {
+    console.log('🧹 Clearing auth state');
+    setUser(null);
+    setIsAdmin(false);
   }, []);
 
   useEffect(() => {
@@ -66,53 +72,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const initializeAuth = async () => {
       try {
-        console.log('=== Initializing Auth ===');
-        
-        // Get initial session
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Session error:", error);
-          if (mounted) {
-            setLoading(false);
-          }
-          return;
-        }
+        console.log('🚀 Initializing auth...');
+        setLoading(true);
 
-        console.log('Initial session:', !!session, session?.user?.email);
-
+        // Validate current session
+        const session = await validateSession();
+        
         if (session?.user && mounted) {
+          console.log('✅ Valid session found:', session.user.email);
           await loadUserProfile(session.user.id);
-        }
-        
-        if (mounted) {
-          setLoading(false);
+        } else {
+          console.log('❌ No valid session found');
+          clearAuthState();
         }
       } catch (error) {
-        console.error("Error initializing auth:", error);
+        console.error("❌ Auth initialization error:", error);
+        clearAuthState();
+      } finally {
         if (mounted) {
           setLoading(false);
         }
       }
     };
 
-    // Initialize auth
+    // Initialize auth state
     initializeAuth();
 
-    // Listen for auth changes
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("=== Auth state changed ===", event, session?.user?.email);
+        console.log("🔄 Auth state changed:", event, session?.user?.email);
         
         if (!mounted) return;
 
         if (event === 'SIGNED_IN' && session?.user) {
-          console.log('User signed in, loading profile...');
+          console.log('✅ User signed in');
           await loadUserProfile(session.user.id);
-        } else if (event === 'SIGNED_OUT') {
-          console.log('User signed out, clearing state...');
-          setUser(null);
-          setIsAdmin(false);
+        } else if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          if (event === 'SIGNED_OUT') {
+            console.log('👋 User signed out');
+            clearAuthState();
+          } else if (session?.user) {
+            console.log('🔄 Token refreshed');
+            await loadUserProfile(session.user.id);
+          }
         }
         
         setLoading(false);
@@ -123,10 +126,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [loadUserProfile]);
+  }, [loadUserProfile, clearAuthState]);
 
   const login = useCallback((userData: User) => {
-    console.log('Manual login:', userData);
+    console.log('👤 Manual login:', userData);
     setUser(userData);
     setIsAdmin(userData.isAdmin || false);
     setLoading(false);
@@ -134,26 +137,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = useCallback(async () => {
     try {
-      console.log('Logging out...');
+      console.log('👋 Logging out...');
       setLoading(true);
       
       // Clear local state first
-      setUser(null);
-      setIsAdmin(false);
+      clearAuthState();
       
       // Then sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error("Logout error:", error);
+        console.error("❌ Logout error:", error);
       } else {
-        console.log('Logout successful');
+        console.log('✅ Logout successful');
       }
     } catch (error) {
-      console.error("Error during logout:", error);
+      console.error("❌ Error during logout:", error);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clearAuthState]);
 
   return (
     <AuthContext.Provider value={{ user, isAdmin, loading, login, logout }}>

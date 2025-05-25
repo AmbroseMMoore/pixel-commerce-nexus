@@ -4,16 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 class SupabaseConnectionManager {
   private activeConnections = new Set<string>();
   private connectionCount = 0;
-  private maxConnections = 30;
+  private maxConnections = 50; // Increased threshold
   private lastCleanup = Date.now();
-  private cleanupInterval = 30 * 60 * 1000; // 30 minutes
 
   trackConnection(queryKey: string) {
     this.connectionCount++;
     this.activeConnections.add(queryKey);
     
-    // Only cleanup if we're really over the limit
-    if (this.connectionCount > this.maxConnections * 1.5) {
+    // Only cleanup if we really exceed limits
+    if (this.connectionCount > this.maxConnections * 2) {
       this.cleanup();
     }
   }
@@ -30,21 +29,20 @@ class SupabaseConnectionManager {
     this.connectionCount = 0;
     this.lastCleanup = Date.now();
     
-    // Gentle auth refresh only when needed
+    // Only refresh session if it's actually needed
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session && session.access_token) {
         const tokenExpiry = session.expires_at ? session.expires_at * 1000 : 0;
         const now = Date.now();
         
-        // Only refresh if token expires within next 10 minutes
-        if (tokenExpiry - now < 10 * 60 * 1000) {
+        // Only refresh if token expires within next 5 minutes
+        if (tokenExpiry - now < 5 * 60 * 1000) {
           console.log('🔄 Refreshing auth session...');
           await supabase.auth.refreshSession();
         }
       }
     } catch (error) {
-      // Silent error handling
       console.debug('Auth cleanup note:', error instanceof Error ? error.message : 'Session refresh skipped');
     }
   }
@@ -64,15 +62,9 @@ class SupabaseConnectionManager {
 
 export const supabaseManager = new SupabaseConnectionManager();
 
-// Reduced frequency cleanup
+// Cleanup only on page unload
 if (typeof window !== 'undefined') {
-  // Only cleanup on page unload
   window.addEventListener('beforeunload', () => {
     supabaseManager.forceCleanup();
   });
-  
-  // Much less frequent automatic cleanup
-  setInterval(() => {
-    supabaseManager.cleanup();
-  }, 30 * 60 * 1000);
 }
