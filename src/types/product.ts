@@ -48,7 +48,6 @@ export type Product = {
   isOutOfStock: boolean;
   isFeatured: boolean;
   isTrending: boolean;
-  isNewArrival: boolean;
   createdAt: Date;
   updatedAt: Date;
 };

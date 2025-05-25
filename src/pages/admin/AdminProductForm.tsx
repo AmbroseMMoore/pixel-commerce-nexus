@@ -13,6 +13,8 @@ import { Trash2, Plus, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useCategories } from "@/hooks/useCategories";
+import { useQuery } from "@tanstack/react-query";
+import { fetchProductBySlug } from "@/services/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -61,7 +63,6 @@ const AdminProductForm = () => {
   const [isOutOfStock, setIsOutOfStock] = useState(false);
   const [isFeatured, setIsFeatured] = useState(false);
   const [isTrending, setIsTrending] = useState(false);
-  const [isNewArrival, setIsNewArrival] = useState(false);
   const [slug, setSlug] = useState("");
 
   // Get subcategories for selected category
@@ -99,7 +100,6 @@ const AdminProductForm = () => {
       setIsOutOfStock(existingProduct.isOutOfStock);
       setIsFeatured(existingProduct.isFeatured || false);
       setIsTrending(existingProduct.isTrending || false);
-      setIsNewArrival(existingProduct.isNewArrival || false);
       setSlug(existingProduct.slug);
 
       // Set color variants from existing product
@@ -146,16 +146,6 @@ const AdminProductForm = () => {
     }
   }, [title, isEditMode]);
 
-  // Convert file to base64 data URL for storage
-  const convertFileToDataUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,7 +184,6 @@ const AdminProductForm = () => {
         stock_quantity: isOutOfStock ? 0 : isLowStock ? 5 : 100,
         is_featured: isFeatured,
         is_trending: isTrending,
-        is_new_arrival: isNewArrival,
         is_low_stock: isLowStock,
         is_out_of_stock: isOutOfStock,
         specifications: specsObj,
@@ -234,15 +223,15 @@ const AdminProductForm = () => {
         });
       }
 
-      // Handle color variants and images
-      if (isEditMode) {
-        // Delete existing variants and images for edit mode
-        await supabase.from('product_images').delete().eq('product_id', productId);
+      // Handle color variants
+      if (!isEditMode) {
+        // For new products, delete any existing variants first (cleanup)
         await supabase.from('product_colors').delete().eq('product_id', productId);
         await supabase.from('product_sizes').delete().eq('product_id', productId);
+        await supabase.from('product_images').delete().eq('product_id', productId);
       }
 
-      // Add color variants and their images
+      // Add/Update color variants
       for (const colorVariant of colorVariants) {
         if (colorVariant.name && colorVariant.colorCode) {
           const colorData = {
@@ -251,36 +240,50 @@ const AdminProductForm = () => {
             color_code: colorVariant.colorCode
           };
 
-          const { data: newColor, error: colorError } = await supabase
-            .from('product_colors')
-            .insert(colorData)
-            .select()
-            .single();
-            
-          if (colorError) throw colorError;
+          let colorId;
+          if (isEditMode && !colorVariant.id.startsWith('color-')) {
+            // Update existing color variant
+            const { error: colorError } = await supabase
+              .from('product_colors')
+              .update(colorData)
+              .eq('id', colorVariant.id);
+              
+            if (colorError) throw colorError;
+            colorId = colorVariant.id;
+          } else {
+            // Create new color variant
+            const { data: newColor, error: colorError } = await supabase
+              .from('product_colors')
+              .insert(colorData)
+              .select()
+              .single();
+              
+            if (colorError) throw colorError;
+            colorId = newColor.id;
+          }
 
           // Handle images for this color
-          for (let i = 0; i < colorVariant.images.length; i++) {
-            const imageUrl = colorVariant.images[i];
+          for (const imageUrl of colorVariant.images) {
             if (imageUrl) {
               const { error: imageError } = await supabase
                 .from('product_images')
                 .insert({
                   product_id: productId,
-                  color_id: newColor.id,
+                  color_id: colorId,
                   image_url: imageUrl,
-                  is_primary: i === 0
+                  is_primary: colorVariant.images.indexOf(imageUrl) === 0
                 });
                 
               if (imageError) {
                 console.error('Error saving image:', imageError);
+                // Don't throw here, just log the error
               }
             }
           }
         }
       }
 
-      // Add size variants
+      // Add/Update size variants
       for (const sizeVariant of sizeVariants) {
         if (sizeVariant.name) {
           const sizeData = {
@@ -289,17 +292,27 @@ const AdminProductForm = () => {
             in_stock: sizeVariant.inStock
           };
 
-          const { error: sizeError } = await supabase
-            .from('product_sizes')
-            .insert(sizeData);
-            
-          if (sizeError) throw sizeError;
+          if (isEditMode && !sizeVariant.id.startsWith('size-')) {
+            // Update existing size variant
+            const { error: sizeError } = await supabase
+              .from('product_sizes')
+              .update(sizeData)
+              .eq('id', sizeVariant.id);
+              
+            if (sizeError) throw sizeError;
+          } else {
+            // Create new size variant
+            const { error: sizeError } = await supabase
+              .from('product_sizes')
+              .insert(sizeData);
+              
+            if (sizeError) throw sizeError;
+          }
         }
       }
 
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["featuredProducts"] });
       
       // Redirect back to products page
       navigate("/admin/products");
@@ -340,28 +353,16 @@ const AdminProductForm = () => {
     ));
   };
 
-  // Handle image upload - convert to data URLs
-  const handleImageUpload = async (colorId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle image upload
+  const handleImageUpload = (colorId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      const imageUrls: string[] = [];
-
-      for (const file of files) {
-        try {
-          const dataUrl = await convertFileToDataUrl(file);
-          imageUrls.push(dataUrl);
-        } catch (error) {
-          console.error('Error converting file:', error);
-          toast({
-            title: "Error",
-            description: "Failed to process image file.",
-            variant: "destructive"
-          });
-        }
-      }
+      const imageUrls = Array.from(e.target.files).map(file => 
+        URL.createObjectURL(file)
+      );
 
       setColorVariants(colorVariants.map(variant => {
         if (variant.id === colorId) {
+          // Limit to 6 images
           const currentImages = [...variant.images];
           const newImages = [...currentImages, ...imageUrls].slice(0, 6);
           return { ...variant, images: newImages };
@@ -596,14 +597,6 @@ const AdminProductForm = () => {
                             onCheckedChange={setIsTrending}
                           />
                           <Label htmlFor="trending">Trending</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="new-arrival"
-                            checked={isNewArrival}
-                            onCheckedChange={setIsNewArrival}
-                          />
-                          <Label htmlFor="new-arrival">New Arrival</Label>
                         </div>
                       </div>
                     </div>

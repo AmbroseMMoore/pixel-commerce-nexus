@@ -88,20 +88,15 @@
   }
   
   /* Heading font families and colors */
-  h1 {
+  h1, h2 {
     @apply font-dela text-black;
+  }
+  
+  h1 {
     color: #000000;
   }
   
-  /* H2 on home page only */
-  .home-page h2 {
-    @apply font-dela text-custom-purple;
-    color: #712D8F;
-  }
-  
-  /* H2 on all other pages */
   h2 {
-    @apply font-quicksand text-custom-purple;
     color: #712D8F;
   }
   
