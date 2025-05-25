@@ -1,7 +1,7 @@
 
 import React, { useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
-import HeroSection from "@/components/home/HeroSection";
+import HeroSlider from "@/components/home/HeroSlider";
 import CategorySection from "@/components/home/CategorySection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import NewsletterSection from "@/components/home/NewsletterSection";
@@ -15,6 +15,34 @@ const Index = () => {
   const { data: featuredProducts, isLoading: productsLoading } = useFeaturedProducts();
   const { getCacheStats } = useCacheManager();
   const { logInfo, logError } = useLogging();
+
+  // Mock data for hero slides - this would come from CMS in the future
+  const heroSlides = [
+    {
+      id: "1",
+      title: "Welcome to CuteBae",
+      subtitle: "Discover amazing products for kids",
+      ctaText: "Shop Now",
+      ctaLink: "/category/boys",
+      image: "/placeholder.svg"
+    },
+    {
+      id: "2", 
+      title: "Summer Collection 2024",
+      subtitle: "Fresh styles for the new season",
+      ctaText: "Explore Collection",
+      ctaLink: "/category/girls",
+      image: "/placeholder.svg"
+    },
+    {
+      id: "3",
+      title: "Special Offers",
+      subtitle: "Up to 50% off on selected items",
+      ctaText: "Shop Deals",
+      ctaLink: "/category/boys",
+      image: "/placeholder.svg"
+    }
+  ];
 
   // Log page load and track performance
   useEffect(() => {
@@ -83,13 +111,7 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <HeroSection 
-        title="Welcome to CuteBae"
-        subtitle="Discover amazing products for kids"
-        ctaText="Shop Now"
-        ctaLink="/category/boys"
-        image="/placeholder.svg"
-      />
+      <HeroSlider slides={heroSlides} />
       <CategorySection categories={categories} isLoading={categoriesLoading} />
       <FeaturedProducts 
         products={featuredProducts || []} 
