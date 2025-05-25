@@ -87,12 +87,13 @@
     @apply bg-background text-foreground font-quicksand;
   }
   
-  /* Heading font families and colors */
-  h1, h2 {
-    @apply font-dela text-black;
+  /* Default heading styles - Quicksand for all pages */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-quicksand;
   }
   
   h1 {
+    @apply font-dela;
     color: #000000;
   }
   
@@ -101,8 +102,14 @@
   }
   
   h3, h4, h5, h6 {
-    @apply font-quicksand text-custom-purple;
+    color: #712D8F;
   }
+}
+
+/* Home page specific styles - Dela Gothic One for H2 */
+[data-page="home"] h2 {
+  @apply font-dela;
+  color: #712D8F;
 }
 
 .container-custom {

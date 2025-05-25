@@ -146,6 +146,16 @@ const AdminProductForm = () => {
     }
   }, [title, isEditMode]);
 
+  // Convert file to base64 data URL
+  const fileToDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,15 +233,15 @@ const AdminProductForm = () => {
         });
       }
 
-      // Handle color variants
-      if (!isEditMode) {
-        // For new products, delete any existing variants first (cleanup)
+      // Handle color variants and images
+      if (isEditMode) {
+        // For edit mode, delete existing variants and recreate them
+        await supabase.from('product_images').delete().eq('product_id', productId);
         await supabase.from('product_colors').delete().eq('product_id', productId);
         await supabase.from('product_sizes').delete().eq('product_id', productId);
-        await supabase.from('product_images').delete().eq('product_id', productId);
       }
 
-      // Add/Update color variants
+      // Add color variants
       for (const colorVariant of colorVariants) {
         if (colorVariant.name && colorVariant.colorCode) {
           const colorData = {
@@ -240,27 +250,13 @@ const AdminProductForm = () => {
             color_code: colorVariant.colorCode
           };
 
-          let colorId;
-          if (isEditMode && !colorVariant.id.startsWith('color-')) {
-            // Update existing color variant
-            const { error: colorError } = await supabase
-              .from('product_colors')
-              .update(colorData)
-              .eq('id', colorVariant.id);
-              
-            if (colorError) throw colorError;
-            colorId = colorVariant.id;
-          } else {
-            // Create new color variant
-            const { data: newColor, error: colorError } = await supabase
-              .from('product_colors')
-              .insert(colorData)
-              .select()
-              .single();
-              
-            if (colorError) throw colorError;
-            colorId = newColor.id;
-          }
+          const { data: newColor, error: colorError } = await supabase
+            .from('product_colors')
+            .insert(colorData)
+            .select()
+            .single();
+            
+          if (colorError) throw colorError;
 
           // Handle images for this color
           for (const imageUrl of colorVariant.images) {
@@ -269,21 +265,20 @@ const AdminProductForm = () => {
                 .from('product_images')
                 .insert({
                   product_id: productId,
-                  color_id: colorId,
+                  color_id: newColor.id,
                   image_url: imageUrl,
                   is_primary: colorVariant.images.indexOf(imageUrl) === 0
                 });
                 
               if (imageError) {
                 console.error('Error saving image:', imageError);
-                // Don't throw here, just log the error
               }
             }
           }
         }
       }
 
-      // Add/Update size variants
+      // Add size variants
       for (const sizeVariant of sizeVariants) {
         if (sizeVariant.name) {
           const sizeData = {
@@ -292,22 +287,11 @@ const AdminProductForm = () => {
             in_stock: sizeVariant.inStock
           };
 
-          if (isEditMode && !sizeVariant.id.startsWith('size-')) {
-            // Update existing size variant
-            const { error: sizeError } = await supabase
-              .from('product_sizes')
-              .update(sizeData)
-              .eq('id', sizeVariant.id);
-              
-            if (sizeError) throw sizeError;
-          } else {
-            // Create new size variant
-            const { error: sizeError } = await supabase
-              .from('product_sizes')
-              .insert(sizeData);
-              
-            if (sizeError) throw sizeError;
-          }
+          const { error: sizeError } = await supabase
+            .from('product_sizes')
+            .insert(sizeData);
+            
+          if (sizeError) throw sizeError;
         }
       }
 
@@ -353,22 +337,35 @@ const AdminProductForm = () => {
     ));
   };
 
-  // Handle image upload
-  const handleImageUpload = (colorId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle image upload - convert to data URL for persistence
+  const handleImageUpload = async (colorId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const imageUrls = Array.from(e.target.files).map(file => 
-        URL.createObjectURL(file)
-      );
+      const files = Array.from(e.target.files);
+      const dataUrls: string[] = [];
 
-      setColorVariants(colorVariants.map(variant => {
-        if (variant.id === colorId) {
-          // Limit to 6 images
-          const currentImages = [...variant.images];
-          const newImages = [...currentImages, ...imageUrls].slice(0, 6);
-          return { ...variant, images: newImages };
+      try {
+        for (const file of files) {
+          const dataUrl = await fileToDataURL(file);
+          dataUrls.push(dataUrl);
         }
-        return variant;
-      }));
+
+        setColorVariants(colorVariants.map(variant => {
+          if (variant.id === colorId) {
+            // Limit to 6 images
+            const currentImages = [...variant.images];
+            const newImages = [...currentImages, ...dataUrls].slice(0, 6);
+            return { ...variant, images: newImages };
+          }
+          return variant;
+        }));
+      } catch (error) {
+        console.error('Error converting files to data URLs:', error);
+        toast({
+          title: "Error",
+          description: "Failed to process images. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 

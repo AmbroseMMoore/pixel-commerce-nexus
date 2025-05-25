@@ -112,14 +112,16 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <HeroSlider slides={heroSlides} />
-      <CategorySection categories={categories} isLoading={categoriesLoading} />
-      <FeaturedProducts 
-        products={featuredProducts || []} 
-        isLoading={productsLoading}
-      />
-      <CustomerReviewSlider />
-      <NewsletterSection />
+      <div data-page="home">
+        <HeroSlider slides={heroSlides} />
+        <CategorySection categories={categories} isLoading={categoriesLoading} />
+        <FeaturedProducts 
+          products={featuredProducts || []} 
+          isLoading={productsLoading}
+        />
+        <CustomerReviewSlider />
+        <NewsletterSection />
+      </div>
     </MainLayout>
   );
 };
