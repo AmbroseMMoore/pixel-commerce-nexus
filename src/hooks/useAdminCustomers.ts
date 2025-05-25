@@ -34,52 +34,24 @@ export const useAdminCustomers = (): UseAdminCustomersResult => {
       
       console.log('🔄 Fetching customers with order statistics...');
       
-      // Single optimized query using SQL to get customers with their order stats
-      const { data, error: queryError } = await supabase.rpc('get_customers_with_stats');
-      
-      if (queryError) {
-        // Fallback to basic query if RPC doesn't exist
-        console.warn('RPC function not found, using fallback query');
-        return await fetchCustomersBasic();
-      }
-
-      if (!data) {
-        console.log('⚠️ No customer data returned');
-        setCustomers([]);
-        return;
-      }
-
-      console.log(`✅ Successfully fetched ${data.length} customers`);
-      setCustomers(data);
-      
-    } catch (error: any) {
-      const errorMessage = error?.message || 'Failed to load customers';
-      console.error('❌ Error fetching customers:', error);
-      setError(errorMessage);
-      
-      toast({
-        title: "Error Loading Customers",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const fetchCustomersBasic = async () => {
-    try {
-      // Fetch customers
+      // Fetch customers first
       const { data: customersData, error: customersError } = await supabase
         .from('customers')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (customersError) throw customersError;
-      if (!customersData) {
+      if (customersError) {
+        console.error('❌ Error fetching customers:', customersError);
+        throw customersError;
+      }
+
+      if (!customersData || customersData.length === 0) {
+        console.log('⚠️ No customers found');
         setCustomers([]);
         return;
       }
+
+      console.log(`✅ Fetched ${customersData.length} customers, processing order statistics...`);
 
       // Process customers with order statistics
       const customersWithStats = await Promise.all(
@@ -112,7 +84,7 @@ export const useAdminCustomers = (): UseAdminCustomersResult => {
               last_order_date: lastOrderDate
             };
           } catch (error) {
-            console.error(`Error processing customer ${customer.id}:`, error);
+            console.error(`❌ Error processing customer ${customer.id}:`, error);
             return {
               id: customer.id,
               name: customer.name || '',
@@ -128,11 +100,23 @@ export const useAdminCustomers = (): UseAdminCustomersResult => {
         })
       );
 
+      console.log(`✅ Successfully processed ${customersWithStats.length} customers with order statistics`);
       setCustomers(customersWithStats);
+      
     } catch (error: any) {
-      throw error;
+      const errorMessage = error?.message || 'Failed to load customers';
+      console.error('❌ Error in fetchCustomers:', error);
+      setError(errorMessage);
+      
+      toast({
+        title: "Error Loading Customers",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCustomers();
