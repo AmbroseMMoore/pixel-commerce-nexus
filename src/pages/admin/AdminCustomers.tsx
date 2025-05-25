@@ -2,16 +2,15 @@
 import React, { useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Eye, Mail, RefreshCw, Users, AlertCircle, TestTube, TrendingUp } from "lucide-react";
+import { Users, AlertCircle, TestTube, RefreshCw } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import AdminDataTest from "@/components/AdminDataTest";
 import { useAdminCustomers } from "@/hooks/useAdminCustomers";
-import { format } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import CustomerFilters from "@/components/admin/customers/CustomerFilters";
+import CustomerStats from "@/components/admin/customers/CustomerStats";
+import CustomerTable from "@/components/admin/customers/CustomerTable";
 
 const AdminCustomers = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -86,42 +85,11 @@ const AdminCustomers = () => {
               </div>
             </div>
 
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Customers</p>
-                      <p className="text-2xl font-bold">{totalCustomers}</p>
-                    </div>
-                    <Users className="h-8 w-8 text-blue-600" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                      <p className="text-2xl font-bold">₹{totalRevenue.toFixed(2)}</p>
-                    </div>
-                    <TrendingUp className="h-8 w-8 text-green-600" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Avg Customer Value</p>
-                      <p className="text-2xl font-bold">₹{avgOrderValue.toFixed(2)}</p>
-                    </div>
-                    <TrendingUp className="h-8 w-8 text-purple-600" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <CustomerStats
+              totalCustomers={totalCustomers}
+              totalRevenue={totalRevenue}
+              avgOrderValue={avgOrderValue}
+            />
 
             {showDebugPanel && <AdminDataTest />}
 
@@ -135,105 +103,17 @@ const AdminCustomers = () => {
               </Alert>
             )}
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle>Customer List ({filteredCustomers.length} shown)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4">
-                  <div className="relative max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <Input
-                      placeholder="Search customers by name, email, or phone..."
-                      className="pl-10"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Contact</TableHead>
-                        <TableHead>Orders</TableHead>
-                        <TableHead>Total Spent</TableHead>
-                        <TableHead>Last Order</TableHead>
-                        <TableHead>Joined</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {isLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8">
-                            <div className="flex items-center justify-center gap-2">
-                              <RefreshCw className="h-4 w-4 animate-spin" />
-                              Loading customers...
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ) : filteredCustomers.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8">
-                            {customers.length === 0 
-                              ? "No customers found. New signups will appear here automatically." 
-                              : "No customers match your search criteria."
-                            }
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredCustomers.map((customer) => (
-                          <TableRow key={customer.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">
-                                  {customer.name} {customer.last_name}
-                                </div>
-                                <div className="text-sm text-gray-500">ID: {customer.id.slice(0, 8)}...</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="text-sm">{customer.email}</div>
-                                <div className="text-sm text-gray-500">{customer.mobile_number || 'No phone'}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className="font-medium">{customer.orders_count}</span>
-                            </TableCell>
-                            <TableCell>
-                              <span className="font-medium">₹{customer.total_spent.toFixed(2)}</span>
-                            </TableCell>
-                            <TableCell>
-                              {customer.last_order_date 
-                                ? format(new Date(customer.last_order_date), 'MMM dd, yyyy')
-                                : 'Never'
-                              }
-                            </TableCell>
-                            <TableCell>
-                              {format(new Date(customer.created_at), 'MMM dd, yyyy')}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="ghost" title="Send Email">
-                                  <Mail className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="ghost" title="View Details">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <CustomerFilters
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+              />
+              
+              <CustomerTable
+                customers={filteredCustomers}
+                isLoading={isLoading}
+              />
+            </div>
           </div>
         </ErrorBoundary>
       </AdminLayout>
