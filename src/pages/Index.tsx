@@ -17,34 +17,6 @@ const Index = () => {
   const { getCacheStats } = useCacheManager();
   const { logInfo, logError } = useLogging();
 
-  // Mock data for hero slides - this would come from CMS in the future
-  const heroSlides = [
-    {
-      id: "1",
-      title: "Welcome to CuteBae",
-      subtitle: "Discover amazing products for kids",
-      ctaText: "Shop Now",
-      ctaLink: "/category/boys",
-      image: "/placeholder.svg"
-    },
-    {
-      id: "2", 
-      title: "Summer Collection 2024",
-      subtitle: "Fresh styles for the new season",
-      ctaText: "Explore Collection",
-      ctaLink: "/category/girls",
-      image: "/placeholder.svg"
-    },
-    {
-      id: "3",
-      title: "Special Offers",
-      subtitle: "Up to 50% off on selected items",
-      ctaText: "Shop Deals",
-      ctaLink: "/category/boys",
-      image: "/placeholder.svg"
-    }
-  ];
-
   // Log page load and track performance
   useEffect(() => {
     const startTime = performance.now();
@@ -113,7 +85,7 @@ const Index = () => {
   return (
     <MainLayout>
       <div data-page="home">
-        <HeroSlider slides={heroSlides} />
+        <HeroSlider />
         <CategorySection categories={categories} isLoading={categoriesLoading} />
         <FeaturedProducts 
           products={featuredProducts || []} 

@@ -181,6 +181,45 @@ export type Database = {
         }
         Relationships: []
       }
+      hero_slides: {
+        Row: {
+          created_at: string
+          cta_link: string
+          cta_text: string
+          id: string
+          image_url: string
+          is_active: boolean
+          order_index: number
+          subtitle: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cta_link: string
+          cta_text: string
+          id?: string
+          image_url: string
+          is_active?: boolean
+          order_index?: number
+          subtitle: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cta_link?: string
+          cta_text?: string
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          order_index?: number
+          subtitle?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           color_id: string
@@ -299,6 +338,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      popup_settings: {
+        Row: {
+          button_text: string
+          created_at: string
+          description: string
+          id: string
+          image_url: string | null
+          is_enabled: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          button_text: string
+          created_at?: string
+          description: string
+          id?: string
+          image_url?: string | null
+          is_enabled?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          button_text?: string
+          created_at?: string
+          description?: string
+          id?: string
+          image_url?: string | null
+          is_enabled?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       product_colors: {
         Row: {
