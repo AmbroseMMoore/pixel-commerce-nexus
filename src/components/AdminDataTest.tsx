@@ -18,7 +18,7 @@ const AdminDataTest = () => {
       // Test 1: Basic Supabase connection
       console.log('Test 1: Basic connection...');
       try {
-        const { data, error } = await supabase.from('customers').select('count(*)');
+        const { data, error } = await supabase.from('customers').select('id').limit(1);
         results.connection = { success: true, data, error: null };
         console.log('✅ Connection test passed');
       } catch (error) {
@@ -42,28 +42,28 @@ const AdminDataTest = () => {
         console.log('❌ Session test failed:', error);
       }
 
-      // Test 3: Customers data
+      // Test 3: Customers data with proper query
       console.log('Test 3: Customers data...');
       try {
-        const { data, error, count } = await supabase
+        const { data, error } = await supabase
           .from('customers')
-          .select('*', { count: 'exact' })
+          .select('id, name, email, created_at')
           .limit(5);
-        results.customers = { success: true, count, data, error: null };
+        results.customers = { success: true, count: data?.length || 0, data, error: null };
         console.log('✅ Customers test passed');
       } catch (error) {
         results.customers = { success: false, error };
         console.log('❌ Customers test failed:', error);
       }
 
-      // Test 4: Orders data
+      // Test 4: Orders data with proper query
       console.log('Test 4: Orders data...');
       try {
-        const { data, error, count } = await supabase
+        const { data, error } = await supabase
           .from('orders')
-          .select('*', { count: 'exact' })
+          .select('id, order_number, total_amount, status, created_at')
           .limit(5);
-        results.orders = { success: true, count, data, error: null };
+        results.orders = { success: true, count: data?.length || 0, data, error: null };
         console.log('✅ Orders test passed');
       } catch (error) {
         results.orders = { success: false, error };

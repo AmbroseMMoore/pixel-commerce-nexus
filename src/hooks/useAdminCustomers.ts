@@ -24,21 +24,7 @@ export const useAdminCustomers = () => {
       console.log('=== Starting customer fetch ===');
       setIsLoading(true);
       
-      // First, test basic connection
-      console.log('Testing Supabase connection...');
-      const { data: testData, error: testError } = await supabase
-        .from('customers')
-        .select('count(*)')
-        .limit(1);
-        
-      if (testError) {
-        console.error('❌ Supabase connection test failed:', testError);
-        throw testError;
-      }
-      
-      console.log('✅ Supabase connection successful, customer count test:', testData);
-
-      // Fetch customers with optimized query using joins
+      // Fetch customers with their orders data
       console.log('Fetching customers with order statistics...');
       const { data: customersData, error: customersError } = await supabase
         .from('customers')
@@ -49,7 +35,7 @@ export const useAdminCustomers = () => {
           email,
           mobile_number,
           created_at,
-          orders(
+          orders!customer_id(
             id,
             total_amount,
             created_at
