@@ -4,6 +4,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import HeroSlider from "@/components/home/HeroSlider";
 import CategorySection from "@/components/home/CategorySection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
+import CustomerReviewSlider from "@/components/home/CustomerReviewSlider";
 import NewsletterSection from "@/components/home/NewsletterSection";
 import { useCategories } from "@/hooks/useCategories";
 import { useFeaturedProducts } from "@/hooks/useProducts";
@@ -117,6 +118,7 @@ const Index = () => {
         products={featuredProducts || []} 
         isLoading={productsLoading}
       />
+      <CustomerReviewSlider />
       <NewsletterSection />
     </MainLayout>
   );

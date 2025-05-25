@@ -65,11 +65,14 @@ const HeroSlider = ({ slides }: HeroSliderProps) => {
           className="object-cover w-full h-full rounded-2xl"
         />
         <div className="absolute inset-0 bg-black opacity-40 rounded-2xl"></div>
+        
+        {/* Right side overlay */}
+        <div className="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-black/60 to-transparent rounded-2xl"></div>
       </div>
       
-      {/* Slide Content */}
-      <div className="relative h-full container-custom flex flex-col justify-center items-start">
-        <h1 className="text-3xl md:text-5xl font-holtwood text-black mb-4 max-w-lg">
+      {/* Slide Content - positioned more towards center */}
+      <div className="relative h-full container-custom flex flex-col justify-center items-start pl-8 md:pl-16">
+        <h1 className="text-3xl md:text-5xl font-dela text-black mb-4 max-w-lg">
           {currentSlideData.title}
         </h1>
         <p className="text-xl text-white mb-8 max-w-lg opacity-90 font-quicksand">

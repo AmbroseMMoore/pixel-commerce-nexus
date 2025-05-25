@@ -88,12 +88,20 @@
   }
   
   /* Heading font families and colors */
-  h1 {
-    @apply font-holtwood text-black;
+  h1, h2 {
+    @apply font-dela text-black;
   }
   
-  h2, h3, h4, h5, h6 {
-    @apply font-holtwood text-custom-purple;
+  h1 {
+    color: #000000;
+  }
+  
+  h2 {
+    color: #712D8F;
+  }
+  
+  h3, h4, h5, h6 {
+    @apply font-quicksand text-custom-purple;
   }
 }
 

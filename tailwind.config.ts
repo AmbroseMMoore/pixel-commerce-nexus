@@ -81,7 +81,7 @@ export default {
 				}
 			},
 			fontFamily: {
-				'holtwood': ['"Holtwood One SC"', 'serif'],
+				'dela': ['"Dela Gothic One"', 'sans-serif'],
 				'quicksand': ['Quicksand', 'sans-serif'],
 			},
 			borderRadius: {
