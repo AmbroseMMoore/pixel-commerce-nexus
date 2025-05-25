@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -25,6 +24,7 @@ const CategoryPage = () => {
   const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedAgeRanges, setSelectedAgeRanges] = useState<string[]>([]);
 
   // Find the current category
   const category = categories.find((c) => c.slug === slug);
@@ -53,6 +53,13 @@ const CategoryPage = () => {
     ).values()
   );
 
+  // Get all available age ranges from products
+  const availableAgeRanges = Array.from(
+    new Set(
+      categoryProducts.flatMap((product) => product.ageRanges || [])
+    ).values()
+  ).sort();
+
   // Apply filters to products
   const filteredProducts = categoryProducts.filter((product) => {
     // Filter by subcategory
@@ -75,6 +82,14 @@ const CategoryPage = () => {
     if (selectedSizes.length > 0) {
       const productSizes = product.sizeVariants.map((sv) => sv.name);
       if (!selectedSizes.some((size) => productSizes.includes(size))) {
+        return false;
+      }
+    }
+
+    // Filter by age range
+    if (selectedAgeRanges.length > 0) {
+      const productAgeRanges = product.ageRanges || [];
+      if (!selectedAgeRanges.some((ageRange) => productAgeRanges.includes(ageRange))) {
         return false;
       }
     }
@@ -104,17 +119,27 @@ const CategoryPage = () => {
     );
   };
 
+  const toggleAgeRange = (ageRange: string) => {
+    setSelectedAgeRanges((prev) =>
+      prev.includes(ageRange)
+        ? prev.filter((ar) => ar !== ageRange)
+        : [...prev, ageRange]
+    );
+  };
+
   const clearFilters = () => {
     setSelectedSubCategories([]);
     setSelectedColors([]);
     setSelectedSizes([]);
+    setSelectedAgeRanges([]);
   };
 
   // Check if any filter is active
   const hasActiveFilters =
     selectedSubCategories.length > 0 ||
     selectedColors.length > 0 ||
-    selectedSizes.length > 0;
+    selectedSizes.length > 0 ||
+    selectedAgeRanges.length > 0;
 
   // Loading state
   if (categoriesLoading || productsLoading) {
@@ -221,6 +246,32 @@ const CategoryPage = () => {
 
               <Separator className="my-4" />
 
+              {/* Age Ranges Filter */}
+              {availableAgeRanges.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-medium mb-3">Age Range</h3>
+                  <div className="space-y-2">
+                    {availableAgeRanges.map((ageRange) => (
+                      <div key={ageRange} className="flex items-center">
+                        <Checkbox
+                          id={`age-${ageRange}`}
+                          checked={selectedAgeRanges.includes(ageRange)}
+                          onCheckedChange={() => toggleAgeRange(ageRange)}
+                        />
+                        <Label
+                          htmlFor={`age-${ageRange}`}
+                          className="ml-2 text-sm cursor-pointer"
+                        >
+                          {ageRange}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Separator className="my-4" />
+
               {/* Colors Filter */}
               <div className="mb-6">
                 <h3 className="font-medium mb-3">Colors</h3>
@@ -287,7 +338,8 @@ const CategoryPage = () => {
                   <span className="bg-brand text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                     {selectedSubCategories.length +
                       selectedColors.length +
-                      selectedSizes.length}
+                      selectedSizes.length +
+                      selectedAgeRanges.length}
                   </span>
                 )}
               </Button>
@@ -328,6 +380,32 @@ const CategoryPage = () => {
                             className="ml-2 text-sm cursor-pointer"
                           >
                             {subCategory.name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Separator className="my-4" />
+
+                {/* Mobile Age Ranges */}
+                {availableAgeRanges.length > 0 && (
+                  <div className="mb-4">
+                    <h3 className="font-medium mb-2">Age Range</h3>
+                    <div className="space-y-2">
+                      {availableAgeRanges.map((ageRange) => (
+                        <div key={ageRange} className="flex items-center">
+                          <Checkbox
+                            id={`mobile-age-${ageRange}`}
+                            checked={selectedAgeRanges.includes(ageRange)}
+                            onCheckedChange={() => toggleAgeRange(ageRange)}
+                          />
+                          <Label
+                            htmlFor={`mobile-age-${ageRange}`}
+                            className="ml-2 text-sm cursor-pointer"
+                          >
+                            {ageRange}
                           </Label>
                         </div>
                       ))}

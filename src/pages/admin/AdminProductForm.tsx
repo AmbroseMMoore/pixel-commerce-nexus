@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Plus, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
@@ -38,6 +39,22 @@ interface Specification {
   value: string;
 }
 
+// Common age ranges for kids
+const AGE_RANGES = [
+  "0-6 months",
+  "6-12 months",
+  "1-2 years",
+  "2-3 years",
+  "3-4 years",
+  "4-5 years",
+  "5-6 years",
+  "6-7 years",
+  "7-8 years",
+  "8-9 years",
+  "9-10 years",
+  "10+ years"
+];
+
 const AdminProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -64,6 +81,7 @@ const AdminProductForm = () => {
   const [isFeatured, setIsFeatured] = useState(false);
   const [isTrending, setIsTrending] = useState(false);
   const [slug, setSlug] = useState("");
+  const [selectedAgeRanges, setSelectedAgeRanges] = useState<string[]>([]);
 
   // Get subcategories for selected category
   const selectedCategory = categories.find(cat => cat.id === mainCategoryId);
@@ -101,6 +119,7 @@ const AdminProductForm = () => {
       setIsFeatured(existingProduct.isFeatured || false);
       setIsTrending(existingProduct.isTrending || false);
       setSlug(existingProduct.slug);
+      setSelectedAgeRanges(existingProduct.ageRanges || []);
 
       // Set color variants from existing product
       if (existingProduct.colorVariants && existingProduct.colorVariants.length > 0) {
@@ -156,6 +175,15 @@ const AdminProductForm = () => {
     });
   };
 
+  // Toggle age range selection
+  const toggleAgeRange = (ageRange: string) => {
+    setSelectedAgeRanges(prev =>
+      prev.includes(ageRange)
+        ? prev.filter(ar => ar !== ageRange)
+        : [...prev, ageRange]
+    );
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,6 +224,7 @@ const AdminProductForm = () => {
         is_trending: isTrending,
         is_low_stock: isLowStock,
         is_out_of_stock: isOutOfStock,
+        age_ranges: selectedAgeRanges,
         specifications: specsObj,
         updated_at: new Date().toISOString()
       };
@@ -596,6 +625,28 @@ const AdminProductForm = () => {
                           <Label htmlFor="trending">Trending</Label>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Age Ranges Selection */}
+                    <div className="space-y-2">
+                      <Label>Age Ranges</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {AGE_RANGES.map((ageRange) => (
+                          <div key={ageRange} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`age-${ageRange}`}
+                              checked={selectedAgeRanges.includes(ageRange)}
+                              onCheckedChange={() => toggleAgeRange(ageRange)}
+                            />
+                            <Label htmlFor={`age-${ageRange}`} className="text-sm">
+                              {ageRange}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Select all applicable age ranges for this product
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

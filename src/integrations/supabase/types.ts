@@ -399,6 +399,7 @@ export type Database = {
       }
       products: {
         Row: {
+          age_ranges: string[] | null
           category_id: string
           created_at: string | null
           id: string
@@ -418,6 +419,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          age_ranges?: string[] | null
           category_id: string
           created_at?: string | null
           id?: string
@@ -437,6 +439,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          age_ranges?: string[] | null
           category_id?: string
           created_at?: string | null
           id?: string

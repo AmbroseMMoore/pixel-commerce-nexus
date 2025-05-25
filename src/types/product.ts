@@ -43,6 +43,7 @@ export type Product = {
   subCategoryId: string;
   colorVariants: ColorVariant[];
   sizeVariants: SizeVariant[];
+  ageRanges: string[];
   specifications?: Record<string, string> | string[];
   isLowStock: boolean;
   isOutOfStock: boolean;
