@@ -7,37 +7,37 @@ export const useCacheManager = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Much less aggressive monitoring
+    // Monitor cache size and clean up if needed
     const monitorCache = () => {
       const queryCache = queryClient.getQueryCache();
       const queries = queryCache.getAll();
       
-      // Only clean up if we have way too many cached queries
-      if (queries.length > 100) {
-        console.log('📊 Cache size getting large, gentle cleanup');
+      // If we have too many cached queries, remove the oldest ones
+      if (queries.length > 50) {
+        console.log('Cache size limit reached, cleaning up old queries');
         
-        // Only remove queries with no observers (not being used)
-        const unusedQueries = queries.filter(query => query.getObserversCount() === 0);
-        const oldQueries = unusedQueries
+        // Sort by last update time and remove oldest 20
+        const sortedQueries = queries
           .sort((a, b) => (a.state.dataUpdatedAt || 0) - (b.state.dataUpdatedAt || 0))
-          .slice(0, Math.min(20, unusedQueries.length));
+          .slice(0, 20);
           
-        oldQueries.forEach(query => {
+        sortedQueries.forEach(query => {
           queryCache.remove(query);
         });
       }
     };
 
-    // Check every 10 minutes instead of 2
-    const interval = setInterval(monitorCache, 10 * 60 * 1000);
+    // Check cache every 2 minutes
+    const interval = setInterval(monitorCache, 2 * 60 * 1000);
 
+    // Cleanup on unmount
     return () => {
       clearInterval(interval);
     };
   }, [queryClient]);
 
+  // Provide manual cache control functions
   const clearCache = () => {
-    console.log('🧹 Manual cache clear');
     queryClient.clear();
     supabaseManager.forceCleanup();
   };
@@ -54,7 +54,6 @@ export const useCacheManager = () => {
     
     return {
       totalQueries: queries.length,
-      activeQueries: queries.filter(q => q.getObserversCount() > 0).length,
       staleQueries: queries.filter(q => q.isStale()).length,
       fetchingQueries: queries.filter(q => q.state.status === 'pending').length,
       supabaseStats: supabaseManager.getStats(),

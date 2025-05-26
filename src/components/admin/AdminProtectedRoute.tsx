@@ -1,8 +1,7 @@
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { validateSession } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -12,55 +11,31 @@ interface AdminProtectedRouteProps {
 
 const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({ children }) => {
   const { isAdmin, loading, user } = useAuth();
-  const [sessionValidated, setSessionValidated] = useState(false);
 
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const session = await validateSession();
-        setSessionValidated(!!session);
-        
-        if (!session) {
-          console.log('🚫 No valid session found in AdminProtectedRoute');
-        }
-      } catch (error) {
-        console.error('❌ Session validation failed:', error);
-        setSessionValidated(false);
-      }
-    };
+  console.log('=== AdminProtectedRoute Check ===');
+  console.log('User:', user?.email);
+  console.log('Is Admin:', isAdmin);
+  console.log('Loading:', loading);
 
-    if (!loading) {
-      checkSession();
-    }
-  }, [loading]);
-
-  console.log('🔐 AdminProtectedRoute Check:', {
-    userEmail: user?.email,
-    isAdmin,
-    loading,
-    sessionValidated
-  });
-
-  if (loading || !sessionValidated) {
+  if (loading) {
+    console.log('Auth still loading...');
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-gray-600">Verifying admin access...</p>
-        </div>
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin" /> 
+        <span className="ml-2">Verifying admin access...</span>
       </div>
     );
   }
 
-  if (!user || !sessionValidated) {
-    console.log('🚫 No user or invalid session, redirecting to login');
+  if (!user) {
+    console.log('No user found, redirecting to login');
     return <Navigate to="/admin/login" replace />;
   }
 
   if (!isAdmin) {
-    console.log('🚫 User is not admin, showing access denied');
+    console.log('User is not admin, showing access denied');
     toast({
-      title: "Access Denied",
+      title: "Access denied",
       description: "You don't have admin privileges to access this page.",
       variant: "destructive"
     });
