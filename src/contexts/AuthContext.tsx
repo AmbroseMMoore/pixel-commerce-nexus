@@ -21,7 +21,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const loadUserProfile = useCallback(async (userId: string) => {
+  const loadUserProfile = useCallback(async (userId: string): Promise<boolean> => {
     try {
       console.log('Loading profile for user:', userId);
       
@@ -36,9 +36,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // If profile doesn't exist, create it
         if (error.code === 'PGRST116') {
           console.log('Profile not found, this should be created by the trigger');
-          return null;
+          return false;
         }
-        return null;
+        return false;
       }
 
       if (profile) {
@@ -53,12 +53,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         setUser(userData);
         setIsAdmin(profile.role === 'admin');
         console.log('User set with admin status:', profile.role === 'admin');
-        return userData;
+        return true;
       }
     } catch (error) {
       console.error("Error loading user profile:", error);
     }
-    return null;
+    return false;
   }, []);
 
   useEffect(() => {
@@ -82,10 +82,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log('Initial session:', !!session, session?.user?.email);
 
         if (session?.user && mounted) {
-          await loadUserProfile(session.user.id);
+          console.log('Initial session found, loading profile...');
+          const profileLoaded = await loadUserProfile(session.user.id);
+          console.log('Initial profile loading result:', profileLoaded);
         }
         
         if (mounted) {
+          console.log('Setting initial loading to false');
           setLoading(false);
         }
       } catch (error) {
@@ -107,15 +110,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (!mounted) return;
 
         if (event === 'SIGNED_IN' && session?.user) {
-          console.log('User signed in, loading profile...');
-          await loadUserProfile(session.user.id);
+          console.log('User signed in, setting loading to true and loading profile...');
+          setLoading(true);
+          
+          const profileLoaded = await loadUserProfile(session.user.id);
+          console.log('Profile loading result after sign in:', profileLoaded);
+          
+          if (mounted) {
+            console.log('Setting loading to false after profile load attempt');
+            setLoading(false);
+          }
         } else if (event === 'SIGNED_OUT') {
           console.log('User signed out, clearing state...');
           setUser(null);
           setIsAdmin(false);
+          if (mounted) {
+            setLoading(false);
+          }
         }
-        
-        setLoading(false);
       }
     );
 
