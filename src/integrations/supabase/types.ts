@@ -65,6 +65,27 @@ export type Database = {
           },
         ]
       }
+      admin_settings: {
+        Row: {
+          created_at: string
+          id: string
+          keep_logs: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          keep_logs?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          keep_logs?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           color_id: string
@@ -178,6 +199,42 @@ export type Database = {
           mobile_number?: string
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      frontend_logs: {
+        Row: {
+          created_at: string
+          header_data: Json | null
+          id: string
+          request_type: string
+          requested_datetime: string
+          requested_url: string
+          response_status: string
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          header_data?: Json | null
+          id?: string
+          request_type: string
+          requested_datetime?: string
+          requested_url: string
+          response_status?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          header_data?: Json | null
+          id?: string
+          request_type?: string
+          requested_datetime?: string
+          requested_url?: string
+          response_status?: string
+          session_id?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

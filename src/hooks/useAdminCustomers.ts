@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface AdminCustomer {
   id: string;
@@ -16,10 +17,17 @@ export interface AdminCustomer {
 }
 
 export const useAdminCustomers = () => {
+  const { user, loading: authLoading } = useAuth();
   const [customers, setCustomers] = useState<AdminCustomer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchCustomers = async () => {
+    // Don't fetch if auth is still loading or user is not available
+    if (authLoading || !user) {
+      console.log('Auth still loading or no user, skipping fetch');
+      return;
+    }
+
     try {
       console.log('=== Starting customer fetch ===');
       setIsLoading(true);
@@ -113,12 +121,21 @@ export const useAdminCustomers = () => {
 
   useEffect(() => {
     console.log('=== useAdminCustomers hook mounted ===');
-    fetchCustomers();
-  }, []);
+    console.log('Auth loading:', authLoading, 'User:', !!user);
+    
+    // Only fetch when auth is done loading and user exists
+    if (!authLoading && user) {
+      fetchCustomers();
+    } else if (!authLoading && !user) {
+      // Auth finished loading but no user - stop loading
+      setIsLoading(false);
+      setCustomers([]);
+    }
+  }, [authLoading, user]);
 
   return {
     customers,
-    isLoading,
+    isLoading: authLoading || isLoading,
     refetch: fetchCustomers
   };
 };

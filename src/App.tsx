@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,6 +22,7 @@ import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCMS from "./pages/admin/AdminCMS";
 import AdminProductForm from "./pages/admin/AdminProductForm";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 // Common Pages
 import NotFound from "./pages/NotFound";
@@ -101,6 +101,11 @@ const App = () => (
             <Route path="/admin/cms" element={
               <AdminProtectedRoute>
                 <AdminCMS />
+              </AdminProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+              <AdminProtectedRoute>
+                <AdminSettings />
               </AdminProtectedRoute>
             } />
             
