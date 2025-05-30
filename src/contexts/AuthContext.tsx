@@ -50,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           isAdmin: profile.role === 'admin'
         };
         
+        console.log('Setting user state with:', userData);
         setUser(userData);
         setIsAdmin(profile.role === 'admin');
         console.log('User set with admin status:', profile.role === 'admin');
@@ -57,6 +58,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (error) {
       console.error("Error loading user profile:", error);
+      // Clear user state on error
+      setUser(null);
+      setIsAdmin(false);
     }
     return false;
   }, []);
