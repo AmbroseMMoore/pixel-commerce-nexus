@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         console.log('=== Initializing Auth ===');
         
-        // Get initial session
+        // First, get the current session to check if user is already authenticated
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -79,12 +79,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           return;
         }
 
-        console.log('Initial session:', !!session, session?.user?.email);
-
-        if (session?.user && mounted) {
-          console.log('Initial session found, loading profile...');
-          const profileLoaded = await loadUserProfile(session.user.id);
-          console.log('Initial profile loading result:', profileLoaded);
+        console.log('Current session status:', !!session);
+        
+        if (session?.user) {
+          console.log('Session found for user:', session.user.email);
+          console.log('Session user credentials:', {
+            id: session.user.id,
+            email: session.user.email,
+            created_at: session.user.created_at,
+            last_sign_in_at: session.user.last_sign_in_at
+          });
+          
+          if (mounted) {
+            console.log('Proceeding with profile verification for authenticated user...');
+            const profileLoaded = await loadUserProfile(session.user.id);
+            console.log('Profile verification result:', profileLoaded);
+          }
+        } else {
+          console.log('No active session found');
         }
         
         if (mounted) {
@@ -105,19 +117,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("=== Auth state changed ===", event, session?.user?.email);
+        console.log("=== Auth state changed ===", event);
         
         if (!mounted) return;
 
         if (event === 'SIGNED_IN' && session?.user) {
-          console.log('User signed in, setting loading to true and loading profile...');
+          console.log('User signed in:', session.user.email);
+          console.log('New session user credentials:', {
+            id: session.user.id,
+            email: session.user.email,
+            created_at: session.user.created_at,
+            last_sign_in_at: session.user.last_sign_in_at
+          });
+          
           setLoading(true);
+          console.log('Proceeding with profile verification...');
           
           const profileLoaded = await loadUserProfile(session.user.id);
-          console.log('Profile loading result after sign in:', profileLoaded);
+          console.log('Profile verification result after sign in:', profileLoaded);
           
           if (mounted) {
-            console.log('Setting loading to false after profile load attempt');
+            console.log('Setting loading to false after profile verification');
             setLoading(false);
           }
         } else if (event === 'SIGNED_OUT') {
@@ -127,6 +147,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           if (mounted) {
             setLoading(false);
           }
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          console.log('Token refreshed for user:', session.user.email);
+          console.log('Refreshed session user credentials:', {
+            id: session.user.id,
+            email: session.user.email,
+            last_sign_in_at: session.user.last_sign_in_at
+          });
+          // No need to reload profile on token refresh, just log the credentials
         }
       }
     );
@@ -138,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [loadUserProfile]);
 
   const login = useCallback((userData: User) => {
-    console.log('Manual login:', userData);
+    console.log('Manual login with user credentials:', userData);
     setUser(userData);
     setIsAdmin(userData.isAdmin || false);
     setLoading(false);
@@ -146,7 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const logout = useCallback(async () => {
     try {
-      console.log('Logging out...');
+      console.log('Logging out current user...');
       setLoading(true);
       
       // Clear local state first
