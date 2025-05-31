@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -41,33 +40,22 @@ export const useAdminOrders = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchOrders = async () => {
-    // Don't fetch if auth is still loading or user is not available
     if (authLoading || !user) {
-      console.log('Auth still loading or no user, skipping orders fetch');
+      console.log('⏳ Auth still loading or no user, skipping orders fetch');
       return;
     }
 
     try {
-      console.log('=== Starting orders fetch ===');
+      console.log('🚀 Starting orders fetch for user:', user.id);
       setIsLoading(true);
-      
-      // // Test basic connection
-      // console.log('Testing orders table connection...');
-      // const { data: testData, error: testError } = await supabase
-      //   .from('orders')
-      //   .select('count(*)')
-      //   .limit(1);
-        
-      // if (testError) {
-      //   console.error('❌ Orders connection test failed:', testError);
-      //   throw testError;
-      // }
-      
-      // console.log('✅ Orders connection successful, count test:', testData);
 
-      // Fetch orders with optimized query using joins
-      console.log('Fetching orders with related data...');
-      const { data: ordersData, error: ordersError } = await supabase
+      // --- STEP 1: Confirm session works ---
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('🔐 Session check:', sessionData);
+
+      // --- STEP 2: Fetch orders with joins ---
+      console.log('📦 Fetching orders with related joins...');
+      const { data: ordersData, error: ordersError, status } = await supabase
         .from('orders')
         .select(`
           id,
@@ -79,37 +67,40 @@ export const useAdminOrders = () => {
           payment_method,
           created_at,
           updated_at,
-          customers(
+          customers (
             name,
             email
           ),
-          order_items(
+          order_items (
             id,
             quantity,
             unit_price,
             total_price,
-            products(title),
-            product_colors(name),
-            product_sizes(name)
+            products (title),
+            product_colors (name),
+            product_sizes (name)
           )
         `)
         .order('created_at', { ascending: false })
         .limit(50);
 
+      console.log('📊 Raw Supabase Response Status:', status);
+      console.log('📊 Raw Supabase Data:', ordersData);
+      console.log('📊 Supabase Error:', ordersError);
+
       if (ordersError) {
-        console.error('❌ Error fetching orders:', ordersError);
+        console.error('❌ Supabase error fetching orders:', ordersError);
         throw ordersError;
       }
 
-      if (!ordersData) {
-        console.log('⚠️ No orders data returned');
+      if (!ordersData || ordersData.length === 0) {
+        console.warn('⚠️ No orders returned from query.');
         setOrders([]);
         return;
       }
 
-      console.log('✅ Raw orders data:', ordersData);
-
-      // Process orders with proper structure
+      // --- STEP 3: Map and transform data ---
+      console.log('🔧 Processing fetched order data...');
       const processedOrders = ordersData.map((order: any) => ({
         id: order.id,
         order_number: order.order_number || `ORD-${order.id.slice(0, 8)}`,
@@ -120,30 +111,38 @@ export const useAdminOrders = () => {
         payment_method: order.payment_method || 'unknown',
         created_at: order.created_at,
         updated_at: order.updated_at,
-        customer: order.customers ? {
-          name: order.customers.name || 'Unknown Customer',
-          email: order.customers.email || 'No email'
-        } : { name: 'Unknown Customer', email: 'No email' },
+        customer: order.customers
+          ? {
+              name: order.customers.name || 'Unknown',
+              email: order.customers.email || 'No email',
+            }
+          : { name: 'Unknown', email: 'No email' },
         order_items: (order.order_items || []).map((item: any) => ({
           id: item.id,
           quantity: item.quantity || 0,
           unit_price: Number(item.unit_price || 0),
           total_price: Number(item.total_price || 0),
-          product: item.products ? { title: item.products.title } : { title: 'Unknown Product' },
-          color: item.product_colors ? { name: item.product_colors.name } : { name: 'N/A' },
-          size: item.product_sizes ? { name: item.product_sizes.name } : { name: 'N/A' }
-        }))
+          product: item.products
+            ? { title: item.products.title }
+            : { title: 'Unknown Product' },
+          color: item.product_colors
+            ? { name: item.product_colors.name }
+            : { name: 'N/A' },
+          size: item.product_sizes
+            ? { name: item.product_sizes.name }
+            : { name: 'N/A' },
+        })),
       }));
 
-      console.log('✅ Processed orders:', processedOrders);
+      console.log('✅ Orders processed successfully:', processedOrders);
       setOrders(processedOrders);
-      
+
     } catch (error: any) {
-      console.error('❌ Error in fetchOrders:', error);
+      console.error('❌ Exception in fetchOrders:', error);
       toast({
-        title: "Error",
-        description: `Failed to load orders: ${error.message}`,
-        variant: "destructive"
+        title: "Fetch Error",
+        description: error.message || 'Failed to load orders.',
+        variant: "destructive",
       });
       setOrders([]);
     } finally {
@@ -153,7 +152,7 @@ export const useAdminOrders = () => {
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
-      console.log('Updating order status:', orderId, status);
+      console.log('📝 Updating order status to', status, 'for ID:', orderId);
       const { error } = await supabase
         .from('orders')
         .update({ status, updated_at: new Date().toISOString() })
@@ -168,26 +167,24 @@ export const useAdminOrders = () => {
 
       fetchOrders();
     } catch (error: any) {
-      console.error('Error updating order status:', error);
+      console.error('❌ Error updating order status:', error);
       toast({
-        title: "Error",
-        description: "Failed to update order status.",
-        variant: "destructive"
+        title: "Update Error",
+        description: error.message || "Failed to update order.",
+        variant: "destructive",
       });
     }
   };
 
   useEffect(() => {
-    console.log('=== useAdminOrders hook mounted ===');
-    console.log('Auth loading:', authLoading, 'User:', !!user);
+    console.log('📦 useAdminOrders hook mounted');
+    console.log('🔄 Auth loading:', authLoading, 'User:', !!user);
     
-    // Only fetch when auth is done loading and user exists
     if (!authLoading && user) {
       fetchOrders();
     } else if (!authLoading && !user) {
-      // Auth finished loading but no user - stop loading
-      setIsLoading(false);
       setOrders([]);
+      setIsLoading(false);
     }
   }, [authLoading, user]);
 
@@ -195,6 +192,6 @@ export const useAdminOrders = () => {
     orders,
     isLoading: authLoading || isLoading,
     updateOrderStatus,
-    refetch: fetchOrders
+    refetch: fetchOrders,
   };
 };
