@@ -52,18 +52,18 @@ export const useAdminOrders = () => {
       setIsLoading(true);
       
       // Test basic connection first
-      console.log('Testing orders table connection...');
-      const { data: testData, error: testError } = await supabase
-        .from('orders')
-        .select('count(*)')
-        .limit(1);
+      // console.log('Testing orders table connection...');
+      // const { data: testData, error: testError } = await supabase
+      //   .from('orders')
+      //   .select('count(*)')
+      //   .limit(1);
         
-      if (testError) {
-        console.error('❌ Orders connection test failed:', testError);
-        throw testError;
-      }
+      // if (testError) {
+      //   console.error('❌ Orders connection test failed:', testError);
+      //   throw testError;
+      // }
       
-      console.log('✅ Orders connection successful, count test:', testData);
+      // console.log('✅ Orders connection successful, count test:', testData);
 
       // Fetch orders with proper joins based on actual schema
       console.log('Fetching orders with related data...');
