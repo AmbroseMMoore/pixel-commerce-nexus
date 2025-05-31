@@ -51,21 +51,21 @@ export const useAdminOrders = () => {
       console.log('=== Starting orders fetch ===');
       setIsLoading(true);
       
-      // // Test basic connection
-      // console.log('Testing orders table connection...');
-      // const { data: testData, error: testError } = await supabase
-      //   .from('orders')
-      //   .select('count(*)')
-      //   .limit(1);
+      // Test basic connection first
+      console.log('Testing orders table connection...');
+      const { data: testData, error: testError } = await supabase
+        .from('orders')
+        .select('count(*)')
+        .limit(1);
         
-      // if (testError) {
-      //   console.error('❌ Orders connection test failed:', testError);
-      //   throw testError;
-      // }
+      if (testError) {
+        console.error('❌ Orders connection test failed:', testError);
+        throw testError;
+      }
       
-      // console.log('✅ Orders connection successful, count test:', testData);
+      console.log('✅ Orders connection successful, count test:', testData);
 
-      // Fetch orders with optimized query using joins
+      // Fetch orders with proper joins based on actual schema
       console.log('Fetching orders with related data...');
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -79,7 +79,7 @@ export const useAdminOrders = () => {
           payment_method,
           created_at,
           updated_at,
-          customers(
+          customers!customer_id(
             name,
             email
           ),
@@ -88,9 +88,9 @@ export const useAdminOrders = () => {
             quantity,
             unit_price,
             total_price,
-            products(title),
-            product_colors(name),
-            product_sizes(name)
+            products!product_id(title),
+            product_colors!color_id(name),
+            product_sizes!size_id(name)
           )
         `)
         .order('created_at', { ascending: false })
@@ -183,9 +183,11 @@ export const useAdminOrders = () => {
     
     // Only fetch when auth is done loading and user exists
     if (!authLoading && user) {
+      console.log('Auth loaded, starting orders fetch...');
       fetchOrders();
     } else if (!authLoading && !user) {
       // Auth finished loading but no user - stop loading
+      console.log('No user after auth loading, stopping...');
       setIsLoading(false);
       setOrders([]);
     }
