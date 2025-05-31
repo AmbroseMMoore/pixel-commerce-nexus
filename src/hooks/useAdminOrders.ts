@@ -84,9 +84,9 @@ export const useAdminOrders = () => {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      console.log('📊 Raw Supabase Response Status:', status);
-      console.log('📊 Raw Supabase Data:', ordersData);
-      console.log('📊 Supabase Error:', ordersError);
+      // console.log('📊 Raw Supabase Response Status:', status);
+      // console.log('📊 Raw Supabase Data:', ordersData);
+      // console.log('📊 Supabase Error:', ordersError);
 
       if (ordersError) {
         console.error('❌ Supabase error fetching orders:', ordersError);
