@@ -1,5 +1,10 @@
-
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types/user";
 import { toast } from "@/hooks/use-toast";
@@ -14,151 +19,114 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadUserProfile = useCallback(async (userId: string): Promise<boolean> => {
+    console.log("[Auth] 🔍 Loading profile for user:", userId);
     try {
-      console.log('Loading profile for user:', userId);
-      
       const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
         .single();
 
       if (error) {
-        console.error("Error loading profile:", error);
-        // If profile doesn't exist, create it
-        if (error.code === 'PGRST116') {
-          console.log('Profile not found, this should be created by the trigger');
+        console.warn("[Auth] ❌ Profile loading error:", error.message, "Code:", error.code);
+        // Allow app to continue if this is just a missing profile row
+        if (error.code === "PGRST116" || error.message.includes("No rows")) {
+          console.warn("[Auth] ⚠️ Profile not found (trigger will handle creation if applicable)");
           return false;
         }
         return false;
       }
 
       if (profile) {
-        console.log('Profile loaded successfully:', profile);
         const userData: User = {
           id: profile.id,
           name: profile.name || profile.email,
           email: profile.email,
-          isAdmin: profile.role === 'admin'
+          isAdmin: profile.role === "admin",
         };
-        
-        console.log('Setting user state with:', userData);
+
+        console.log("[Auth] ✅ Profile loaded:", userData);
+
         setUser(userData);
-        setIsAdmin(profile.role === 'admin');
-        console.log('User set with admin status:', profile.role === 'admin');
+        setIsAdmin(userData.isAdmin);
         return true;
       }
-    } catch (error) {
-      console.error("Error loading user profile:", error);
-      // Clear user state on error
+    } catch (err: any) {
+      console.error("[Auth] 💥 Unexpected error loading profile:", err.message || err);
       setUser(null);
       setIsAdmin(false);
     }
+
     return false;
   }, []);
 
   useEffect(() => {
     let mounted = true;
 
-    const initializeAuth = async () => {
-      try {
-        console.log('=== Initializing Auth ===');
-        
-        // First, get the current session to check if user is already authenticated
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Session error:", error);
-          if (mounted) {
-            setLoading(false);
-          }
-          return;
-        }
+    const handleSession = async (sessionUser: any) => {
+      if (!mounted) return;
+      const userId = sessionUser.id;
 
-        console.log('Current session status:', !!session);
-        
-        if (session?.user) {
-          console.log('Session found for user:', session.user.email);
-          console.log('Session user credentials:', {
-            id: session.user.id,
-            email: session.user.email,
-            created_at: session.user.created_at,
-            last_sign_in_at: session.user.last_sign_in_at
-          });
-          
-          if (mounted) {
-            console.log('Proceeding with profile verification for authenticated user...');
-            const profileLoaded = await loadUserProfile(session.user.id);
-            console.log('Profile verification result:', profileLoaded);
-          }
-        } else {
-          console.log('No active session found');
-        }
-        
-        if (mounted) {
-          console.log('Setting initial loading to false');
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Error initializing auth:", error);
-        if (mounted) {
-          setLoading(false);
-        }
+      setLoading(true);
+      const profileLoaded = await loadUserProfile(userId);
+
+      if (!profileLoaded) {
+        toast({
+          title: "⚠️ Profile not found",
+          description: "Your account was authenticated but the profile is missing.",
+        });
+      }
+
+      if (mounted) setLoading(false);
+    };
+
+    const init = async () => {
+      console.log("[Auth] 🔄 Initializing Auth...");
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error("[Auth] ❌ Session fetch error:", error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (session?.user) {
+        console.log("[Auth] 🔐 Existing session found for:", session.user.email);
+        handleSession(session.user);
+      } else {
+        console.log("[Auth] 🚫 No session found.");
+        setLoading(false);
       }
     };
 
-    // Initialize auth
-    initializeAuth();
+    init();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("=== Auth state changed ===", event);
-        
+        console.log(`[Auth] 🔁 Auth state changed: ${event}`);
+
         if (!mounted) return;
 
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log('User signed in:', session.user.email);
-          console.log('New session user credentials:', {
-            id: session.user.id,
-            email: session.user.email,
-            created_at: session.user.created_at,
-            last_sign_in_at: session.user.last_sign_in_at
-          });
-          
-          setLoading(true);
-          console.log('Proceeding with profile verification...');
-          
-          const profileLoaded = await loadUserProfile(session.user.id);
-          console.log('Profile verification result after sign in:', profileLoaded);
-          
-          if (mounted) {
-            console.log('Setting loading to false after profile verification');
-            setLoading(false);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          console.log('User signed out, clearing state...');
+        if (event === "SIGNED_IN" && session?.user) {
+          console.log("[Auth] ✅ Signed in:", session.user.email);
+          handleSession(session.user);
+        }
+
+        if (event === "SIGNED_OUT") {
+          console.log("[Auth] 🚪 Signed out");
           setUser(null);
           setIsAdmin(false);
-          if (mounted) {
-            setLoading(false);
-          }
-        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          console.log('Token refreshed for user:', session.user.email);
-          console.log('Refreshed session user credentials:', {
-            id: session.user.id,
-            email: session.user.email,
-            last_sign_in_at: session.user.last_sign_in_at
-          });
-          // No need to reload profile on token refresh, just log the credentials
+          setLoading(false);
+        }
+
+        if (event === "TOKEN_REFRESHED") {
+          console.log("[Auth] ♻️ Token refreshed");
         }
       }
     );
@@ -170,30 +138,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [loadUserProfile]);
 
   const login = useCallback((userData: User) => {
-    console.log('Manual login with user credentials:', userData);
+    console.log("[Auth] 🔑 Manual login triggered:", userData);
     setUser(userData);
     setIsAdmin(userData.isAdmin || false);
     setLoading(false);
   }, []);
 
   const logout = useCallback(async () => {
+    console.log("[Auth] 🔒 Logging out...");
     try {
-      console.log('Logging out current user...');
-      setLoading(true);
-      
-      // Clear local state first
       setUser(null);
       setIsAdmin(false);
-      
-      // Then sign out from Supabase
+      setLoading(true);
+
       const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error("Logout error:", error);
-      } else {
-        console.log('Logout successful');
-      }
-    } catch (error) {
-      console.error("Error during logout:", error);
+      if (error) throw error;
+
+      console.log("[Auth] ✅ Logout successful");
+    } catch (err: any) {
+      console.error("[Auth] ❌ Logout error:", err.message || err);
     } finally {
       setLoading(false);
     }
