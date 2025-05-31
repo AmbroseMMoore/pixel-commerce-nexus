@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,27 +37,12 @@ export const useCart = () => {
   const queryClient = useQueryClient();
   const { logInfo, logError } = useLogging();
 
-  // ✅ Helper: ensure customer row exists for foreign key
-  const ensureCustomerExists = async (userId: string) => {
-    const { error } = await supabase
-      .from('customers')
-      .upsert({ id: userId }, { onConflict: 'id' });
-
-    if (error) {
-      console.error('[Cart] Failed to ensure customer exists:', error);
-      throw error;
-    }
-  };
-
   // Fetch cart items
   const { data: cartItems = [], isLoading, error } = useQuery({
     queryKey: ['cart', user?.id],
     queryFn: async () => {
-      if (!user?.id) {
-        console.log('[Cart] No user ID found');
-        return [];
-      }
-
+      if (!user?.id) return [];
+      
       const { data, error } = await supabase
         .from('cart_items')
         .select(`
@@ -71,11 +57,9 @@ export const useCart = () => {
         `)
         .eq('customer_id', user.id);
 
-      if (error) {
-        console.error('[Cart] Error fetching cart items:', error);
-        throw error;
-      }
+      if (error) throw error;
 
+      // Fetch product images separately for each cart item
       const cartItemsWithImages = await Promise.all(
         (data || []).map(async (item) => {
           const { data: images, error: imagesError } = await supabase
@@ -98,7 +82,7 @@ export const useCart = () => {
           }
 
           const primaryImage = images?.find(img => img.is_primary) || images?.[0];
-
+          
           return {
             ...item,
             product: {
@@ -123,13 +107,9 @@ export const useCart = () => {
       sizeId: string;
       quantity?: number;
     }) => {
-      if (!user?.id) {
-        throw new Error('User not authenticated');
-      }
+      if (!user?.id) throw new Error('User not authenticated');
 
-      // ✅ Ensure customer exists in the customers table
-      await ensureCustomerExists(user.id);
-
+      // Check if item already exists in cart
       const { data: existing } = await supabase
         .from('cart_items')
         .select('id, quantity')
@@ -140,15 +120,15 @@ export const useCart = () => {
         .single();
 
       if (existing) {
+        // Update quantity if item exists
         const { error } = await supabase
           .from('cart_items')
           .update({ quantity: existing.quantity + quantity })
           .eq('id', existing.id);
-
-        if (error) {
-          throw error;
-        }
+        
+        if (error) throw error;
       } else {
+        // Insert new item
         const { error } = await supabase
           .from('cart_items')
           .insert({
@@ -158,10 +138,8 @@ export const useCart = () => {
             size_id: sizeId,
             quantity
           });
-
-        if (error) {
-          throw error;
-        }
+        
+        if (error) throw error;
       }
     },
     onSuccess: () => {
@@ -182,16 +160,15 @@ export const useCart = () => {
     }
   });
 
+  // Update cart item mutation
   const updateCartMutation = useMutation({
     mutationFn: async ({ itemId, quantity }: { itemId: string; quantity: number }) => {
       const { error } = await supabase
         .from('cart_items')
         .update({ quantity })
         .eq('id', itemId);
-
-      if (error) {
-        throw error;
-      }
+      
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
@@ -207,16 +184,15 @@ export const useCart = () => {
     }
   });
 
+  // Remove from cart mutation
   const removeFromCartMutation = useMutation({
     mutationFn: async (itemId: string) => {
       const { error } = await supabase
         .from('cart_items')
         .delete()
         .eq('id', itemId);
-
-      if (error) {
-        throw error;
-      }
+      
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
@@ -236,18 +212,17 @@ export const useCart = () => {
     }
   });
 
+  // Clear cart mutation
   const clearCartMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('User not authenticated');
-
+      
       const { error } = await supabase
         .from('cart_items')
         .delete()
         .eq('customer_id', user.id);
-
-      if (error) {
-        throw error;
-      }
+      
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
@@ -255,6 +230,7 @@ export const useCart = () => {
     }
   });
 
+  // Calculate totals
   const cartTotal = cartItems.reduce((total, item) => {
     const price = item.product.price_discounted || item.product.price_original;
     return total + (price * item.quantity);
