@@ -151,6 +151,7 @@ export const useCart = () => {
       });
     },
     onError: (error) => {
+      console.log("Cart items add error", error);
       logError('cart_add_failed', { error: error.message, userId: user?.id });
       toast({
         title: "Error",
