@@ -87,7 +87,7 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
   const currentSlideData = slides[currentSlide];
 
   return (
-    <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-gray-900 rounded-2xl overflow-hidden group">
+    <div className="relative w- [95vw] h-[400px] md:h-[500px] lg:h-[600px] bg-gray-900 rounded-2xl overflow-hidden group">
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700 ease-in-out"
@@ -95,7 +95,7 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
           backgroundImage: `url(${currentSlideData.image_url})`,
         }}
       >
-        <div className="absolute inset-0 bg-black/40">
+        {/* <div className="absolute inset-0 bg-black/40"> */}
         </div>
       </div>
 
