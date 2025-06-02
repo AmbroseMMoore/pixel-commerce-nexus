@@ -342,15 +342,69 @@ export type Database = {
           },
         ]
       }
+      order_status_history: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          delivery_date: string | null
+          delivery_partner_name: string | null
+          id: string
+          notes: string | null
+          order_id: string
+          shipment_id: string | null
+          status: string
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          delivery_date?: string | null
+          delivery_partner_name?: string | null
+          id?: string
+          notes?: string | null
+          order_id: string
+          shipment_id?: string | null
+          status: string
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          delivery_date?: string | null
+          delivery_partner_name?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string
+          shipment_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string
           customer_id: string
           delivery_address_id: string
+          delivery_date: string | null
+          delivery_partner_name: string | null
           id: string
           order_number: string
           payment_method: string | null
           payment_status: string | null
+          shipment_id: string | null
           status: string
           total_amount: number
           updated_at: string
@@ -359,10 +413,13 @@ export type Database = {
           created_at?: string
           customer_id: string
           delivery_address_id: string
+          delivery_date?: string | null
+          delivery_partner_name?: string | null
           id?: string
           order_number: string
           payment_method?: string | null
           payment_status?: string | null
+          shipment_id?: string | null
           status?: string
           total_amount: number
           updated_at?: string
@@ -371,10 +428,13 @@ export type Database = {
           created_at?: string
           customer_id?: string
           delivery_address_id?: string
+          delivery_date?: string | null
+          delivery_partner_name?: string | null
           id?: string
           order_number?: string
           payment_method?: string | null
           payment_status?: string | null
+          shipment_id?: string | null
           status?: string
           total_amount?: number
           updated_at?: string
@@ -401,9 +461,12 @@ export type Database = {
           button_text: string
           created_at: string
           description: string
+          display_delay: number | null
+          display_frequency: string | null
           id: string
           image_url: string | null
           is_enabled: boolean
+          popup_type: string | null
           title: string
           updated_at: string
         }
@@ -411,9 +474,12 @@ export type Database = {
           button_text: string
           created_at?: string
           description: string
+          display_delay?: number | null
+          display_frequency?: string | null
           id?: string
           image_url?: string | null
           is_enabled?: boolean
+          popup_type?: string | null
           title: string
           updated_at?: string
         }
@@ -421,9 +487,12 @@ export type Database = {
           button_text?: string
           created_at?: string
           description?: string
+          display_delay?: number | null
+          display_frequency?: string | null
           id?: string
           image_url?: string | null
           is_enabled?: boolean
+          popup_type?: string | null
           title?: string
           updated_at?: string
         }
@@ -734,6 +803,17 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      update_order_status: {
+        Args: {
+          order_id_param: string
+          new_status: string
+          notes_param?: string
+          delivery_partner_param?: string
+          delivery_date_param?: string
+          shipment_id_param?: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

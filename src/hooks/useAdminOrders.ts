@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -11,6 +12,9 @@ export interface AdminOrder {
   status: string;
   payment_status: string;
   payment_method: string;
+  delivery_partner_name?: string;
+  delivery_date?: string;
+  shipment_id?: string;
   created_at: string;
   updated_at: string;
   customer: {
@@ -65,6 +69,9 @@ export const useAdminOrders = () => {
           status,
           payment_status,
           payment_method,
+          delivery_partner_name,
+          delivery_date,
+          shipment_id,
           created_at,
           updated_at,
           customers (
@@ -84,10 +91,6 @@ export const useAdminOrders = () => {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      // console.log('📊 Raw Supabase Response Status:', status);
-      // console.log('📊 Raw Supabase Data:', ordersData);
-      // console.log('📊 Supabase Error:', ordersError);
-
       if (ordersError) {
         console.error('❌ Supabase error fetching orders:', ordersError);
         throw ordersError;
@@ -106,9 +109,12 @@ export const useAdminOrders = () => {
         order_number: order.order_number || `ORD-${order.id.slice(0, 8)}`,
         customer_id: order.customer_id,
         total_amount: Number(order.total_amount || 0),
-        status: order.status || 'pending',
+        status: order.status || 'ordered',
         payment_status: order.payment_status || 'pending',
         payment_method: order.payment_method || 'unknown',
+        delivery_partner_name: order.delivery_partner_name,
+        delivery_date: order.delivery_date,
+        shipment_id: order.shipment_id,
         created_at: order.created_at,
         updated_at: order.updated_at,
         customer: order.customers

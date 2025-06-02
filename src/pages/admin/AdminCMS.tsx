@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -6,408 +5,447 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-import { HeroSlide, PopupSettings, fetchHeroSlides, saveHeroSlides, fetchPopupSettings, savePopupSettings } from "@/services/cmsApi";
+import { Trash2, Plus, Save } from "lucide-react";
+
+interface HeroSlide {
+  id: string;
+  title: string;
+  subtitle: string;
+  image_url: string;
+  cta_text: string;
+  cta_link: string;
+  order_index: number;
+  is_active: boolean;
+}
+
+interface PopupSettings {
+  id: string;
+  title: string;
+  description: string;
+  image_url?: string;
+  button_text: string;
+  is_enabled: boolean;
+  popup_type: string;
+  display_delay: number;
+  display_frequency: string;
+}
 
 const AdminCMS = () => {
-  // Hero slides state
-  const [heroSlides, setHeroSlides] = useState<Omit<HeroSlide, 'created_at' | 'updated_at'>[]>([
-    {
-      id: "1",
-      title: "Welcome to CuteBae",
-      subtitle: "Discover amazing products for kids",
-      cta_text: "Shop Now",
-      cta_link: "/category/boys",
-      image_url: "/placeholder.svg",
-      order_index: 0,
-      is_active: true
-    }
-  ]);
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
+  const [popupSettings, setPopupSettings] = useState<PopupSettings>({
+    id: '1',
+    title: '',
+    description: '',
+    image_url: '',
+    button_text: 'Learn More',
+    is_enabled: false,
+    popup_type: 'promotional',
+    display_delay: 3000,
+    display_frequency: 'once_per_session'
+  });
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [newSlide, setNewSlide] = useState<Partial<HeroSlide>>({
+    title: '',
+    subtitle: '',
+    image_url: '',
+    cta_text: 'Shop Now',
+    cta_link: '/search',
+    order_index: 0,
+    is_active: true
+  });
 
-  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [isLoadingHero, setIsLoadingHero] = useState(false);
-
-  // Popup state
-  const [popupTitle, setPopupTitle] = useState("Special Offer!");
-  const [popupDescription, setPopupDescription] = useState("Sign up now and get 10% off your first order");
-  const [popupButtonText, setPopupButtonText] = useState("Sign Up");
-  const [popupImageUrl, setPopupImageUrl] = useState("/placeholder.svg");
-  const [popupImageFile, setPopupImageFile] = useState<File | null>(null);
-  const [popupEnabled, setPopupEnabled] = useState(false);
-  const [isLoadingPopup, setIsLoadingPopup] = useState(false);
-
-  // Load data on component mount
   useEffect(() => {
-    loadHeroSlides();
-    loadPopupSettings();
+    fetchHeroSlides();
+    fetchPopupSettings();
   }, []);
 
-  const loadHeroSlides = async () => {
+  const fetchHeroSlides = async () => {
     try {
-      const slides = await fetchHeroSlides();
-      if (slides.length > 0) {
-        setHeroSlides(slides.map(slide => ({
-          id: slide.id,
-          title: slide.title,
-          subtitle: slide.subtitle,
-          cta_text: slide.cta_text,
-          cta_link: slide.cta_link,
-          image_url: slide.image_url,
-          order_index: slide.order_index,
-          is_active: slide.is_active
-        })));
-      }
-    } catch (error) {
-      console.error('Error loading hero slides:', error);
-    }
-  };
+      const { data, error } = await supabase
+        .from('hero_slides')
+        .select('*')
+        .order('order_index');
 
-  const loadPopupSettings = async () => {
-    try {
-      const settings = await fetchPopupSettings();
-      if (settings) {
-        setPopupTitle(settings.title);
-        setPopupDescription(settings.description);
-        setPopupButtonText(settings.button_text);
-        setPopupImageUrl(settings.image_url || "/placeholder.svg");
-        setPopupEnabled(settings.is_enabled);
-      }
-    } catch (error) {
-      console.error('Error loading popup settings:', error);
-    }
-  };
-
-  const updateSlide = (index: number, field: keyof HeroSlide, value: string | number) => {
-    const updatedSlides = [...heroSlides];
-    updatedSlides[index] = { ...updatedSlides[index], [field]: value };
-    setHeroSlides(updatedSlides);
-  };
-
-  const addSlide = () => {
-    const newSlide = {
-      id: Date.now().toString(),
-      title: "New Slide",
-      subtitle: "Add your subtitle here",
-      cta_text: "Shop Now",
-      cta_link: "/category/boys",
-      image_url: "/placeholder.svg",
-      order_index: heroSlides.length,
-      is_active: true
-    };
-    setHeroSlides([...heroSlides, newSlide]);
-    setActiveSlideIndex(heroSlides.length);
-  };
-
-  const removeSlide = (index: number) => {
-    if (heroSlides.length <= 1) {
+      if (error) throw error;
+      setHeroSlides(data || []);
+    } catch (error: any) {
+      console.error('Error fetching hero slides:', error);
       toast({
-        title: "Cannot remove slide",
-        description: "At least one slide is required.",
-        variant: "destructive"
+        title: "Error",
+        description: "Failed to load hero slides",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchPopupSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('popup_settings')
+        .select('*')
+        .eq('id', '1')
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      if (data) setPopupSettings(data);
+    } catch (error: any) {
+      console.error('Error fetching popup settings:', error);
+    }
+  };
+
+  const saveHeroSlide = async () => {
+    if (!newSlide.title || !newSlide.subtitle || !newSlide.image_url) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
       });
       return;
     }
-    const updatedSlides = heroSlides.filter((_, i) => i !== index);
-    // Update order_index for remaining slides
-    updatedSlides.forEach((slide, i) => {
-      slide.order_index = i;
-    });
-    setHeroSlides(updatedSlides);
-    if (activeSlideIndex >= updatedSlides.length) {
-      setActiveSlideIndex(updatedSlides.length - 1);
-    }
-  };
 
-  const handleSlideImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      const imageUrl = URL.createObjectURL(file);
-      updateSlide(index, 'image_url', imageUrl);
-    }
-  };
-
-  const handlePopupImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setPopupImageFile(file);
-      setPopupImageUrl(URL.createObjectURL(file));
-    }
-  };
-
-  const saveHeroSlidesToDb = async () => {
-    setIsLoadingHero(true);
+    setIsLoading(true);
     try {
-      await saveHeroSlides(heroSlides.map(slide => ({
-        title: slide.title,
-        subtitle: slide.subtitle,
-        cta_text: slide.cta_text,
-        cta_link: slide.cta_link,
-        image_url: slide.image_url,
-        order_index: slide.order_index,
-        is_active: true
-      })));
-      
+      const { error } = await supabase
+        .from('hero_slides')
+        .insert([{
+          title: newSlide.title,
+          subtitle: newSlide.subtitle,
+          image_url: newSlide.image_url,
+          cta_text: newSlide.cta_text,
+          cta_link: newSlide.cta_link,
+          order_index: newSlide.order_index || heroSlides.length,
+          is_active: newSlide.is_active ?? true
+        }]);
+
+      if (error) throw error;
+
       toast({
-        title: "Hero slides updated",
-        description: "The hero section slides have been successfully saved to the database.",
+        title: "Success",
+        description: "Hero slide added successfully",
       });
-    } catch (error) {
-      console.error('Error saving hero slides:', error);
+
+      setNewSlide({
+        title: '',
+        subtitle: '',
+        image_url: '',
+        cta_text: 'Shop Now',
+        cta_link: '/search',
+        order_index: 0,
+        is_active: true
+      });
+
+      fetchHeroSlides();
+    } catch (error: any) {
+      console.error('Error saving hero slide:', error);
       toast({
-        title: "Error",
-        description: "Failed to save hero slides. Please try again.",
-        variant: "destructive"
+        title: "Save Failed",
+        description: error.message || "Failed to save hero slide",
+        variant: "destructive",
       });
     } finally {
-      setIsLoadingHero(false);
+      setIsLoading(false);
     }
   };
 
-  const savePopupToDb = async () => {
-    setIsLoadingPopup(true);
+  const deleteHeroSlide = async (id: string) => {
     try {
-      await savePopupSettings({
-        title: popupTitle,
-        description: popupDescription,
-        button_text: popupButtonText,
-        image_url: popupImageUrl,
-        is_enabled: popupEnabled
-      });
-      
+      const { error } = await supabase
+        .from('hero_slides')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
       toast({
-        title: "Popup settings updated",
-        description: `The popup has been ${popupEnabled ? 'enabled' : 'disabled'} and settings saved to the database.`,
+        title: "Deleted",
+        description: "Hero slide deleted successfully",
       });
-    } catch (error) {
+
+      fetchHeroSlides();
+    } catch (error: any) {
+      console.error('Error deleting hero slide:', error);
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete hero slide",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const savePopupSettings = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('popup_settings')
+        .upsert({
+          id: '1',
+          title: popupSettings.title,
+          description: popupSettings.description,
+          image_url: popupSettings.image_url || null,
+          button_text: popupSettings.button_text,
+          is_enabled: popupSettings.is_enabled,
+          popup_type: popupSettings.popup_type,
+          display_delay: popupSettings.display_delay,
+          display_frequency: popupSettings.display_frequency
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Popup settings saved successfully",
+      });
+    } catch (error: any) {
       console.error('Error saving popup settings:', error);
       toast({
-        title: "Error",
-        description: "Failed to save popup settings. Please try again.",
-        variant: "destructive"
+        title: "Save Failed",
+        description: error.message || "Failed to save popup settings",
+        variant: "destructive",
       });
     } finally {
-      setIsLoadingPopup(false);
+      setIsLoading(false);
     }
   };
-
-  const activeSlide = heroSlides[activeSlideIndex];
 
   return (
     <AdminProtectedRoute>
       <AdminLayout>
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Content Management</h1>
-          </div>
+          <h1 className="text-2xl font-bold">Content Management</h1>
 
-          <Tabs defaultValue="hero">
-            <TabsList className="mb-4">
-              <TabsTrigger value="hero">Hero Section</TabsTrigger>
-              <TabsTrigger value="popup">Popup</TabsTrigger>
+          <Tabs defaultValue="hero-slider" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="hero-slider">Hero Slider</TabsTrigger>
+              <TabsTrigger value="popup">Popup Settings</TabsTrigger>
             </TabsList>
 
-            {/* Hero Section Tab */}
-            <TabsContent value="hero">
+            <TabsContent value="hero-slider" className="space-y-6">
+              {/* Add New Hero Slide */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    Hero Section Slider
-                    <Button onClick={addSlide} size="sm">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Slide
-                    </Button>
-                  </CardTitle>
+                  <CardTitle>Add New Hero Slide</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {/* Slide Selector */}
-                    <div className="flex items-center space-x-4">
-                      <Label>Select Slide:</Label>
-                      <Select value={activeSlideIndex.toString()} onValueChange={(value) => setActiveSlideIndex(parseInt(value))}>
-                        <SelectTrigger className="w-48">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {heroSlides.map((slide, index) => (
-                            <SelectItem key={slide.id} value={index.toString()}>
-                              Slide {index + 1}: {slide.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {heroSlides.length > 1 && (
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => removeSlide(activeSlideIndex)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      )}
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="title">Title *</Label>
+                      <Input
+                        id="title"
+                        value={newSlide.title}
+                        onChange={(e) => setNewSlide({ ...newSlide, title: e.target.value })}
+                        placeholder="Enter slide title"
+                      />
                     </div>
-
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="slideTitle">Title</Label>
-                          <Input
-                            id="slideTitle"
-                            value={activeSlide.title}
-                            onChange={(e) => updateSlide(activeSlideIndex, 'title', e.target.value)}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="slideSubtitle">Subtitle</Label>
-                          <Textarea
-                            id="slideSubtitle"
-                            value={activeSlide.subtitle}
-                            onChange={(e) => updateSlide(activeSlideIndex, 'subtitle', e.target.value)}
-                            rows={3}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="slideButtonText">Button Text</Label>
-                          <Input
-                            id="slideButtonText"
-                            value={activeSlide.cta_text}
-                            onChange={(e) => updateSlide(activeSlideIndex, 'cta_text', e.target.value)}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="slideButtonLink">Button Link</Label>
-                          <Input
-                            id="slideButtonLink"
-                            value={activeSlide.cta_link}
-                            onChange={(e) => updateSlide(activeSlideIndex, 'cta_link', e.target.value)}
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="slideImage">Slide Image</Label>
-                          <Input
-                            id="slideImage"
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleSlideImageChange(activeSlideIndex, e)}
-                          />
-                        </div>
-                        
-                        <Button onClick={saveHeroSlidesToDb} disabled={isLoadingHero}>
-                          {isLoadingHero ? "Saving..." : "Save Hero Slides"}
-                        </Button>
-                      </div>
-                      
-                      <div className="border rounded-md p-4">
-                        <h3 className="font-medium mb-4">Preview - Slide {activeSlideIndex + 1}</h3>
-                        <div className="aspect-video bg-gray-100 rounded-2xl overflow-hidden relative" style={{ width: '95%', margin: '0 auto' }}>
-                          <img
-                            src={activeSlide.image_url}
-                            alt="Slide preview"
-                            className="w-full h-full object-cover rounded-2xl"
-                          />
-                          <div className="absolute inset-0 bg-black/30 flex flex-col items-center justify-center text-white p-6 text-center rounded-2xl">
-                            <h2 className="text-2xl md:text-4xl font-bold mb-2 font-holtwood text-black">{activeSlide.title}</h2>
-                            <p className="mb-4 max-w-md font-quicksand">{activeSlide.subtitle}</p>
-                            <Button variant="secondary" className="font-quicksand">{activeSlide.cta_text}</Button>
-                          </div>
-                        </div>
-                        <div className="mt-4 text-center">
-                          <p className="text-sm text-gray-600">
-                            {heroSlides.length} slide{heroSlides.length !== 1 ? 's' : ''} total
-                          </p>
-                        </div>
-                      </div>
+                    <div>
+                      <Label htmlFor="subtitle">Subtitle *</Label>
+                      <Input
+                        id="subtitle"
+                        value={newSlide.subtitle}
+                        onChange={(e) => setNewSlide({ ...newSlide, subtitle: e.target.value })}
+                        placeholder="Enter slide subtitle"
+                      />
                     </div>
                   </div>
+
+                  <div>
+                    <Label htmlFor="image_url">Image URL *</Label>
+                    <Input
+                      id="image_url"
+                      value={newSlide.image_url}
+                      onChange={(e) => setNewSlide({ ...newSlide, image_url: e.target.value })}
+                      placeholder="https://example.com/image.jpg"
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Upload your image to a service like Cloudinary, Imgur, or use a direct image URL
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="cta_text">Button Text</Label>
+                      <Input
+                        id="cta_text"
+                        value={newSlide.cta_text}
+                        onChange={(e) => setNewSlide({ ...newSlide, cta_text: e.target.value })}
+                        placeholder="Shop Now"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cta_link">Button Link</Label>
+                      <Input
+                        id="cta_link"
+                        value={newSlide.cta_link}
+                        onChange={(e) => setNewSlide({ ...newSlide, cta_link: e.target.value })}
+                        placeholder="/search"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="is_active"
+                      checked={newSlide.is_active}
+                      onCheckedChange={(checked) => setNewSlide({ ...newSlide, is_active: checked })}
+                    />
+                    <Label htmlFor="is_active">Active</Label>
+                  </div>
+
+                  <Button onClick={saveHeroSlide} disabled={isLoading}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {isLoading ? "Adding..." : "Add Slide"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Existing Hero Slides */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Existing Hero Slides ({heroSlides.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {heroSlides.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">
+                      No hero slides found. Add your first slide above.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {heroSlides.map((slide) => (
+                        <div key={slide.id} className="border rounded-lg p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-medium">{slide.title}</h3>
+                              <p className="text-sm text-gray-500">{slide.subtitle}</p>
+                              <p className="text-xs text-gray-400 mt-1">Order: {slide.order_index}</p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className={`px-2 py-1 rounded text-xs ${slide.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {slide.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </div>
+                            </div>
+                            {slide.image_url && (
+                              <img
+                                src={slide.image_url}
+                                alt={slide.title}
+                                className="w-20 h-12 object-cover rounded ml-4"
+                                onError={(e) => {
+                                  e.currentTarget.src = '/placeholder.svg';
+                                }}
+                              />
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteHeroSlide(slide.id)}
+                              className="ml-2 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* Popup Tab */}
-            <TabsContent value="popup">
+            <TabsContent value="popup" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Popup Settings</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="popupEnabled"
-                          checked={popupEnabled}
-                          onCheckedChange={setPopupEnabled}
-                        />
-                        <Label htmlFor="popupEnabled">Enable Popup</Label>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="popupTitle">Title</Label>
-                        <Input
-                          id="popupTitle"
-                          value={popupTitle}
-                          onChange={(e) => setPopupTitle(e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="popupDescription">Description</Label>
-                        <Textarea
-                          id="popupDescription"
-                          value={popupDescription}
-                          onChange={(e) => setPopupDescription(e.target.value)}
-                          rows={3}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="popupButtonText">Button Text</Label>
-                        <Input
-                          id="popupButtonText"
-                          value={popupButtonText}
-                          onChange={(e) => setPopupButtonText(e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="popupImage">Popup Image</Label>
-                        <Input
-                          id="popupImage"
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePopupImageChange}
-                        />
-                      </div>
-                      
-                      <Button onClick={savePopupToDb} disabled={isLoadingPopup}>
-                        {isLoadingPopup ? "Saving..." : "Save Popup Settings"}
-                      </Button>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="popup_enabled"
+                      checked={popupSettings.is_enabled}
+                      onCheckedChange={(checked) => setPopupSettings({ ...popupSettings, is_enabled: checked })}
+                    />
+                    <Label htmlFor="popup_enabled">Enable Popup</Label>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="popup_title">Title</Label>
+                    <Input
+                      id="popup_title"
+                      value={popupSettings.title}
+                      onChange={(e) => setPopupSettings({ ...popupSettings, title: e.target.value })}
+                      placeholder="Welcome to our store!"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="popup_description">Description</Label>
+                    <Textarea
+                      id="popup_description"
+                      value={popupSettings.description}
+                      onChange={(e) => setPopupSettings({ ...popupSettings, description: e.target.value })}
+                      placeholder="Get 10% off your first order with code WELCOME10"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="popup_image">Image URL (Optional)</Label>
+                    <Input
+                      id="popup_image"
+                      value={popupSettings.image_url || ''}
+                      onChange={(e) => setPopupSettings({ ...popupSettings, image_url: e.target.value })}
+                      placeholder="https://example.com/popup-image.jpg"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="popup_button">Button Text</Label>
+                    <Input
+                      id="popup_button"
+                      value={popupSettings.button_text}
+                      onChange={(e) => setPopupSettings({ ...popupSettings, button_text: e.target.value })}
+                      placeholder="Get Discount"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="display_delay">Display Delay (ms)</Label>
+                      <Input
+                        id="display_delay"
+                        type="number"
+                        value={popupSettings.display_delay}
+                        onChange={(e) => setPopupSettings({ ...popupSettings, display_delay: parseInt(e.target.value) || 3000 })}
+                        placeholder="3000"
+                      />
                     </div>
-                    
-                    <div className={`border rounded-md p-4 ${!popupEnabled && 'opacity-60'}`}>
-                      <h3 className="font-medium mb-4">Preview</h3>
-                      <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-                        <img
-                          src={popupImageUrl}
-                          alt="Popup preview"
-                          className="w-full h-48 object-cover"
-                        />
-                        <div className="p-6">
-                          <h4 className="text-xl font-bold mb-2">{popupTitle}</h4>
-                          <p className="text-gray-600 mb-4">{popupDescription}</p>
-                          <Button className="w-full">{popupButtonText}</Button>
-                        </div>
-                      </div>
+                    <div>
+                      <Label htmlFor="display_frequency">Display Frequency</Label>
+                      <Select
+                        value={popupSettings.display_frequency}
+                        onValueChange={(value) => setPopupSettings({ ...popupSettings, display_frequency: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="once_per_session">Once per session</SelectItem>
+                          <SelectItem value="once_per_day">Once per day</SelectItem>
+                          <SelectItem value="once_per_week">Once per week</SelectItem>
+                          <SelectItem value="always">Always</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
+
+                  <Button onClick={savePopupSettings} disabled={isLoading}>
+                    <Save className="h-4 w-4 mr-2" />
+                    {isLoading ? "Saving..." : "Save Popup Settings"}
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>

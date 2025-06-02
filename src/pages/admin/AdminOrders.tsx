@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -6,28 +7,184 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Eye, RefreshCw, TestTube } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Search, Eye, RefreshCw, TestTube, Edit } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import AdminDataTest from "@/components/AdminDataTest";
 import { useAdminOrders } from "@/hooks/useAdminOrders";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const getStatusColor = (status: string) => {
   switch (status.toLowerCase()) {
     case 'delivered':
       return "bg-green-100 text-green-700";
-    case 'processing':
-      return "bg-blue-100 text-blue-700";
     case 'shipped':
+      return "bg-blue-100 text-blue-700";
+    case 'confirmed':
       return "bg-purple-100 text-purple-700";
-    case 'cancelled':
-      return "bg-red-100 text-red-700";
-    case 'pending':
+    case 'ordered':
       return "bg-yellow-100 text-yellow-700";
-    case 'returned':
+    case 'cancelled':
+    case 'cancel request':
+      return "bg-red-100 text-red-700";
+    case 'return':
+    case 'return request':
       return "bg-orange-100 text-orange-700";
+    case 'refund':
+      return "bg-gray-100 text-gray-700";
     default:
       return "bg-gray-100 text-gray-700";
   }
+};
+
+const OrderStatusDialog = ({ order, onStatusUpdate }: { order: any, onStatusUpdate: () => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState(order.status);
+  const [notes, setNotes] = useState("");
+  const [deliveryPartner, setDeliveryPartner] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [shipmentId, setShipmentId] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const statusOptions = [
+    "ordered",
+    "confirmed", 
+    "shipped",
+    "delivered",
+    "return request",
+    "return",
+    "cancel request",
+    "cancelled",
+    "refund"
+  ];
+
+  const handleStatusUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.rpc('update_order_status', {
+        order_id_param: order.id,
+        new_status: newStatus,
+        notes_param: notes || null,
+        delivery_partner_param: newStatus === 'shipped' ? deliveryPartner : null,
+        delivery_date_param: newStatus === 'shipped' ? deliveryDate : null,
+        shipment_id_param: newStatus === 'shipped' ? shipmentId : null
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Status Updated",
+        description: `Order status updated to ${newStatus}`,
+      });
+
+      setIsOpen(false);
+      onStatusUpdate();
+    } catch (error: any) {
+      console.error('Error updating order status:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update order status",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const requiresShippingInfo = newStatus === 'shipped';
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">
+          <Edit className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Update Order Status</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="status">Order Status</Label>
+            <Select value={newStatus} onValueChange={setNewStatus}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {requiresShippingInfo && (
+            <>
+              <div>
+                <Label htmlFor="deliveryPartner">Delivery Partner Name</Label>
+                <Input
+                  id="deliveryPartner"
+                  value={deliveryPartner}
+                  onChange={(e) => setDeliveryPartner(e.target.value)}
+                  placeholder="e.g., Blue Dart, DTDC"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="deliveryDate">Expected Delivery Date</Label>
+                <Input
+                  id="deliveryDate"
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="shipmentId">Shipment ID</Label>
+                <Input
+                  id="shipmentId"
+                  value={shipmentId}
+                  onChange={(e) => setShipmentId(e.target.value)}
+                  placeholder="Tracking number"
+                  required
+                />
+              </div>
+            </>
+          )}
+
+          <div>
+            <Label htmlFor="notes">Notes (Optional)</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any additional notes..."
+              rows={3}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleStatusUpdate} 
+              disabled={isUpdating || (requiresShippingInfo && (!deliveryPartner || !deliveryDate || !shipmentId))}
+            >
+              {isUpdating ? "Updating..." : "Update Status"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 const AdminOrders = () => {
@@ -104,12 +261,15 @@ const AdminOrders = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="processing">Processing</SelectItem>
+                      <SelectItem value="ordered">Ordered</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
                       <SelectItem value="shipped">Shipped</SelectItem>
                       <SelectItem value="delivered">Delivered</SelectItem>
+                      <SelectItem value="return request">Return Request</SelectItem>
+                      <SelectItem value="return">Return</SelectItem>
+                      <SelectItem value="cancel request">Cancel Request</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
-                      <SelectItem value="returned">Returned</SelectItem>
+                      <SelectItem value="refund">Refund</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -125,19 +285,20 @@ const AdminOrders = () => {
                       <TableHead>Total</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Payment</TableHead>
+                      <TableHead>Shipping Info</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {isLoading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={8} className="text-center py-8">
                           Loading orders...
                         </TableCell>
                       </TableRow>
                     ) : filteredOrders.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={8} className="text-center py-8">
                           {orders.length === 0 ? "No orders found. Orders will appear here when customers place orders." : "No orders match your search criteria."}
                         </TableCell>
                       </TableRow>
@@ -165,10 +326,22 @@ const AdminOrders = () => {
                               {order.payment_status?.toUpperCase() || 'PENDING'}
                             </Badge>
                           </TableCell>
+                          <TableCell>
+                            {order.delivery_partner_name && (
+                              <div className="text-xs">
+                                <div>{order.delivery_partner_name}</div>
+                                {order.shipment_id && <div>ID: {order.shipment_id}</div>}
+                                {order.delivery_date && <div>Due: {new Date(order.delivery_date).toLocaleDateString()}</div>}
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
-                            <Button size="sm" variant="ghost">
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                              <OrderStatusDialog order={order} onStatusUpdate={handleRefresh} />
+                              <Button size="sm" variant="ghost">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
