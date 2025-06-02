@@ -1,19 +1,21 @@
-
 import React, { useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import HeroSlider from "@/components/home/HeroSlider";
+import TrendingProducts from "@/components/home/TrendingProducts";
 import CategorySection from "@/components/home/CategorySection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import CustomerReviewSlider from "@/components/home/CustomerReviewSlider";
 import NewsletterSection from "@/components/home/NewsletterSection";
 import { useCategories } from "@/hooks/useCategories";
 import { useFeaturedProducts } from "@/hooks/useProducts";
+import { useTrendingProducts } from "@/hooks/useTrendingProducts";
 import { useCacheManager } from "@/hooks/useCacheManager";
 import { useLogging } from "@/hooks/useLogging";
 
 const Index = () => {
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { data: featuredProducts, isLoading: productsLoading } = useFeaturedProducts();
+  const { data: trendingProducts, isLoading: trendingLoading } = useTrendingProducts();
   const { getCacheStats } = useCacheManager();
   const { logInfo, logError } = useLogging();
 
@@ -36,11 +38,12 @@ const Index = () => {
       logInfo('homepage_performance', {
         loadTime: Math.round(loadTime),
         categoriesLoaded: !categoriesLoading,
-        productsLoaded: !productsLoading
+        productsLoaded: !productsLoading,
+        trendingLoaded: !trendingLoading
       });
     };
 
-    if (!categoriesLoading && !productsLoading) {
+    if (!categoriesLoading && !productsLoading && !trendingLoading) {
       handleLoad();
     }
 
@@ -49,7 +52,7 @@ const Index = () => {
         timeSpent: Math.round(performance.now() - startTime)
       });
     };
-  }, [categoriesLoading, productsLoading, logInfo]);
+  }, [categoriesLoading, productsLoading, trendingLoading, logInfo]);
 
   // Log cache stats periodically for monitoring (only in development)
   useEffect(() => {
@@ -80,12 +83,20 @@ const Index = () => {
     if (productsLoading === false && (!featuredProducts || featuredProducts.length === 0)) {
       logError('featured_products_load_empty', { productsCount: featuredProducts?.length || 0 });
     }
-  }, [categories, featuredProducts, categoriesLoading, productsLoading, logError]);
+
+    if (trendingLoading === false && (!trendingProducts || trendingProducts.length === 0)) {
+      logError('trending_products_load_empty', { trendingCount: trendingProducts?.length || 0 });
+    }
+  }, [categories, featuredProducts, trendingProducts, categoriesLoading, productsLoading, trendingLoading, logError]);
 
   return (
     <MainLayout>
       <div data-page="home">
         <HeroSlider />
+        <TrendingProducts 
+          products={trendingProducts || []} 
+          isLoading={trendingLoading}
+        />
         <CategorySection categories={categories} isLoading={categoriesLoading} />
         <FeaturedProducts 
           products={featuredProducts || []} 
