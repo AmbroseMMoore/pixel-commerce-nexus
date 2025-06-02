@@ -74,7 +74,7 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
 
   if (isLoading) {
     return (
-      <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-gray-100 rounded-2xl overflow-hidden animate-pulse">
+      <div className="relative w-[97vw] h-[70vh] bg-gray-900 rounded-2xl mx-auto overflow-hidden animate-pulse">
         <div className="absolute inset-0 bg-gradient-to-r from-gray-200 to-gray-300"></div>
       </div>
     );
