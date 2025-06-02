@@ -225,6 +225,7 @@ const AdminCMS = () => {
             <TabsList>
               <TabsTrigger value="hero-slider">Hero Slider</TabsTrigger>
               <TabsTrigger value="popup">Popup Settings</TabsTrigger>
+              <TabsTrigger value="media-config">Media Storage</TabsTrigger>
             </TabsList>
 
             <TabsContent value="hero-slider" className="space-y-6">
@@ -440,6 +441,10 @@ const AdminCMS = () => {
                   </Button>
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="media-config" className="space-y-6">
+              <MediaStorageConfig />
             </TabsContent>
           </Tabs>
         </div>

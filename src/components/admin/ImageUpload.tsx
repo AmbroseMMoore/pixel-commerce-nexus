@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, X, Image } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Upload, X, Image, Cloud, Server } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { uploadMedia, deleteMedia } from '@/services/mediaUpload';
+import { isCloudStorage } from '@/config/mediaStorage';
 
 interface ImageUploadProps {
   label: string;
@@ -45,25 +46,17 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
     setIsUploading(true);
 
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const result = await uploadMedia(file);
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
-      const { error: uploadError } = await supabase.storage
-        .from('cms-images')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage
-        .from('cms-images')
-        .getPublicUrl(filePath);
-
-      onChange(data.publicUrl);
+      onChange(result.url);
 
       toast({
         title: "Upload successful",
-        description: "Image uploaded successfully",
+        description: `Image uploaded successfully to ${isCloudStorage() ? 'cloud storage' : 'local storage'}`,
       });
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -82,13 +75,28 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
     setShowUrlInput(false);
   };
 
-  const clearImage = () => {
+  const clearImage = async () => {
+    if (value) {
+      // Try to delete the media file if it's not a URL
+      if (!value.startsWith('http')) {
+        await deleteMedia(value);
+      }
+    }
     onChange('');
   };
 
+  const storageType = isCloudStorage() ? 'cloud' : 'local';
+  const StorageIcon = isCloudStorage() ? Cloud : Server;
+
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <Label className="flex items-center gap-2">
+        {label}
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <StorageIcon className="h-3 w-3" />
+          <span>{storageType} storage</span>
+        </div>
+      </Label>
       
       {value && (
         <div className="relative">
@@ -127,7 +135,7 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
             className="flex items-center justify-center w-full h-10 px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md cursor-pointer"
           >
             <Upload className="h-4 w-4 mr-2" />
-            {isUploading ? 'Uploading...' : 'Upload Image'}
+            {isUploading ? 'Uploading...' : `Upload to ${storageType}`}
           </Label>
         </div>
         
@@ -164,6 +172,12 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
             Set
           </Button>
         </div>
+      )}
+
+      {storageType === 'local' && (
+        <p className="text-xs text-gray-500">
+          Note: Local storage requires server-side upload handling
+        </p>
       )}
     </div>
   );
