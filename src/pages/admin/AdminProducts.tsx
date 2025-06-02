@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Search, Edit, Trash2, Eye, Loader2 } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useProducts } from "@/hooks/useProducts";
+import { useCategories } from "@/hooks/useCategories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { deleteProduct } from "@/services/adminApi";
 import { toast } from "@/hooks/use-toast";
@@ -17,10 +18,16 @@ const AdminProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const { data: products, isLoading, error, refetch } = useProducts();
+  const { categories } = useCategories();
   
   const filteredProducts = products?.filter(product => 
     product.title.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
+
+  const getCategoryName = (categoryId: string) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.name : 'Unknown Category';
+  };
 
   const handleDelete = async (id: string, title: string) => {
     if (confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
@@ -159,10 +166,7 @@ const AdminProducts = () => {
                       filteredProducts.map((product) => (
                         <TableRow key={product.id}>
                           <TableCell>{product.title}</TableCell>
-                          <TableCell>
-                            {/* Use categoryId to display category name, but for now just show ID */}
-                            {product.categoryId}
-                          </TableCell>
+                          <TableCell>{getCategoryName(product.categoryId)}</TableCell>
                           <TableCell>
                             {product.price.discounted ? (
                               <>

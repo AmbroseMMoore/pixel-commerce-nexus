@@ -94,13 +94,13 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/shipping" className="hover:opacity-70 transition-colors" style={{ color: '#353535' }}>
-                  Shipping & Returns
+                <Link to="/shipping-policy" className="hover:opacity-70 transition-colors" style={{ color: '#353535' }}>
+                  Shipping Policy
                 </Link>
               </li>
               <li>
-                <Link to="/terms" className="hover:opacity-70 transition-colors" style={{ color: '#353535' }}>
-                  Terms & Conditions
+                <Link to="/cancellation-refund" className="hover:opacity-70 transition-colors" style={{ color: '#353535' }}>
+                  Cancellation & Refund
                 </Link>
               </li>
               <li>
@@ -111,24 +111,38 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Contact Info */}
+          {/* Legal & Policies */}
           <div>
-            <h3 className="text-lg font-semibold mb-4" style={{ color: '#353535' }}>Contact Us</h3>
-            <ul className="space-y-3">
-              <li className="flex items-start">
-                <MapPin size={18} className="mr-2 mt-1 flex-shrink-0" style={{ color: '#353535' }} />
-                <span style={{ color: '#353535' }}>
-                  123 CuteBae Street, Fashion City, 
-                  <br />CB 12345
-                </span>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: '#353535' }}>Legal & Policies</h3>
+            <ul className="space-y-2">
+              <li>
+                <Link to="/privacy-policy" className="hover:opacity-70 transition-colors" style={{ color: '#353535' }}>
+                  Privacy Policy
+                </Link>
               </li>
-              <li className="flex items-center">
-                <Phone size={18} className="mr-2 flex-shrink-0" style={{ color: '#353535' }} />
-                <span style={{ color: '#353535' }}>(123) 456-7890</span>
+              <li>
+                <Link to="/terms-conditions" className="hover:opacity-70 transition-colors" style={{ color: '#353535' }}>
+                  Terms & Conditions
+                </Link>
               </li>
-              <li className="flex items-center">
-                <Mail size={18} className="mr-2 flex-shrink-0" style={{ color: '#353535' }} />
-                <span style={{ color: '#353535' }}>support@cutebae.com</span>
+              <li>
+                <div className="mt-4">
+                  <h4 className="font-medium mb-2" style={{ color: '#353535' }}>Contact Info</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-center">
+                      <MapPin size={14} className="mr-2" style={{ color: '#353535' }} />
+                      <span style={{ color: '#353535' }}>Vellore, Tamil Nadu</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Phone size={14} className="mr-2" style={{ color: '#353535' }} />
+                      <span style={{ color: '#353535' }}>+91 98765 43210</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Mail size={14} className="mr-2" style={{ color: '#353535' }} />
+                      <span style={{ color: '#353535' }}>support@cutebae.in</span>
+                    </div>
+                  </div>
+                </div>
               </li>
             </ul>
           </div>

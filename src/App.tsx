@@ -14,6 +14,12 @@ import CartPage from "./pages/CartPage";
 import AuthPage from "./pages/AuthPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import ContactPage from "./pages/ContactPage";
+import SearchPage from "./pages/SearchPage";
+import FAQPage from "./pages/FAQPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import ShippingPolicyPage from "./pages/ShippingPolicyPage";
+import TermsConditionsPage from "./pages/TermsConditionsPage";
+import CancellationRefundPage from "./pages/CancellationRefundPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -56,9 +62,17 @@ const App = () => (
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/search" element={<SearchPage />} />
+            <Route path="/faq" element={<FAQPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+            <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
+            <Route path="/terms-conditions" element={<TermsConditionsPage />} />
+            <Route path="/cancellation-refund" element={<CancellationRefundPage />} />
             
-            {/* Legacy login route redirect */}
+            {/* Legacy routes redirects */}
             <Route path="/login" element={<Navigate to="/auth" replace />} />
+            <Route path="/shipping" element={<Navigate to="/shipping-policy" replace />} />
+            <Route path="/terms" element={<Navigate to="/terms-conditions" replace />} />
             
             {/* Logout routes */}
             <Route path="/logout" element={<AdminLogout />} />
