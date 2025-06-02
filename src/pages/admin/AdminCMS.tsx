@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import ImageUpload from "@/components/admin/ImageUpload";
+import MediaStorageConfig from "@/components/admin/MediaStorageConfig";
 import { Trash2, Plus, Save } from "lucide-react";
 
 interface HeroSlide {
