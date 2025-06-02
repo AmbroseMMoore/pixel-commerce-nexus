@@ -95,7 +95,9 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
           backgroundImage: `url(${currentSlideData.image_url})`,
         }}
       >
-        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="absolute inset-0 bg-black/40">
+          <img src= `url(${currentSlideData.image_url})`>
+        </div>
       </div>
 
       {/* Content */}
