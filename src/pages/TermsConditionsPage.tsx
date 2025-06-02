@@ -12,7 +12,7 @@ const TermsConditionsPage = () => {
           <div className="container-custom text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">Terms & Conditions</h1>
             <p className="text-xl text-white/90">
-              Last updated: {new Date().toLocaleDateString()}
+              Please read these terms carefully
             </p>
           </div>
         </div>
@@ -22,113 +22,133 @@ const TermsConditionsPage = () => {
             <Card>
               <CardContent className="p-8 space-y-8">
                 <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Acceptance of Terms</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Overview</h2>
                   <div className="space-y-4 text-gray-600">
-                    <p>By accessing and using CuteBae's website and services, you accept and agree to be bound by the terms and provision of this agreement.</p>
+                    <p>
+                      This website is operated by CUTEBAE. Throughout the site, the terms "we", "us" and "our" refer to CUTEBAE. 
+                      CUTEBAE offers this website, including all information, tools and Services available from this site to you, the user, conditioned upon your acceptance of all terms, conditions, policies and notices stated here.
+                    </p>
+                    <p>
+                      By visiting our site and/or purchasing something from us, you engage in our "Service" and agree to be bound by the following terms and conditions ("Terms of Service", "Terms"), including those additional terms and conditions and policies referenced herein and/or available by hyperlink. 
+                      These Terms of Service apply to all users of the site, including without limitation users who are browsers, vendors, customers, merchants, and/or contributors of content.
+                    </p>
+                    <p>
+                      Please read these Terms of Service carefully before accessing or using our website. By accessing or using any part of the site, you agree to be bound by these Terms of Service. 
+                      If you do not agree to all the terms and conditions of this agreement, then you may not access the website or use any Services.
+                    </p>
                   </div>
                 </section>
 
                 <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">2. Use License</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Section 1 - Online Store Terms</h2>
                   <div className="space-y-4 text-gray-600">
-                    <p>Permission is granted to temporarily download one copy of CuteBae's materials for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
+                    <p>
+                      By agreeing to these Terms of Service, you represent that you are at least the age of majority in your state or province of residence, or that you are the age of majority in your state or province of residence and you have given us your consent to allow any of your minor dependents to use this site.
+                    </p>
                     <ul className="list-disc pl-6 space-y-2">
-                      <li>Modify or copy the materials</li>
-                      <li>Use the materials for commercial purposes or public display</li>
-                      <li>Attempt to reverse engineer any software on CuteBae's website</li>
-                      <li>Remove any copyright or proprietary notations from the materials</li>
+                      <li>You may not use our products for any illegal or unauthorized purpose nor may you, in the use of the Service, violate any laws in your jurisdiction (including but not limited to copyright laws).</li>
+                      <li>You must not transmit any worms or viruses or any code of a destructive nature.</li>
+                      <li>A breach or violation of any of the Terms will result in an immediate termination of your Services.</li>
                     </ul>
                   </div>
                 </section>
 
                 <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">3. Product Information</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Section 2 - General Conditions</h2>
                   <div className="space-y-4 text-gray-600">
-                    <p>We strive to provide accurate product information, including:</p>
                     <ul className="list-disc pl-6 space-y-2">
-                      <li>Product descriptions and specifications</li>
-                      <li>Pricing and availability</li>
-                      <li>Images and colors (may vary due to screen settings)</li>
-                    </ul>
-                    <p>We reserve the right to correct any errors and update information without prior notice.</p>
-                  </div>
-                </section>
-
-                <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">4. Pricing and Payment</h2>
-                  <div className="space-y-4 text-gray-600">
-                    <p>All prices are in Indian Rupees (INR) and include applicable taxes unless otherwise stated. We reserve the right to change prices without notice. Payment must be made at the time of purchase through our accepted payment methods.</p>
-                  </div>
-                </section>
-
-                <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">5. User Account</h2>
-                  <div className="space-y-4 text-gray-600">
-                    <p>When creating an account, you must provide accurate and complete information. You are responsible for:</p>
-                    <ul className="list-disc pl-6 space-y-2">
-                      <li>Maintaining the confidentiality of your account</li>
-                      <li>All activities that occur under your account</li>
-                      <li>Notifying us of any unauthorized use</li>
+                      <li>We reserve the right to refuse Service to anyone for any reason at any time.</li>
+                      <li>You understand that your content (not including credit card information), may be transferred unencrypted and involve (a) transmissions over various networks; and (b) changes to conform and adapt to technical requirements of connecting networks or devices. Credit card information is always encrypted during transfer over networks.</li>
+                      <li>You agree not to reproduce, duplicate, copy, sell, resell or exploit any portion of the Service, use of the Service, or access to the Service or any contact on the website through which the Service is provided, without express written permission by us.</li>
                     </ul>
                   </div>
                 </section>
 
                 <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">6. Orders and Delivery</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Section 3 - Accuracy, Completeness and Timeliness of Information</h2>
                   <div className="space-y-4 text-gray-600">
-                    <p>By placing an order, you agree to:</p>
+                    <p>
+                      We are not responsible if information made available on this site is not accurate, complete or current. The material on this site is provided for general information only and should not be relied upon or used as the sole basis for making decisions without consulting primary, more accurate, more complete or more timely sources of information.
+                    </p>
+                    <p>
+                      Any reliance on the material on this site is at your own risk. This site may contain certain historical information. Historical information, necessarily, is not current and is provided for your reference only.
+                    </p>
+                  </div>
+                </section>
+
+                <section>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Section 4 - Modifications to the Service and Prices</h2>
+                  <div className="space-y-4 text-gray-600">
                     <ul className="list-disc pl-6 space-y-2">
-                      <li>Provide accurate delivery information</li>
-                      <li>Be available to receive the delivery</li>
-                      <li>Pay any applicable delivery charges</li>
+                      <li>Prices for our products are subject to change without notice.</li>
+                      <li>We reserve the right at any time to modify or discontinue the Service (or any part or content thereof) without notice at any time.</li>
+                      <li>We shall not be liable to you or to any third-party for any modification, price change, suspension or discontinuance of the Service.</li>
                     </ul>
-                    <p>We reserve the right to refuse or cancel orders at our discretion.</p>
                   </div>
                 </section>
 
                 <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">7. Returns and Refunds</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Section 5 - Products or Services</h2>
                   <div className="space-y-4 text-gray-600">
-                    <p>Returns are accepted within 7 days of delivery. Items must be unused, unwashed, and in original packaging. Refunds will be processed within 5-7 business days after we receive the returned item.</p>
+                    <p>
+                      Certain products or Services may be available exclusively online through the website. These products or Services may have limited quantities and are subject to return or exchange only according to our Refund policy.
+                    </p>
+                    <p>
+                      We have made every effort to display as accurately as possible the colors and images of our products that appear at the store. We cannot guarantee that your computer monitor's display of any color will be accurate.
+                    </p>
+                    <p>
+                      We reserve the right, but are not obligated, to limit the sales of our products or Services to any person, geographic region or jurisdiction. We do not warrant that the quality of any products, Services, information, or other material purchased or obtained by you will meet your expectations, or that any errors in the Service will be corrected.
+                    </p>
                   </div>
                 </section>
 
                 <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">8. Limitation of Liability</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Section 6 - Accuracy of Billing and Account Information</h2>
                   <div className="space-y-4 text-gray-600">
-                    <p>CuteBae shall not be liable for any damages that result from the use of, or the inability to use, the materials on this website or the performance of the products, even if CuteBae has been advised of the possibility of such damages.</p>
+                    <p>
+                      We reserve the right to refuse any order you place with us. We may, in our sole discretion, limit or cancel quantities purchased per person, per household or per order. 
+                      These restrictions may include orders placed by or under the same customer account, the same credit card, and/or orders that use the same billing and/or shipping address.
+                    </p>
+                    <p>
+                      You agree to provide current, complete and accurate purchase and account information for all purchases made at our store. 
+                      You agree to promptly update your account and other information, including your email address and credit card numbers and expiration dates, so that we can complete your transactions and contact you as needed.
+                    </p>
                   </div>
                 </section>
 
                 <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">9. Privacy Policy</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Section 18 - Governing Law</h2>
                   <div className="space-y-4 text-gray-600">
-                    <p>Your privacy is important to us. Please review our Privacy Policy to understand how we collect, use, and protect your information.</p>
+                    <p>
+                      These Terms of Service and any separate agreements whereby we provide you Services shall be governed by and construed in accordance with the laws of India.
+                    </p>
                   </div>
                 </section>
 
                 <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">10. Modifications</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Section 20 - Pricing</h2>
                   <div className="space-y-4 text-gray-600">
-                    <p>CuteBae may revise these terms of service at any time without notice. By using this website, you agree to be bound by the current version of these terms and conditions.</p>
-                  </div>
-                </section>
-
-                <section>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">11. Governing Law</h2>
-                  <div className="space-y-4 text-gray-600">
-                    <p>These terms and conditions are governed by and construed in accordance with the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in Tamil Nadu, India.</p>
+                    <p>
+                      Except where noted otherwise, the List Price displayed for products on our website, whether in Foreign Currency or Indian Rupees represents the full price of the product and shipping charges, unless specified otherwise in the Shipping Fees.
+                    </p>
+                    <p>
+                      Despite our best efforts, a small number of the items in our catalogue may be mispriced. If we discover a mispricing, we will do one of the following:
+                    </p>
+                    <ul className="list-disc pl-6 space-y-2">
+                      <li>If an item's correct price is lower than our stated price, we will charge the lower amount and ship you the item.</li>
+                      <li>If an item's correct price is higher than our stated price, we will, at our discretion, either contact you for instructions before shipping or cancel your order and notify you of such cancellation.</li>
+                    </ul>
                   </div>
                 </section>
 
                 <section>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">Contact Information</h2>
                   <div className="space-y-4 text-gray-600">
-                    <p>If you have any questions about these Terms & Conditions, please contact us:</p>
+                    <p>Questions about the Terms of Service should be sent to us:</p>
                     <ul className="list-none space-y-2">
-                      <li>📧 Email: legal@cutebae.in</li>
-                      <li>📞 Phone: +91 98765 43210</li>
-                      <li>📍 Address: CuteBae Store, Vellore, Tamil Nadu, India</li>
+                      <li>📧 Email: cutebae.in@gmail.com</li>
+                      <li>📞 Phone: +91 9787873712</li>
+                      <li>🕒 Available: 10:30 AM to 8:30 PM</li>
                     </ul>
                   </div>
                 </section>
