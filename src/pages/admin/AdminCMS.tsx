@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
+import ImageUpload from "@/components/admin/ImageUpload";
 import { Trash2, Plus, Save } from "lucide-react";
 
 interface HeroSlide {
@@ -254,18 +255,12 @@ const AdminCMS = () => {
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="image_url">Image URL *</Label>
-                    <Input
-                      id="image_url"
-                      value={newSlide.image_url}
-                      onChange={(e) => setNewSlide({ ...newSlide, image_url: e.target.value })}
-                      placeholder="https://example.com/image.jpg"
-                    />
-                    <p className="text-sm text-gray-500 mt-1">
-                      Upload your image to a service like Cloudinary, Imgur, or use a direct image URL
-                    </p>
-                  </div>
+                  <ImageUpload
+                    label="Hero Image *"
+                    value={newSlide.image_url || ''}
+                    onChange={(url) => setNewSlide({ ...newSlide, image_url: url })}
+                    placeholder="https://example.com/image.jpg"
+                  />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -392,15 +387,12 @@ const AdminCMS = () => {
                     />
                   </div>
 
-                  <div>
-                    <Label htmlFor="popup_image">Image URL (Optional)</Label>
-                    <Input
-                      id="popup_image"
-                      value={popupSettings.image_url || ''}
-                      onChange={(e) => setPopupSettings({ ...popupSettings, image_url: e.target.value })}
-                      placeholder="https://example.com/popup-image.jpg"
-                    />
-                  </div>
+                  <ImageUpload
+                    label="Popup Image (Optional)"
+                    value={popupSettings.image_url || ''}
+                    onChange={(url) => setPopupSettings({ ...popupSettings, image_url: url })}
+                    placeholder="https://example.com/popup-image.jpg"
+                  />
 
                   <div>
                     <Label htmlFor="popup_button">Button Text</Label>
