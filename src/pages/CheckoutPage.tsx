@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -11,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAddresses } from "@/hooks/useAddresses";
+import { useRazorpay } from "@/hooks/useRazorpay";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useLogging } from "@/hooks/useLogging";
@@ -21,6 +21,7 @@ const CheckoutPage = () => {
   const { cartItems, cartTotal, clearCart } = useCart();
   const { addresses } = useAddresses();
   const { logFormSuccess, logFormError } = useLogging();
+  const { initiatePayment, isLoading: isPaymentLoading } = useRazorpay();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState(() => {
@@ -48,7 +49,7 @@ const CheckoutPage = () => {
     };
   });
   
-  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [paymentMethod, setPaymentMethod] = useState("razorpay");
 
   if (!user) {
     navigate('/auth');
@@ -69,6 +70,67 @@ const CheckoutPage = () => {
     return required.every(field => deliveryAddress[field as keyof typeof deliveryAddress].trim() !== '');
   };
 
+  const createOrderInDatabase = async () => {
+    // Create address record
+    const { data: addressData, error: addressError } = await supabase
+      .from('addresses')
+      .insert({
+        customer_id: user.id,
+        full_name: deliveryAddress.fullName,
+        address_line_1: deliveryAddress.addressLine1,
+        address_line_2: deliveryAddress.addressLine2,
+        city: deliveryAddress.city,
+        state: deliveryAddress.state,
+        postal_code: deliveryAddress.postalCode,
+        country: 'IN',
+        phone_number: deliveryAddress.phoneNumber,
+        is_default: false
+      })
+      .select()
+      .single();
+
+    if (addressError) throw addressError;
+
+    // Generate order number
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    // Create order
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        customer_id: user.id,
+        order_number: orderNumber,
+        total_amount: cartTotal,
+        status: 'pending',
+        delivery_address_id: addressData.id,
+        payment_method: paymentMethod,
+        payment_status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (orderError) throw orderError;
+
+    // Create order items
+    const orderItems = cartItems.map(item => ({
+      order_id: orderData.id,
+      product_id: item.product_id,
+      color_id: item.color_id,
+      size_id: item.size_id,
+      quantity: item.quantity,
+      unit_price: item.product.price_discounted || item.product.price_original,
+      total_price: (item.product.price_discounted || item.product.price_original) * item.quantity
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItems);
+
+    if (itemsError) throw itemsError;
+
+    return orderData;
+  };
+
   const handlePlaceOrder = async () => {
     if (!validateAddress()) {
       toast({
@@ -82,79 +144,61 @@ const CheckoutPage = () => {
     setIsProcessing(true);
     
     try {
-      // Create address record
-      const { data: addressData, error: addressError } = await supabase
-        .from('addresses')
-        .insert({
-          customer_id: user.id,
-          full_name: deliveryAddress.fullName,
-          address_line_1: deliveryAddress.addressLine1,
-          address_line_2: deliveryAddress.addressLine2,
-          city: deliveryAddress.city,
-          state: deliveryAddress.state,
-          postal_code: deliveryAddress.postalCode,
-          country: 'IN',
-          phone_number: deliveryAddress.phoneNumber,
-          is_default: false
-        })
-        .select()
-        .single();
+      if (paymentMethod === "cod") {
+        // Handle Cash on Delivery
+        const orderData = await createOrderInDatabase();
+        
+        // Clear cart
+        clearCart();
 
-      if (addressError) throw addressError;
+        logFormSuccess('checkout_form', 'order_placed', {
+          orderId: orderData.id,
+          orderNumber: orderData.order_number,
+          totalAmount: cartTotal,
+          itemCount: cartItems.length,
+          paymentMethod: 'cod'
+        });
 
-      // Generate order number
-      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        toast({
+          title: "Order placed successfully!",
+          description: `Your order ${orderData.order_number} has been placed.`,
+        });
 
-      // Create order
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          customer_id: user.id,
-          order_number: orderNumber,
-          total_amount: cartTotal,
-          status: 'pending',
-          delivery_address_id: addressData.id,
-          payment_method: paymentMethod,
-          payment_status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Create order items
-      const orderItems = cartItems.map(item => ({
-        order_id: orderData.id,
-        product_id: item.product_id,
-        color_id: item.color_id,
-        size_id: item.size_id,
-        quantity: item.quantity,
-        unit_price: item.product.price_discounted || item.product.price_original,
-        total_price: (item.product.price_discounted || item.product.price_original) * item.quantity
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) throw itemsError;
-
-      // Clear cart
-      clearCart();
-
-      logFormSuccess('checkout_form', 'order_placed', {
-        orderId: orderData.id,
-        orderNumber,
-        totalAmount: cartTotal,
-        itemCount: cartItems.length
-      });
-
-      toast({
-        title: "Order placed successfully!",
-        description: `Your order ${orderNumber} has been placed.`,
-      });
-
-      navigate('/profile?tab=orders');
+        navigate('/profile?tab=orders');
+      } else if (paymentMethod === "razorpay") {
+        // Handle Razorpay payment
+        const orderData = await createOrderInDatabase();
+        
+        // Initiate Razorpay payment
+        await initiatePayment(
+          cartTotal,
+          orderData.id,
+          {
+            name: deliveryAddress.fullName,
+            email: user.email || '',
+            contact: deliveryAddress.phoneNumber
+          },
+          () => {
+            // Payment success
+            clearCart();
+            logFormSuccess('checkout_form', 'order_placed', {
+              orderId: orderData.id,
+              orderNumber: orderData.order_number,
+              totalAmount: cartTotal,
+              itemCount: cartItems.length,
+              paymentMethod: 'razorpay'
+            });
+            navigate('/profile?tab=orders');
+          },
+          (error) => {
+            // Payment failed
+            logFormError('checkout_form', 'payment_failed', error, {
+              orderId: orderData.id,
+              orderNumber: orderData.order_number
+            });
+          }
+        );
+      }
     } catch (error: any) {
       console.error('Order placement error:', error);
       logFormError('checkout_form', 'order_failed', error, deliveryAddress);
@@ -167,6 +211,8 @@ const CheckoutPage = () => {
       setIsProcessing(false);
     }
   };
+
+  const isLoading = isProcessing || isPaymentLoading;
 
   return (
     <MainLayout>
@@ -271,12 +317,8 @@ const CheckoutPage = () => {
               <CardContent>
                 <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="card" id="card" />
-                    <Label htmlFor="card">Credit/Debit Card</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="upi" id="upi" />
-                    <Label htmlFor="upi">UPI</Label>
+                    <RadioGroupItem value="razorpay" id="razorpay" />
+                    <Label htmlFor="razorpay">Pay Online (Credit/Debit Card, UPI, Net Banking)</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="cod" id="cod" />
@@ -346,9 +388,9 @@ const CheckoutPage = () => {
                   className="w-full" 
                   size="lg"
                   onClick={handlePlaceOrder}
-                  disabled={isProcessing}
+                  disabled={isLoading}
                 >
-                  {isProcessing ? "Processing..." : "Place Order"}
+                  {isLoading ? "Processing..." : paymentMethod === "cod" ? "Place Order" : "Pay Now"}
                 </Button>
               </CardContent>
             </Card>
