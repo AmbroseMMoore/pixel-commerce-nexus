@@ -88,7 +88,7 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
 
   return (
     // <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-gray-900 rounded-2xl overflow-hidden group">
-    <div className="relative w-[90vw] h-[60vh] bg-gray-900 rounded-2xl overflow-hidden group mx-auto">
+    <div className="relative w-[97vw] h-[70vh] bg-gray-900 rounded-2xl overflow-hidden group mx-auto">
 
       {/* Background Image */}
       <div 
