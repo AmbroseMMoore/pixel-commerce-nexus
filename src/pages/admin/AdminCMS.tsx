@@ -146,7 +146,7 @@ const AdminCMS = () => {
       console.error('Error saving hero slide:', error);
       toast({
         title: "Save Failed",
-        description: error.message || "Failed to save new hero slide",
+        description: error.message || "Failed to save hero slide",
         variant: "destructive",
       });
     } finally {
