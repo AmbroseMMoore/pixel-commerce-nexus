@@ -64,16 +64,35 @@ serve(async (req) => {
     if (action === 'verify_payment') {
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature, order_id } = payload;
       
-      // Verify payment signature
-      const crypto = await import('node:crypto');
-      const expectedSignature = crypto
-        .createHmac('sha256', razorpayKeySecret)
-        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-        .digest('hex');
+      console.log('Verifying payment:', { razorpay_order_id, razorpay_payment_id, razorpay_signature, order_id });
+      
+      // Verify payment signature using Web Crypto API
+      const encoder = new TextEncoder();
+      const data = encoder.encode(`${razorpay_order_id}|${razorpay_payment_id}`);
+      const key = encoder.encode(razorpayKeySecret);
+      
+      const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        key,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      
+      const signature = await crypto.subtle.sign('HMAC', cryptoKey, data);
+      const expectedSignature = Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
+      console.log('Expected signature:', expectedSignature);
+      console.log('Received signature:', razorpay_signature);
 
       if (expectedSignature !== razorpay_signature) {
+        console.error('Signature verification failed');
         throw new Error('Invalid payment signature');
       }
+
+      console.log('Signature verification successful');
 
       // Update order status in database
       const { error: updateError } = await supabase
@@ -88,8 +107,11 @@ serve(async (req) => {
         .eq('id', order_id);
 
       if (updateError) {
+        console.error('Database update error:', updateError);
         throw updateError;
       }
+
+      console.log('Order updated successfully');
 
       return new Response(JSON.stringify({ 
         success: true, 
