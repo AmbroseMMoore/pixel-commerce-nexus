@@ -23,7 +23,7 @@ const PrivacyPolicyPage = () => {
               <CardContent className="p-8 space-y-8">
                 <section>
                   <p className="text-gray-600 mb-6">
-                    Thank you for using the website (www.cutebae.com). Your privacy is important to us.
+                    Thank you for using the website (www.cutebae.in). Your privacy is important to us.
                     Please read the following statement to learn about our information gathering and dissemination practices.
                   </p>
                 </section>
@@ -32,7 +32,7 @@ const PrivacyPolicyPage = () => {
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">1. Scope</h2>
                   <div className="space-y-4 text-gray-600">
                     <p>
-                      www.cutebae.com website (hereinafter referred as "CUTEBAE", "we", "our", "us") are committed to protecting and respecting your privacy. 
+                      www.cutebae.in website (hereinafter referred as "CUTEBAE", "we", "our", "us") are committed to protecting and respecting your privacy. 
                       By using CUTEBAE and submission of personal information and in the case of a minor - submitting your personal information either by your parents or your guardian you accept and consent to the terms and practices mentioned under this Privacy Policy.
                     </p>
                   </div>
@@ -146,7 +146,7 @@ const PrivacyPolicyPage = () => {
                     <p>For any queries, questions or grievances about this Policy, please contact us:</p>
                     <ul className="list-none space-y-2">
                       <li>📧 Email: cutebae.in@gmail.com</li>
-                      <li>📞 Phone: +91 9787873712</li>
+                      <li>📞 Phone: +91 97878 73712</li>
                       <li>🕒 Available: 10:30 AM to 8:30 PM</li>
                     </ul>
                   </div>

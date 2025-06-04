@@ -175,8 +175,8 @@ const FAQPage = () => {
                   Can't find the answer you're looking for? Our customer support team is here to help!
                 </p>
                 <div className="space-y-2">
-                  <p className="text-custom-purple font-medium">📧 support@cutebae.in</p>
-                  <p className="text-custom-purple font-medium">📞 +91 98765 43210</p>
+                  <p className="text-custom-purple font-medium">📧 cutebae.in@gmail.com</p>
+                  <p className="text-custom-purple font-medium">📞 +91 97878 73712</p>
                   <p className="text-sm text-gray-500">Available Monday - Saturday, 10 AM - 8 PM</p>
                 </div>
               </CardContent>

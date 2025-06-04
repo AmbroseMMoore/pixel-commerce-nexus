@@ -76,7 +76,9 @@ const ContactPage = () => {
                         <h3 className="font-semibold text-gray-900 mb-1">Store Address</h3>
                         <p className="text-gray-600">
                           CuteBae Store<br />
-                          Vellore, Tamil Nadu, India
+                          No 66/1/1 G2, Rathinasingh kulam street<br />
+                          Arni Rd, opp. to Dinesh hospital<br />
+                          Vellore, Tamil Nadu 632001
                         </p>
                       </div>
                     </div>
@@ -91,7 +93,7 @@ const ContactPage = () => {
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1">Phone</h3>
-                        <p className="text-gray-600">+91 98765 43210</p>
+                        <p className="text-gray-600">+91 97878 73712</p>
                         <p className="text-sm text-gray-500">Call us for immediate assistance</p>
                       </div>
                     </div>
@@ -106,7 +108,7 @@ const ContactPage = () => {
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-1">Email</h3>
-                        <p className="text-gray-600">support@cutebae.in</p>
+                        <p className="text-gray-600">cutebae.in@gmail.com</p>
                         <p className="text-sm text-gray-500">We'll respond within 24 hours</p>
                       </div>
                     </div>
@@ -165,7 +167,7 @@ const ContactPage = () => {
                           type="tel"
                           value={formData.phone}
                           onChange={handleInputChange}
-                          placeholder="+91 98765 43210"
+                          placeholder="+91 97878 73712"
                         />
                       </div>
                     </div>
@@ -258,8 +260,8 @@ const ContactPage = () => {
             <div className="text-center mt-4">
               <p className="text-gray-600">
                 Can't find us? Call us at{" "}
-                <a href="tel:+919876543210" className="text-custom-purple hover:underline font-medium">
-                  +91 98765 43210
+                <a href="tel:+919787873712" className="text-custom-purple hover:underline font-medium">
+                  +91 97878 73712
                 </a>{" "}
                 for directions!
               </p>

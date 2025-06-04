@@ -129,17 +129,17 @@ const Footer = () => {
                 <div className="mt-4">
                   <h4 className="font-medium mb-2" style={{ color: '#353535' }}>Contact Info</h4>
                   <div className="space-y-1 text-sm">
-                    <div className="flex items-center">
-                      <MapPin size={14} className="mr-2" style={{ color: '#353535' }} />
-                      <span style={{ color: '#353535' }}>Vellore, Tamil Nadu</span>
+                    <div className="flex items-start">
+                      <MapPin size={14} className="mr-2 mt-0.5 flex-shrink-0" style={{ color: '#353535' }} />
+                      <span style={{ color: '#353535' }}>No 66/1/1 G2, Rathinasingh kulam street, Arni Rd, opp. to Dinesh hospital, Vellore, Tamil Nadu 632001</span>
                     </div>
                     <div className="flex items-center">
                       <Phone size={14} className="mr-2" style={{ color: '#353535' }} />
-                      <span style={{ color: '#353535' }}>+91 98765 43210</span>
+                      <span style={{ color: '#353535' }}>+91 97878 73712</span>
                     </div>
                     <div className="flex items-center">
                       <Mail size={14} className="mr-2" style={{ color: '#353535' }} />
-                      <span style={{ color: '#353535' }}>support@cutebae.in</span>
+                      <span style={{ color: '#353535' }}>cutebae.in@gmail.com</span>
                     </div>
                   </div>
                 </div>

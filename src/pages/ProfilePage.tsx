@@ -14,21 +14,29 @@ import { useOrders } from "@/hooks/useOrders";
 import { useAddresses } from "@/hooks/useAddresses";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useReturns } from "@/hooks/useReturns";
+import { useOrderDetails } from "@/hooks/useOrderDetails";
 import { format } from "date-fns";
-import { Heart, Package, RotateCcw } from "lucide-react";
+import { Heart, Package, RotateCcw, Eye } from "lucide-react";
+import OrderDetailsModal from "@/components/orders/OrderDetailsModal";
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { orders, isLoading: ordersLoading } = useOrders();
+  const { orders, isLoading: ordersLoading, refetch: refetchOrders } = useOrders();
   const { addresses } = useAddresses();
   const { wishlistItems, isLoading: wishlistLoading, removeFromWishlist } = useWishlist();
   const { returns, isLoading: returnsLoading } = useReturns();
+  const { fetchOrderStatusHistory } = useOrderDetails();
   
   // Profile form state
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState("");
+  
+  // Selected order for modal
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [orderStatusHistory, setOrderStatusHistory] = useState<any[]>([]);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   
   // Form submission handler
   const handleProfileSubmit = (e: React.FormEvent) => {
@@ -37,6 +45,14 @@ const ProfilePage = () => {
       title: "Profile updated",
       description: "Your profile has been updated successfully.",
     });
+  };
+
+  // Handle opening order details modal
+  const handleOpenOrderDetails = async (order: any) => {
+    const statusHistory = await fetchOrderStatusHistory(order.id);
+    setSelectedOrder(order);
+    setOrderStatusHistory(statusHistory);
+    setIsOrderModalOpen(true);
   };
   
   // Handle logout
@@ -133,16 +149,27 @@ const ProfilePage = () => {
                                   {format(new Date(order.created_at), 'MMM dd, yyyy')}
                                 </p>
                               </div>
-                              <div className="mt-2 sm:mt-0">
+                              <div className="mt-2 sm:mt-0 flex gap-2 items-center">
                                 <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                   order.status === 'delivered' 
                                     ? 'bg-green-100 text-green-800'
                                     : order.status === 'processing'
                                     ? 'bg-blue-100 text-blue-800'
+                                    : order.status === 'cancelled'
+                                    ? 'bg-red-100 text-red-800'
                                     : 'bg-gray-100 text-gray-800'
                                 }`}>
                                   {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                                 </span>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-8 w-8 p-0" 
+                                  onClick={() => handleOpenOrderDetails(order)}
+                                >
+                                  <Eye size={16} />
+                                  <span className="sr-only">View order details</span>
+                                </Button>
                               </div>
                             </div>
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
@@ -392,6 +419,22 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <OrderDetailsModal 
+          isOpen={isOrderModalOpen}
+          onClose={() => setIsOrderModalOpen(false)}
+          order={{
+            ...selectedOrder,
+            statusHistory: orderStatusHistory
+          }}
+          onStatusChange={() => {
+            refetchOrders();
+            setIsOrderModalOpen(false);
+          }}
+        />
+      )}
     </MainLayout>
   );
 };
