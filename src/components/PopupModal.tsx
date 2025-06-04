@@ -40,19 +40,34 @@ const PopupModal = () => {
           
           // Check if popup should be shown based on frequency
           const lastShown = localStorage.getItem('popup_last_shown');
-          const now = new Date().getTime();
+          const settingsHash = localStorage.getItem('popup_settings_hash');
+          const currentHash = JSON.stringify({
+            frequency: data.display_frequency,
+            delay: data.display_delay,
+            title: data.title
+          });
           
+          const now = new Date().getTime();
           let shouldShow = true;
           
-          if (data.display_frequency === 'once_per_session') {
-            const sessionShown = sessionStorage.getItem('popup_shown');
-            if (sessionShown) shouldShow = false;
-          } else if (data.display_frequency === 'once_per_day' && lastShown) {
-            const oneDayAgo = now - (24 * 60 * 60 * 1000);
-            if (parseInt(lastShown) > oneDayAgo) shouldShow = false;
-          } else if (data.display_frequency === 'once_per_week' && lastShown) {
-            const oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
-            if (parseInt(lastShown) > oneWeekAgo) shouldShow = false;
+          // If settings changed, reset and show popup
+          if (settingsHash !== currentHash) {
+            localStorage.setItem('popup_settings_hash', currentHash);
+            localStorage.removeItem('popup_last_shown');
+            sessionStorage.removeItem('popup_shown');
+            shouldShow = true;
+          } else {
+            // Check frequency rules
+            if (data.display_frequency === 'once_per_session') {
+              const sessionShown = sessionStorage.getItem('popup_shown');
+              if (sessionShown) shouldShow = false;
+            } else if (data.display_frequency === 'once_per_day' && lastShown) {
+              const oneDayAgo = now - (24 * 60 * 60 * 1000);
+              if (parseInt(lastShown) > oneDayAgo) shouldShow = false;
+            } else if (data.display_frequency === 'once_per_week' && lastShown) {
+              const oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
+              if (parseInt(lastShown) > oneWeekAgo) shouldShow = false;
+            }
           }
           
           if (shouldShow) {
@@ -67,6 +82,22 @@ const PopupModal = () => {
     };
 
     fetchPopupSettings();
+
+    // Listen for popup settings changes
+    const channel = supabase
+      .channel('popup_settings_changes')
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'popup_settings' },
+        () => {
+          // Refetch settings when they change
+          fetchPopupSettings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, []);
 
   const handleClose = () => {
