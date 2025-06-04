@@ -23,7 +23,7 @@ interface ProductCardSkeletonProps {
 
 export const ProductCardSkeleton = ({ className }: ProductCardSkeletonProps) => {
   return (
-    <div className={cn("group", className)}>
+    <div className={cn("group w-3/4 mx-auto", className)}>
       <Skeleton className="aspect-[3/4] w-full rounded-md mb-3" />
       <Skeleton className="h-4 w-3/4 mb-2" />
       <Skeleton className="h-4 w-1/2 mb-3" />
@@ -156,7 +156,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
   };
   
   return (
-    <div className={cn("group", className)}>
+    <div className={cn("group w-3/4 mx-auto", className)}>
       <div className="aspect-[3/4] overflow-hidden relative rounded-md mb-3">
         <Link to={`/product/${product.slug}`} onClick={handleProductClick}>
           <img 

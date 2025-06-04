@@ -45,6 +45,11 @@ export const useAddresses = () => {
     mutationFn: async (newAddress: Omit<Address, 'id' | 'customer_id' | 'created_at' | 'updated_at'>) => {
       if (!user?.id) throw new Error('User not authenticated');
 
+      // Check if user already has 2 addresses
+      if (addresses.length >= 2) {
+        throw new Error('Maximum of 2 addresses allowed per customer');
+      }
+
       const { error } = await supabase
         .from('addresses')
         .insert({
@@ -64,7 +69,63 @@ export const useAddresses = () => {
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to add address.",
+        description: error instanceof Error ? error.message : "Failed to add address.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const updateAddressMutation = useMutation({
+    mutationFn: async ({ id, updatedAddress }: { id: string; updatedAddress: Partial<Address> }) => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      const { error } = await supabase
+        .from('addresses')
+        .update(updatedAddress)
+        .eq('id', id)
+        .eq('customer_id', user.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      toast({
+        title: "Address updated",
+        description: "Your address has been updated successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update address.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const deleteAddressMutation = useMutation({
+    mutationFn: async (addressId: string) => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      const { error } = await supabase
+        .from('addresses')
+        .delete()
+        .eq('id', addressId)
+        .eq('customer_id', user.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['addresses'] });
+      toast({
+        title: "Address deleted",
+        description: "Your address has been deleted successfully.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete address.",
         variant: "destructive"
       });
     }
@@ -75,6 +136,11 @@ export const useAddresses = () => {
     isLoading,
     error,
     addAddress: addAddressMutation.mutate,
+    updateAddress: updateAddressMutation.mutate,
+    deleteAddress: deleteAddressMutation.mutate,
     isAddingAddress: addAddressMutation.isPending,
+    isUpdatingAddress: updateAddressMutation.isPending,
+    isDeletingAddress: deleteAddressMutation.isPending,
+    canAddMoreAddresses: addresses.length < 2,
   };
 };

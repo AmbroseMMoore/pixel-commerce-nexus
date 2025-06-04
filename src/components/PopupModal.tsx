@@ -67,6 +67,33 @@ const PopupModal = () => {
     };
 
     fetchPopupSettings();
+
+    // Set up real-time subscription to listen for popup_settings changes
+    const channel = supabase
+      .channel('popup_settings_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'popup_settings'
+        },
+        (payload) => {
+          console.log('Popup settings changed:', payload);
+          // Clear storage when settings change to respect new frequency
+          if (payload.eventType === 'UPDATE') {
+            localStorage.removeItem('popup_last_shown');
+            sessionStorage.removeItem('popup_shown');
+            // Refetch settings
+            fetchPopupSettings();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleClose = () => {
