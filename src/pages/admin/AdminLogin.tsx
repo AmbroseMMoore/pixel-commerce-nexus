@@ -16,9 +16,6 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
-  const [isResetting, setIsResetting] = useState(false);
   const { login, isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -94,84 +91,6 @@ const AdminLogin = () => {
     }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsResetting(true);
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/admin/login`,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: "Password reset email sent",
-        description: "Check your email for password reset instructions.",
-      });
-      setShowResetPassword(false);
-      setResetEmail("");
-    } catch (error: any) {
-      console.error("Reset password error:", error);
-      toast({
-        title: "Reset failed",
-        description: error.message || "Failed to send reset email.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsResetting(false);
-    }
-  };
-
-  if (showResetPassword) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-100">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">Reset Password</CardTitle>
-            <CardDescription className="text-center">
-              Enter your email to receive password reset instructions
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={handleResetPassword}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="resetEmail">Email</Label>
-                <Input
-                  id="resetEmail"
-                  type="email"
-                  placeholder="admin@example.com"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="space-y-2">
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isResetting}
-              >
-                {isResetting ? "Sending..." : "Send Reset Email"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => setShowResetPassword(false)}
-              >
-                Back to Login
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen items-center justify-center bg-gray-100">
       <Card className="w-full max-w-md">
@@ -211,22 +130,18 @@ const AdminLogin = () => {
                 required
               />
             </div>
+            <div className="text-sm text-muted-foreground pt-2">
+              <p>Admin: kon22kuruvi@gmail.com</p>
+              <p>Password: Moore@9600</p>
+            </div>
           </CardContent>
-          <CardFooter className="space-y-2">
+          <CardFooter>
             <Button
               type="submit"
               className="w-full"
               disabled={isLoading}
             >
               {isLoading ? "Logging in..." : "Login"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowResetPassword(true)}
-            >
-              Forgot Password?
             </Button>
           </CardFooter>
         </form>
