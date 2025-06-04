@@ -51,26 +51,45 @@ const OrderActions: React.FC<OrderActionsProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!user) return;
+    if (!user) {
+      toast.error("You must be logged in to perform this action");
+      return;
+    }
+
+    if ((actionType === 'return' || actionType === 'replace') && !reason.trim()) {
+      toast.error("Please provide a reason for your request");
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
       if (actionType === 'cancel') {
         // Cancel order
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from('orders')
-          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+          .update({ 
+            status: 'cancelled', 
+            updated_at: new Date().toISOString() 
+          })
           .eq('id', orderId);
 
-        if (error) throw error;
+        if (updateError) {
+          console.error('Error updating order:', updateError);
+          throw new Error('Failed to cancel order');
+        }
 
-        // Add to order status history
-        await supabase.rpc('update_order_status', {
+        // Add to order status history using the RPC function
+        const { error: historyError } = await supabase.rpc('update_order_status', {
           order_id_param: orderId,
           new_status: 'cancelled',
           notes_param: reason || 'Cancelled by customer'
         });
+
+        if (historyError) {
+          console.error('Error updating order history:', historyError);
+          // Don't throw here as the main update succeeded
+        }
 
         toast.success("Order cancelled successfully!");
       } else {
@@ -81,11 +100,14 @@ const OrderActions: React.FC<OrderActionsProps> = ({
             order_id: orderId,
             order_item_id: selectedOrderItem,
             customer_id: user.id,
-            reason,
+            reason: reason.trim(),
             return_type: actionType === 'return' ? 'return' : 'replace'
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error creating return/replace request:', error);
+          throw new Error(`Failed to submit ${actionType} request`);
+        }
 
         toast.success(
           actionType === 'return' 
@@ -98,8 +120,8 @@ const OrderActions: React.FC<OrderActionsProps> = ({
         onStatusChange();
       }
     } catch (error: any) {
-      console.error('Error:', error);
-      toast.error("Failed to process your request. Please try again.");
+      console.error('Error processing request:', error);
+      toast.error(error.message || "Failed to process your request. Please try again.");
     } finally {
       setIsSubmitting(false);
       setIsDialogOpen(false);
@@ -207,7 +229,7 @@ const OrderActions: React.FC<OrderActionsProps> = ({
             <Button
               type="submit"
               onClick={handleSubmit}
-              disabled={isSubmitting || (actionType !== 'cancel' && !reason)}
+              disabled={isSubmitting || (actionType !== 'cancel' && !reason.trim())}
               variant={actionType === 'cancel' ? "destructive" : "default"}
             >
               {isSubmitting ? "Processing..." : "Confirm"}
