@@ -21,10 +21,8 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
         if (dbSlides.length > 0) {
           setSlides(dbSlides);
         } else if (propSlides) {
-          // Fallback to prop slides if no database slides
           setSlides(propSlides);
         } else {
-          // Default slide if nothing else available
           setSlides([{
             id: "default",
             title: "Welcome to CuteBae",
@@ -38,7 +36,6 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
         }
       } catch (error) {
         console.error('Error loading hero slides:', error);
-        // Use prop slides as fallback
         if (propSlides) {
           setSlides(propSlides);
         }
@@ -87,9 +84,7 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
   const currentSlideData = slides[currentSlide];
 
   return (
-    // <div className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] bg-gray-900 rounded-2xl overflow-hidden group">
     <div className="relative w-[97vw] h-[70vh] bg-gray-900 rounded-2xl overflow-hidden group mx-auto">
-
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700 ease-in-out"
@@ -97,25 +92,37 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
           backgroundImage: `url(${currentSlideData.image_url})`,
         }}
       >
-        {/* <div className="absolute inset-0 bg-black/40"> </div> */}
-       
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center h-full text-center text-white px-4 md:px-8">
-        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 font-holtwood max-w-4xl leading-tight">
-          {currentSlideData.title}
-        </h1>
-        <p className="text-lg md:text-xl lg:text-2xl mb-8 max-w-2xl font-quicksand opacity-90">
-          {currentSlideData.subtitle}
-        </p>
-        <Button 
-          size="lg" 
-          className="bg-white text-black hover:bg-gray-100 font-quicksand font-semibold px-8 py-3 text-lg"
-          onClick={() => window.location.href = currentSlideData.cta_link}
-        >
-          {currentSlideData.cta_text}
-        </Button>
+      {/* Content Container */}
+      <div className="relative z-10 flex items-center h-full px-4 md:px-8">
+        {/* Left side - Text content */}
+        <div className="flex-1 text-left text-white max-w-2xl">
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 font-holtwood leading-tight">
+            {currentSlideData.title}
+          </h1>
+          <p className="text-lg md:text-xl lg:text-2xl mb-8 font-quicksand opacity-90">
+            {currentSlideData.subtitle}
+          </p>
+          <Button 
+            size="lg" 
+            className="bg-white text-black hover:bg-gray-100 font-quicksand font-semibold px-8 py-3 text-lg"
+            onClick={() => window.location.href = currentSlideData.cta_link}
+          >
+            {currentSlideData.cta_text}
+          </Button>
+        </div>
+
+        {/* Right side - Small image section */}
+        <div className="hidden lg:block flex-shrink-0 ml-8">
+          <div className="w-48 h-64 bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+            <img
+              src={currentSlideData.image_url}
+              alt="Featured product"
+              className="w-full h-full object-cover rounded-lg"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Navigation Arrows */}

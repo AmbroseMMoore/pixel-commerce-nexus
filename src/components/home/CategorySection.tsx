@@ -12,12 +12,21 @@ interface CategorySectionProps {
 const CategorySection = ({ categories, isLoading = false }: CategorySectionProps) => {
   const skeletonArray = Array(6).fill(0);
 
+  // Category images mapping
+  const categoryImages = {
+    "Hair Accessories": "/lovable-uploads/e088a667-d285-4328-95af-7b181850da03.png",
+    "Boys": "/lovable-uploads/f65079a7-32ec-4987-ac01-ea10c67d3635.png", 
+    "Girls": "/lovable-uploads/83ece4fa-a270-41b5-babf-65c606e535b7.png",
+    "Baby": "/lovable-uploads/fc4bf32c-8a89-4bba-b0c8-f8e855728cfe.png",
+    "Shoes": "/lovable-uploads/1fc2e9ae-2c60-4477-98e0-3a17219db300.png",
+    "Toys": "/lovable-uploads/97e7a339-6aba-4a6b-88b7-49bfd10e54d3.png"
+  };
+
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const target = e.target as HTMLImageElement;
-    // Only set fallback once to prevent infinite loop
     if (!target.dataset.fallback) {
       target.dataset.fallback = "true";
-      target.src = "https://placehold.co/300x300?text=Category";
+      target.src = "https://placehold.co/300x375?text=Category";
     }
   };
 
@@ -32,7 +41,7 @@ const CategorySection = ({ categories, isLoading = false }: CategorySectionProps
           {isLoading ? (
             skeletonArray.map((_, index) => (
               <div key={index} className="flex flex-col items-center">
-                <Skeleton className="aspect-square w-full rounded-lg mb-2" />
+                <Skeleton className="w-full aspect-[4/5] rounded-lg mb-2" />
                 <Skeleton className="h-4 w-24 mb-1" />
                 <Skeleton className="h-3 w-16" />
               </div>
@@ -51,11 +60,12 @@ const CategorySection = ({ categories, isLoading = false }: CategorySectionProps
                 to={`/category/${category.slug}`}
                 className="group"
               >
-                <div className="aspect-square relative overflow-hidden rounded-lg mb-2">
+                <div className="w-full aspect-[4/5] relative overflow-hidden rounded-lg mb-2">
                   <img
                     src={
+                      categoryImages[category.name as keyof typeof categoryImages] ||
                       category.image ||
-                      "https://placehold.co/300x300?text=Category"
+                      "https://placehold.co/300x375?text=Category"
                     }
                     alt={category.name}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"

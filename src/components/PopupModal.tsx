@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,20 +113,19 @@ const PopupModal = () => {
   if (!popupSettings) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-md">
-        <DialogHeader className="relative">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="absolute -top-2 -right-2 h-6 w-6 p-0"
-            onClick={handleClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </DialogHeader>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-md p-0">
+        {/* Custom close button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-2 right-2 h-8 w-8 p-0 z-10"
+          onClick={handleClose}
+        >
+          <X className="h-4 w-4" />
+        </Button>
         
-        <div className="space-y-4 p-4">
+        <div className="space-y-4 p-6">
           {popupSettings.image_url && (
             <div className="flex justify-center">
               <img
