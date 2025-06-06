@@ -14,7 +14,7 @@ const CategorySection = ({ categories, isLoading = false }: CategorySectionProps
 
   // Category images mapping
   const categoryImages = {
-    "Hair Accessories": "/lovable-uploads/3927607c-5fe2-4ef5-8881-49a2f73ae7fb.png",
+    "Accessories": "/lovable-uploads/3927607c-5fe2-4ef5-8881-49a2f73ae7fb.png",
     "Boys": "/lovable-uploads/f65079a7-32ec-4987-ac01-ea10c67d3635.png", 
     "Girls": "/lovable-uploads/83ece4fa-a270-41b5-babf-65c606e535b7.png",
     "Baby": "/lovable-uploads/fc4bf32c-8a89-4bba-b0c8-f8e855728cfe.png",
