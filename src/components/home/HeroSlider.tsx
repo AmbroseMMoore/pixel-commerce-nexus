@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -94,10 +93,9 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
       >
       </div>
 
-      {/* Content Container */}
-      <div className="relative z-10 flex items-center h-full px-4 md:px-8">
-        {/* Left side - Text content */}
-        <div className="flex-1 text-left text-white max-w-2xl">
+      {/* Content Container - Centered */}
+      <div className="relative z-10 flex items-center justify-center h-full px-4 md:px-8">
+        <div className="text-center text-white max-w-4xl">
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 font-holtwood leading-tight">
             {currentSlideData.title}
           </h1>
@@ -111,17 +109,6 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
           >
             {currentSlideData.cta_text}
           </Button>
-        </div>
-
-        {/* Right side - Small image section */}
-        <div className="hidden lg:block flex-shrink-0 ml-8">
-          <div className="w-48 h-64 bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <img
-              src={currentSlideData.image_url}
-              alt="Featured product"
-              className="w-full h-full object-cover rounded-lg"
-            />
-          </div>
         </div>
       </div>
 
