@@ -13,7 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Search, Eye, RefreshCw, TestTube, Edit } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import AdminDataTest from "@/components/AdminDataTest";
+import OrderDetailsModal from "@/components/orders/OrderDetailsModal";
 import { useAdminOrders } from "@/hooks/useAdminOrders";
+import { useOrderDetails } from "@/hooks/useOrderDetails";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -191,7 +193,11 @@ const AdminOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false);
+  
   const { orders, isLoading, refetch } = useAdminOrders();
+  const { fetchOrderStatusHistory } = useOrderDetails();
   
   const filteredOrders = orders.filter(order => {
     const matchesSearch = 
@@ -209,6 +215,24 @@ const AdminOrders = () => {
   const handleRefresh = () => {
     console.log('Refreshing orders data...');
     refetch();
+  };
+
+  const handleViewOrderDetails = async (order: any) => {
+    try {
+      const statusHistory = await fetchOrderStatusHistory(order.id);
+      setSelectedOrder({
+        ...order,
+        statusHistory
+      });
+      setIsOrderDetailsOpen(true);
+    } catch (error) {
+      console.error('Error loading order details:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not load order details',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -338,7 +362,11 @@ const AdminOrders = () => {
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <OrderStatusDialog order={order} onStatusUpdate={handleRefresh} />
-                              <Button size="sm" variant="ghost">
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => handleViewOrderDetails(order)}
+                              >
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </div>
@@ -351,6 +379,18 @@ const AdminOrders = () => {
               </div>
             </CardContent>
           </Card>
+
+          {selectedOrder && (
+            <OrderDetailsModal
+              isOpen={isOrderDetailsOpen}
+              onClose={() => {
+                setIsOrderDetailsOpen(false);
+                setSelectedOrder(null);
+              }}
+              order={selectedOrder}
+              onStatusChange={handleRefresh}
+            />
+          )}
         </div>
       </AdminLayout>
     </AdminProtectedRoute>
