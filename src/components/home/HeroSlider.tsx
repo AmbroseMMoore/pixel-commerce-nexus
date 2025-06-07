@@ -94,9 +94,9 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
       >
       </div>
 
-      {/* Content Container - Centered on desktop, bottom-aligned on mobile */}
+      {/* Content Container - Centered on desktop, bottom-aligned on mobile with 10px upward adjustment */}
       <div className="relative z-10 flex items-center md:justify-center justify-center h-full px-4 md:px-8">
-        <div className="text-center text-white max-w-4xl md:relative absolute bottom-8 left-1/2 md:left-auto md:bottom-auto md:transform-none transform -translate-x-1/2">
+        <div className="text-center text-white max-w-4xl md:relative absolute bottom-[42px] md:bottom-auto left-1/2 md:left-auto md:transform-none transform -translate-x-1/2">
           <h1 className="text-2xl md:text-5xl lg:text-6xl font-bold mb-4 font-holtwood leading-tight">
             {currentSlideData.title}
           </h1>

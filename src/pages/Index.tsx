@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import HeroSlider from "@/components/home/HeroSlider";
@@ -6,6 +7,7 @@ import CategorySection from "@/components/home/CategorySection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import CustomerReviewSlider from "@/components/home/CustomerReviewSlider";
 import NewsletterSection from "@/components/home/NewsletterSection";
+import AnimatedStars from "@/components/ui/AnimatedStars";
 import { useCategories } from "@/hooks/useCategories";
 import { useFeaturedProducts } from "@/hooks/useProducts";
 import { useTrendingProducts } from "@/hooks/useTrendingProducts";
@@ -91,7 +93,8 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <div data-page="home">
+      <AnimatedStars />
+      <div data-page="home" className="relative z-10">
         <HeroSlider />
         <TrendingProducts 
           products={trendingProducts || []} 
