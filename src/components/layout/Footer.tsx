@@ -5,7 +5,7 @@ import { Mail, Phone, MapPin, Facebook, Instagram, Twitter } from "lucide-react"
 
 const Footer = () => {
   return (
-    <footer className="pt-12 pb-6" style={{ backgroundColor: '#F0F0F0', color: '#353535' }}>
+    <footer className="pt-12 pb-6" style={{ backgroundColor: '#EAE6D3', color: '#353535' }}>
       <div className="container-custom">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Shop Info */}

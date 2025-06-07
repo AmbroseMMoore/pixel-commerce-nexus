@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -93,18 +94,18 @@ const HeroSlider = ({ slides: propSlides }: HeroSliderProps) => {
       >
       </div>
 
-      {/* Content Container - Centered */}
-      <div className="relative z-10 flex items-center justify-center h-full px-4 md:px-8">
-        <div className="text-center text-white max-w-4xl">
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 font-holtwood leading-tight">
+      {/* Content Container - Centered on desktop, bottom-aligned on mobile */}
+      <div className="relative z-10 flex items-center md:justify-center justify-center h-full px-4 md:px-8">
+        <div className="text-center text-white max-w-4xl md:relative absolute bottom-8 left-1/2 md:left-auto md:bottom-auto md:transform-none transform -translate-x-1/2">
+          <h1 className="text-2xl md:text-5xl lg:text-6xl font-bold mb-4 font-holtwood leading-tight">
             {currentSlideData.title}
           </h1>
-          <p className="text-lg md:text-xl lg:text-2xl mb-8 font-quicksand opacity-90">
+          <p className="text-base md:text-xl lg:text-2xl mb-6 md:mb-8 font-quicksand opacity-90">
             {currentSlideData.subtitle}
           </p>
           <Button 
             size="lg" 
-            className="bg-white text-black hover:bg-gray-100 font-quicksand font-semibold px-8 py-3 text-lg"
+            className="bg-white text-black hover:bg-gray-100 font-quicksand font-semibold px-6 md:px-8 py-2 md:py-3 text-base md:text-lg"
             onClick={() => window.location.href = currentSlideData.cta_link}
           >
             {currentSlideData.cta_text}

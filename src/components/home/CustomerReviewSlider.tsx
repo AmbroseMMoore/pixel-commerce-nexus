@@ -116,7 +116,7 @@ const CustomerReviewSlider = () => {
                 className="flex-shrink-0 px-3"
                 style={{ width: `${100 / slidesToShow}%` }}
               >
-                <div className="bg-white border border-gray-200 rounded-lg p-6 h-full">
+                <div className="bg-white border border-gray-200 rounded-lg p-6 h-full w-[70%] mx-auto">
                   <div className="flex items-center mb-3">
                     {renderStars(review.rating)}
                   </div>
