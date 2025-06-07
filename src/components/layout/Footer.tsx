@@ -103,11 +103,6 @@ const Footer = () => {
                   Cancellation & Refund
                 </Link>
               </li>
-              <li>
-                <Link to="/admin" className="font-semibold hover:opacity-70 transition-colors" style={{ color: '#712D8F' }}>
-                  Admin Panel
-                </Link>
-              </li>
             </ul>
           </div>
 

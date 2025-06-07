@@ -130,10 +130,6 @@ const AdminLogin = () => {
                 required
               />
             </div>
-            <div className="text-sm text-muted-foreground pt-2">
-              <p>Admin: kon22kuruvi@gmail.com</p>
-              <p>Password: Moore@9600</p>
-            </div>
           </CardContent>
           <CardFooter>
             <Button
