@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import HeroSlider from "@/components/home/HeroSlider";
 import TrendingProducts from "@/components/home/TrendingProducts";
+import FlashSaleSection from "@/components/home/FlashSaleSection";
 import CategorySection from "@/components/home/CategorySection";
 import FeaturedProducts from "@/components/home/FeaturedProducts";
 import CustomerReviewSlider from "@/components/home/CustomerReviewSlider";
@@ -93,13 +94,14 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <AnimatedStars />
+      <AnimatedStars className="fixed inset-0 pointer-events-none z-0" />
       <div data-page="home" className="relative z-10">
         <HeroSlider />
         <TrendingProducts 
           products={trendingProducts || []} 
           isLoading={trendingLoading}
         />
+        <FlashSaleSection />
         <CategorySection categories={categories} isLoading={categoriesLoading} />
         <FeaturedProducts 
           products={featuredProducts || []} 
