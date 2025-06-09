@@ -1,227 +1,184 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Upload, X, AlertCircle, Info } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { mediaUploadService } from '@/services/mediaUpload';
+import { Upload, X, Image, Cloud, Server } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { uploadMedia, deleteMedia } from '@/services/mediaUpload';
+import { isCloudStorage } from '@/config/mediaStorage';
 
 interface ImageUploadProps {
-  onUploadComplete: (urls: string[]) => void;
-  multiple?: boolean;
-  maxFiles?: number;
-  acceptedTypes?: string[];
-  maxSizeInMB?: number;
-  category?: 'product' | 'hero' | 'category' | 'general';
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  placeholder?: string;
 }
 
-const IMAGE_DIMENSIONS = {
-  product: {
-    recommended: "800x800px",
-    aspectRatio: "1:1 (Square)",
-    description: "Product images work best as squares for consistent display in grids and carousels"
-  },
-  hero: {
-    recommended: "1920x800px",
-    aspectRatio: "16:7 (Widescreen)",
-    description: "Hero images should be wide format for banner display across the full width"
-  },
-  category: {
-    recommended: "400x400px", 
-    aspectRatio: "1:1 (Square)",
-    description: "Category images display as squares in the category grid layout"
-  },
-  general: {
-    recommended: "1200x800px",
-    aspectRatio: "3:2 (Standard)",
-    description: "General images work well with standard photo aspect ratio"
-  }
-};
+const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
 
-const ImageUpload: React.FC<ImageUploadProps> = ({
-  onUploadComplete,
-  multiple = false,
-  maxFiles = 5,
-  acceptedTypes = ['image/jpeg', 'image/png', 'image/webp'],
-  maxSizeInMB = 5,
-  category = 'general'
-}) => {
-  const [uploading, setUploading] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const dimensionInfo = IMAGE_DIMENSIONS[category];
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
+    // Validate file size (10MB)
+    if (file.size > 10485760) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    setError(null);
-    setUploading(true);
+    setIsUploading(true);
 
     try {
-      // Validate files
-      for (const file of files) {
-        if (!acceptedTypes.includes(file.type)) {
-          throw new Error(`Invalid file type: ${file.name}. Please upload ${acceptedTypes.join(', ')} files only.`);
-        }
-        
-        if (file.size > maxSizeInMB * 1024 * 1024) {
-          throw new Error(`File too large: ${file.name}. Maximum size is ${maxSizeInMB}MB.`);
-        }
-      }
-
-      if (multiple && files.length > maxFiles) {
-        throw new Error(`Too many files. Maximum ${maxFiles} files allowed.`);
-      }
-
-      if (!multiple && files.length > 1) {
-        throw new Error('Only one file allowed for this upload.');
-      }
-
-      // Upload files
-      const filesToUpload = multiple ? files : [files[0]];
-      const uploadPromises = filesToUpload.map(file => mediaUploadService.uploadFile(file));
-      const results = await Promise.all(uploadPromises);
+      const result = await uploadMedia(file);
       
-      const successfulUploads = results
-        .filter(result => result.success)
-        .map(result => result.url);
-
-      if (successfulUploads.length === 0) {
-        throw new Error('No files were uploaded successfully.');
+      if (result.error) {
+        throw new Error(result.error);
       }
 
-      const newImages = [...uploadedImages, ...successfulUploads];
-      setUploadedImages(newImages);
-      onUploadComplete(newImages);
+      onChange(result.url);
 
       toast({
-        title: "Upload Successful",
-        description: `${successfulUploads.length} image(s) uploaded successfully.`,
+        title: "Upload successful",
+        description: `Image uploaded successfully to ${isCloudStorage() ? 'cloud storage' : 'local storage'}`,
       });
-
-      // Clear the input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Upload failed';
-      setError(errorMessage);
+    } catch (error: any) {
+      console.error('Upload error:', error);
       toast({
-        title: "Upload Failed",
-        description: errorMessage,
+        title: "Upload failed",
+        description: error.message || "Failed to upload image",
         variant: "destructive",
       });
     } finally {
-      setUploading(false);
+      setIsUploading(false);
     }
   };
 
-  const removeImage = (index: number) => {
-    const newImages = uploadedImages.filter((_, i) => i !== index);
-    setUploadedImages(newImages);
-    onUploadComplete(newImages);
+  const handleUrlChange = (url: string) => {
+    onChange(url);
+    setShowUrlInput(false);
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
+  const clearImage = async () => {
+    if (value) {
+      // Try to delete the media file if it's not a URL
+      if (!value.startsWith('http')) {
+        await deleteMedia(value);
+      }
+    }
+    onChange('');
   };
+
+  const storageType = isCloudStorage() ? 'cloud' : 'local';
+  const StorageIcon = isCloudStorage() ? Cloud : Server;
 
   return (
-    <div className="space-y-4">
-      {/* Image Dimension Guidelines */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          <div className="space-y-1">
-            <div className="font-medium">Recommended dimensions for {category} images:</div>
-            <div className="text-sm">
-              <div><strong>Size:</strong> {dimensionInfo.recommended}</div>
-              <div><strong>Aspect Ratio:</strong> {dimensionInfo.aspectRatio}</div>
-              <div className="text-gray-600 mt-1">{dimensionInfo.description}</div>
-            </div>
-          </div>
-        </AlertDescription>
-      </Alert>
-
-      <div>
-        <Label>Upload Images</Label>
-        <Input
-          ref={fileInputRef}
-          type="file"
-          multiple={multiple}
-          accept={acceptedTypes.join(',')}
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-        
-        <Card className="mt-2">
-          <CardContent className="p-6">
-            <div
-              onClick={triggerFileInput}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
-            >
-              <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <div className="text-lg font-medium text-gray-900 mb-2">
-                {uploading ? 'Uploading...' : 'Click to upload images'}
-              </div>
-              <div className="text-sm text-gray-500">
-                {multiple ? `Up to ${maxFiles} files` : 'Single file'} • 
-                Max {maxSizeInMB}MB each • 
-                {acceptedTypes.map(type => type.split('/')[1].toUpperCase()).join(', ')}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {uploadedImages.length > 0 && (
-        <div>
-          <Label>Uploaded Images</Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
-            {uploadedImages.map((url, index) => (
-              <div key={index} className="relative group">
-                <img
-                  src={url}
-                  alt={`Uploaded ${index + 1}`}
-                  className="w-full h-32 object-cover rounded-lg border"
-                />
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => removeImage(index)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
+    <div className="space-y-2">
+      <Label className="flex items-center gap-2">
+        {label}
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <StorageIcon className="h-3 w-3" />
+          <span>{storageType} storage</span>
+        </div>
+      </Label>
+      
+      {value && (
+        <div className="relative">
+          <img
+            src={value}
+            alt="Preview"
+            className="w-full h-32 object-cover rounded-md border"
+            onError={(e) => {
+              e.currentTarget.src = '/placeholder.svg';
+            }}
+          />
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="absolute top-2 right-2"
+            onClick={clearImage}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       )}
 
-      <Button
-        onClick={triggerFileInput}
-        disabled={uploading}
-        variant="outline"
-        className="w-full"
-      >
-        <Upload className="h-4 w-4 mr-2" />
-        {uploading ? 'Uploading...' : 'Add More Images'}
-      </Button>
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <Input
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            disabled={isUploading}
+            className="hidden"
+            id={`file-upload-${label}`}
+          />
+          <Label
+            htmlFor={`file-upload-${label}`}
+            className="flex items-center justify-center w-full h-10 px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md cursor-pointer"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {isUploading ? 'Uploading...' : `Upload to ${storageType}`}
+          </Label>
+        </div>
+        
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setShowUrlInput(!showUrlInput)}
+          className="px-3"
+        >
+          <Image className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {showUrlInput && (
+        <div className="flex gap-2">
+          <Input
+            placeholder={placeholder || "Enter image URL"}
+            defaultValue={value}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleUrlChange(e.currentTarget.value);
+              }
+            }}
+          />
+          <Button
+            type="button"
+            onClick={() => {
+              const input = document.querySelector(`input[placeholder="${placeholder || "Enter image URL"}"]`) as HTMLInputElement;
+              if (input) {
+                handleUrlChange(input.value);
+              }
+            }}
+          >
+            Set
+          </Button>
+        </div>
+      )}
+
+      {storageType === 'local' && (
+        <p className="text-xs text-gray-500">
+          Note: Local storage requires server-side upload handling
+        </p>
+      )}
     </div>
   );
 };

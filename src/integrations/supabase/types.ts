@@ -202,81 +202,6 @@ export type Database = {
         }
         Relationships: []
       }
-      flash_sale_products: {
-        Row: {
-          created_at: string
-          flash_sale_id: string
-          id: string
-          product_id: string
-          sale_price: number
-        }
-        Insert: {
-          created_at?: string
-          flash_sale_id: string
-          id?: string
-          product_id: string
-          sale_price: number
-        }
-        Update: {
-          created_at?: string
-          flash_sale_id?: string
-          id?: string
-          product_id?: string
-          sale_price?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "flash_sale_products_flash_sale_id_fkey"
-            columns: ["flash_sale_id"]
-            isOneToOne: false
-            referencedRelation: "flash_sales"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "flash_sale_products_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      flash_sales: {
-        Row: {
-          created_at: string
-          description: string | null
-          discount_percentage: number
-          end_date: string
-          id: string
-          is_active: boolean
-          start_date: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          discount_percentage: number
-          end_date: string
-          id?: string
-          is_active?: boolean
-          start_date: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          discount_percentage?: number
-          end_date?: string
-          id?: string
-          is_active?: boolean
-          start_date?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       frontend_logs: {
         Row: {
           created_at: string
@@ -884,19 +809,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_active_flash_sale_products: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          product_id: string
-          product_title: string
-          product_slug: string
-          original_price: number
-          sale_price: number
-          discount_percentage: number
-          flash_sale_title: string
-          flash_sale_end_date: string
-        }[]
-      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
