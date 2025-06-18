@@ -16,20 +16,26 @@ const MediaStorageConfig = ({ onConfigChange }: MediaStorageConfigProps) => {
   const [storageType, setStorageType] = React.useState<MediaStorageType>(MEDIA_STORAGE_CONFIG.type);
   const [localPath, setLocalPath] = React.useState(MEDIA_STORAGE_CONFIG.localConfig?.uploadPath || '/uploads');
   const [cloudBucket, setCloudBucket] = React.useState(MEDIA_STORAGE_CONFIG.cloudConfig?.bucket || 'cms-images');
+  const [customUrl, setCustomUrl] = React.useState(MEDIA_STORAGE_CONFIG.customConfig?.publicUrl || 'http://168.231.123.27/cutebae/media/');
 
   const handleSave = () => {
     // In a real implementation, you would save this to a config file or database
     // For now, we'll just show a toast
+    let storageTypeName = 'Local Storage';
+    if (storageType === 'cloud') storageTypeName = 'Cloud Storage';
+    if (storageType === 'custom') storageTypeName = 'Custom Storage';
+
     toast({
       title: "Configuration Updated",
-      description: `Media storage set to ${storageType === 'cloud' ? 'Cloud Storage' : 'Local Storage'}`,
+      description: `Media storage set to ${storageTypeName}`,
     });
 
     if (onConfigChange) {
       onConfigChange({
         type: storageType,
         localPath,
-        cloudBucket
+        cloudBucket,
+        customUrl
       });
     }
   };
@@ -44,6 +50,10 @@ const MediaStorageConfig = ({ onConfigChange }: MediaStorageConfigProps) => {
           <Label className="text-base font-medium">Storage Type</Label>
           <RadioGroup value={storageType} onValueChange={(value) => setStorageType(value as MediaStorageType)} className="mt-2">
             <div className="flex items-center space-x-2">
+              <RadioGroupItem value="custom" id="custom" />
+              <Label htmlFor="custom">Custom Storage Server (Default)</Label>
+            </div>
+            <div className="flex items-center space-x-2">
               <RadioGroupItem value="cloud" id="cloud" />
               <Label htmlFor="cloud">Cloud Storage (Supabase)</Label>
             </div>
@@ -53,6 +63,21 @@ const MediaStorageConfig = ({ onConfigChange }: MediaStorageConfigProps) => {
             </div>
           </RadioGroup>
         </div>
+
+        {storageType === 'custom' && (
+          <div>
+            <Label htmlFor="customUrl">Custom Storage URL</Label>
+            <Input
+              id="customUrl"
+              value={customUrl}
+              onChange={(e) => setCustomUrl(e.target.value)}
+              placeholder="http://168.231.123.27/cutebae/media/"
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Images will be uploaded to your custom storage server
+            </p>
+          </div>
+        )}
 
         {storageType === 'cloud' && (
           <div>

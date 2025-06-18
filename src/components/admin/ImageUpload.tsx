@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, X, Image, Cloud, Server } from 'lucide-react';
+import { Upload, X, Image, Cloud, Server, Globe } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { uploadMedia, deleteMedia } from '@/services/mediaUpload';
-import { isCloudStorage } from '@/config/mediaStorage';
+import { isCloudStorage, isCustomStorage } from '@/config/mediaStorage';
 
 interface ImageUploadProps {
   label: string;
@@ -54,9 +54,10 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
 
       onChange(result.url);
 
+      const storageType = isCloudStorage() ? 'cloud storage' : isCustomStorage() ? 'custom storage' : 'local storage';
       toast({
         title: "Upload successful",
-        description: `Image uploaded successfully to ${isCloudStorage() ? 'cloud storage' : 'local storage'}`,
+        description: `Image uploaded successfully to ${storageType}`,
       });
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -85,8 +86,17 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
     onChange('');
   };
 
-  const storageType = isCloudStorage() ? 'cloud' : 'local';
-  const StorageIcon = isCloudStorage() ? Cloud : Server;
+  const getStorageInfo = () => {
+    if (isCloudStorage()) {
+      return { type: 'cloud', icon: Cloud };
+    } else if (isCustomStorage()) {
+      return { type: 'custom', icon: Globe };
+    } else {
+      return { type: 'local', icon: Server };
+    }
+  };
+
+  const { type: storageType, icon: StorageIcon } = getStorageInfo();
 
   return (
     <div className="space-y-2">
@@ -97,6 +107,22 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
           <span>{storageType} storage</span>
         </div>
       </Label>
+
+      {/* Image Dimension Guidelines */}
+      <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
+        <h4 className="text-sm font-medium text-blue-800 mb-2">Recommended Image Dimensions:</h4>
+        <div className="text-xs text-blue-700 space-y-1">
+          <div><strong>Hero Slider:</strong> 1920x800px (16:6.7 ratio)</div>
+          <div><strong>Product Images:</strong> 800x800px (1:1 ratio)</div>
+          <div><strong>Category Images:</strong> 400x300px (4:3 ratio)</div>
+          <div><strong>Banner/Promotional:</strong> 1200x400px (3:1 ratio)</div>
+          <div><strong>Thumbnails:</strong> 300x300px (1:1 ratio)</div>
+          <div><strong>Blog/Article:</strong> 1200x630px (16:8.4 ratio)</div>
+        </div>
+        <p className="text-xs text-blue-600 mt-2">
+          <strong>Format:</strong> JPG/PNG | <strong>Max Size:</strong> 10MB | <strong>Quality:</strong> 72-150 DPI
+        </p>
+      </div>
       
       {value && (
         <div className="relative">
@@ -172,6 +198,12 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
             Set
           </Button>
         </div>
+      )}
+
+      {storageType === 'custom' && (
+        <p className="text-xs text-gray-500">
+          Images will be uploaded to: http://168.231.123.27/cutebae/media/
+        </p>
       )}
 
       {storageType === 'local' && (

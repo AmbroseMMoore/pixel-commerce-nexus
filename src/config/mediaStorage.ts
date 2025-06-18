@@ -1,5 +1,5 @@
 
-export type MediaStorageType = 'cloud' | 'local';
+export type MediaStorageType = 'cloud' | 'local' | 'custom';
 
 export interface MediaStorageConfig {
   type: MediaStorageType;
@@ -11,18 +11,26 @@ export interface MediaStorageConfig {
     uploadPath: string;
     publicPath: string;
   };
+  customConfig?: {
+    uploadUrl: string;
+    publicUrl: string;
+  };
 }
 
-// Default configuration - you can change this to switch between storage types
+// Updated configuration to use your custom storage as default
 export const MEDIA_STORAGE_CONFIG: MediaStorageConfig = {
-  type: 'cloud', // Change to 'local' to use local storage
+  type: 'custom', // Changed to use custom storage
   cloudConfig: {
     bucket: 'cms-images',
     publicUrl: 'https://hvqdzrztwjegbtpixmke.supabase.co/storage/v1/object/public/cms-images/'
   },
   localConfig: {
-    uploadPath: '/uploads', // Server path where files will be stored
-    publicPath: '/uploads' // Public path to access files
+    uploadPath: '/uploads',
+    publicPath: '/uploads'
+  },
+  customConfig: {
+    uploadUrl: 'http://168.231.123.27/cutebae/media/upload.php', // Assuming PHP upload script
+    publicUrl: 'http://168.231.123.27/cutebae/media/'
   }
 };
 
@@ -36,4 +44,8 @@ export const isCloudStorage = (): boolean => {
 
 export const isLocalStorage = (): boolean => {
   return MEDIA_STORAGE_CONFIG.type === 'local';
+};
+
+export const isCustomStorage = (): boolean => {
+  return MEDIA_STORAGE_CONFIG.type === 'custom';
 };
