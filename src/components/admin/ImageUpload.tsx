@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, X, Image, Cloud, Server, Globe } from 'lucide-react';
+import { Upload, X, Image, Cloud, Server, Globe, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { uploadMedia, deleteMedia } from '@/services/mediaUpload';
-import { isCloudStorage, isCustomStorage } from '@/config/mediaStorage';
+import { uploadMedia, deleteMedia, verifyMediaExists } from '@/services/mediaUpload';
+import { isCloudStorage, isCustomStorage, testCustomStorageConnectivity } from '@/config/mediaStorage';
 
 interface ImageUploadProps {
   label: string;
@@ -18,6 +18,8 @@ interface ImageUploadProps {
 const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<{ https: boolean; http: boolean } | null>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -46,13 +48,30 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
     setIsUploading(true);
 
     try {
+      console.log('Starting file upload process...');
       const result = await uploadMedia(file);
+      
+      console.log('Upload result:', result);
       
       if (result.error) {
         throw new Error(result.error);
       }
 
+      if (result.debug) {
+        console.log('Upload debug info:', result.debug);
+      }
+
       onChange(result.url);
+
+      // Verify the uploaded file exists
+      setTimeout(async () => {
+        const exists = await verifyMediaExists(result.url);
+        if (exists) {
+          console.log('✅ File verification successful');
+        } else {
+          console.warn('⚠️ File verification failed - file may not be accessible');
+        }
+      }, 2000);
 
       const storageType = isCloudStorage() ? 'cloud storage' : isCustomStorage() ? 'custom storage' : 'local storage';
       toast({
@@ -84,6 +103,30 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
       }
     }
     onChange('');
+  };
+
+  const testConnection = async () => {
+    if (!isCustomStorage()) return;
+    
+    setIsTestingConnection(true);
+    try {
+      const result = await testCustomStorageConnectivity();
+      setConnectionStatus(result);
+      
+      toast({
+        title: "Connection Test Results",
+        description: `HTTPS: ${result.https ? '✅ Working' : '❌ Failed'}, HTTP: ${result.http ? '✅ Working' : '❌ Failed'}`,
+      });
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      toast({
+        title: "Connection Test Failed",
+        description: "Unable to test storage connectivity",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
   };
 
   const getStorageInfo = () => {
@@ -173,6 +216,22 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
         >
           <Image className="h-4 w-4" />
         </Button>
+
+        {isCustomStorage() && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={testConnection}
+            disabled={isTestingConnection}
+            className="px-3"
+          >
+            {isTestingConnection ? (
+              <AlertCircle className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle className="h-4 w-4" />
+            )}
+          </Button>
+        )}
       </div>
 
       {showUrlInput && (
@@ -201,9 +260,22 @@ const ImageUpload = ({ label, value, onChange, placeholder }: ImageUploadProps) 
       )}
 
       {storageType === 'custom' && (
-        <p className="text-xs text-gray-500">
-          Images will be uploaded to: http://168.231.123.27/cutebae/media/
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-gray-500">
+            Images will be uploaded to: https://bucket.ezeelux.in/cutebae/media/
+          </p>
+          {connectionStatus && (
+            <div className="text-xs">
+              <span className={connectionStatus.https ? 'text-green-600' : 'text-red-600'}>
+                HTTPS: {connectionStatus.https ? '✅ Working' : '❌ Failed'}
+              </span>
+              {' | '}
+              <span className={connectionStatus.http ? 'text-green-600' : 'text-red-600'}>
+                HTTP: {connectionStatus.http ? '✅ Working' : '❌ Failed'}
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
       {storageType === 'local' && (
