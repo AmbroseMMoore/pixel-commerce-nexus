@@ -46,7 +46,7 @@ export const fetchProductsOptimized = async (options: {
   } = options;
 
   const cacheKey = `products-${JSON.stringify(options)}`;
-  const cleanup = supabaseManager.trackConnection(cacheKey);
+  supabaseManager.trackConnection(cacheKey);
 
   try {
     return await getCachedOrFetch(cacheKey, async () => {
@@ -108,9 +108,7 @@ export const fetchProductsOptimized = async (options: {
       return { products, totalCount };
     });
   } finally {
-    if (cleanup) {
-      cleanup();
-    }
+    supabaseManager.untrackConnection(cacheKey);
   }
 };
 
@@ -181,7 +179,7 @@ export const fetchTrendingProductsOptimized = async (): Promise<Product[]> => {
 // Optimized single product fetch
 export const fetchProductBySlugOptimized = async (slug: string): Promise<Product> => {
   const cacheKey = `product-slug-${slug}`;
-  const cleanup = supabaseManager.trackConnection(cacheKey);
+  supabaseManager.trackConnection(cacheKey);
 
   try {
     return await getCachedOrFetch(cacheKey, async () => {
@@ -227,9 +225,7 @@ export const fetchProductBySlugOptimized = async (slug: string): Promise<Product
       } as Product;
     });
   } finally {
-    if (cleanup) {
-      cleanup();
-    }
+    supabaseManager.untrackConnection(cacheKey);
   }
 };
 
