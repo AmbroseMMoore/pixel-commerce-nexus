@@ -108,7 +108,9 @@ export const fetchProductsOptimized = async (options: {
       return { products, totalCount };
     });
   } finally {
-    cleanup();
+    if (cleanup) {
+      cleanup();
+    }
   }
 };
 
@@ -225,7 +227,9 @@ export const fetchProductBySlugOptimized = async (slug: string): Promise<Product
       } as Product;
     });
   } finally {
-    cleanup();
+    if (cleanup) {
+      cleanup();
+    }
   }
 };
 
