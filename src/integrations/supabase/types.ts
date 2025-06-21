@@ -136,6 +136,13 @@ export type Database = {
             foreignKeyName: "cart_items_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "product_list_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -230,6 +237,13 @@ export type Database = {
             columns: ["flash_sale_id"]
             isOneToOne: false
             referencedRelation: "flash_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flash_sale_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_list_view"
             referencedColumns: ["id"]
           },
           {
@@ -399,6 +413,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_list_view"
             referencedColumns: ["id"]
           },
           {
@@ -606,6 +627,13 @@ export type Database = {
             foreignKeyName: "product_colors_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "product_list_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_colors_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -645,6 +673,13 @@ export type Database = {
             foreignKeyName: "product_images_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "product_list_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
@@ -670,6 +705,13 @@ export type Database = {
           product_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "product_sizes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "product_list_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_sizes_product_id_fkey"
             columns: ["product_id"]
@@ -881,9 +923,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      product_list_view: {
+        Row: {
+          category_name: string | null
+          category_slug: string | null
+          created_at: string | null
+          id: string | null
+          is_featured: boolean | null
+          is_out_of_stock: boolean | null
+          is_trending: boolean | null
+          price_discounted: number | null
+          price_original: number | null
+          primary_image: string | null
+          short_description: string | null
+          slug: string | null
+          stock_quantity: number | null
+          subcategory_name: string | null
+          subcategory_slug: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      cleanup_orphaned_records: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_active_flash_sale_products: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -895,6 +961,35 @@ export type Database = {
           discount_percentage: number
           flash_sale_title: string
           flash_sale_end_date: string
+        }[]
+      }
+      get_products_paginated: {
+        Args: {
+          page_num?: number
+          page_size?: number
+          category_filter?: string
+          subcategory_filter?: string
+          featured_only?: boolean
+          trending_only?: boolean
+        }
+        Returns: {
+          id: string
+          title: string
+          slug: string
+          price_original: number
+          price_discounted: number
+          short_description: string
+          is_featured: boolean
+          is_trending: boolean
+          stock_quantity: number
+          is_out_of_stock: boolean
+          created_at: string
+          category_name: string
+          category_slug: string
+          subcategory_name: string
+          subcategory_slug: string
+          primary_image: string
+          total_count: number
         }[]
       }
       is_admin: {
