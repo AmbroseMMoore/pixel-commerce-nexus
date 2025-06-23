@@ -48,7 +48,6 @@ export const fetchZoneRegions = async (): Promise<ZoneRegion[]> => {
   }));
 };
 
-// Get regions for a specific zone
 export const fetchZoneRegionsByZone = async (zoneId: string): Promise<ZoneRegion[]> => {
   const { data, error } = await supabase
     .from('zone_regions')
@@ -66,7 +65,6 @@ export const fetchZoneRegionsByZone = async (zoneId: string): Promise<ZoneRegion
   }));
 };
 
-// Add a region to a zone
 export const addZoneRegion = async (zoneRegion: {
   delivery_zone_id: string;
   state_name: string;
@@ -89,7 +87,6 @@ export const addZoneRegion = async (zoneRegion: {
   };
 };
 
-// Remove a region from a zone
 export const removeZoneRegion = async (id: string): Promise<void> => {
   const { error } = await supabase
     .from('zone_regions')
@@ -99,12 +96,12 @@ export const removeZoneRegion = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-// Improved delivery info lookup with better matching logic
+// Improved delivery info lookup with better error handling
 export const getDeliveryInfoByPincodeRegion = async (pincode: string): Promise<DeliveryInfoByRegion | null> => {
   try {
     console.log(`Getting delivery info for pincode: ${pincode}`);
     
-    // First, get location details from PostalPincode.in API
+    // Get location details from the improved pincode API
     const pincodeResponse = await fetchPincodeDetails(pincode);
     
     if (pincodeResponse.Status !== "Success" || !pincodeResponse.PostOffice || pincodeResponse.PostOffice.length === 0) {
@@ -125,27 +122,29 @@ export const getDeliveryInfoByPincodeRegion = async (pincode: string): Promise<D
     // Find matching zone region with improved logic
     let matchedRegion: ZoneRegion | null = null;
 
-    // Step 1: Try exact district match (state + district)
+    // Step 1: Try exact district match first
     matchedRegion = zoneRegions.find(region => 
       region.region_type === 'district' && 
       region.state_name.toLowerCase().includes(state.toLowerCase()) &&
-      region.state_name.toLowerCase().includes(district.toLowerCase())
+      (region.district_name?.toLowerCase() === district.toLowerCase() ||
+       region.state_name.toLowerCase().includes(district.toLowerCase()))
     ) || null;
 
     if (matchedRegion) {
       console.log(`Found exact district match: ${matchedRegion.state_name}`);
     }
 
-    // Step 2: Try district name matching in state_name field
+    // Step 2: Try partial district matching
     if (!matchedRegion) {
       matchedRegion = zoneRegions.find(region => 
         region.region_type === 'district' && 
         (region.state_name.toLowerCase().includes(district.toLowerCase()) ||
-         district.toLowerCase().includes(region.state_name.toLowerCase().split(' - ')[1] || ''))
+         district.toLowerCase().includes(region.state_name.toLowerCase().split(' - ')[1] || '') ||
+         region.district_name?.toLowerCase().includes(district.toLowerCase()))
       ) || null;
       
       if (matchedRegion) {
-        console.log(`Found district name match: ${matchedRegion.state_name}`);
+        console.log(`Found partial district match: ${matchedRegion.state_name}`);
       }
     }
 
@@ -173,6 +172,18 @@ export const getDeliveryInfoByPincodeRegion = async (pincode: string): Promise<D
       }
     }
 
+    // Step 5: If still no match, try a default zone (if available)
+    if (!matchedRegion) {
+      matchedRegion = zoneRegions.find(region => 
+        region.zone_name?.toLowerCase().includes('default') ||
+        region.state_name.toLowerCase().includes('general')
+      ) || null;
+      
+      if (matchedRegion) {
+        console.log(`Using default zone: ${matchedRegion.state_name}`);
+      }
+    }
+
     if (!matchedRegion || !matchedRegion.delivery_zone) {
       console.log(`No matching region found for ${district}, ${state}`);
       return null;
@@ -193,6 +204,12 @@ export const getDeliveryInfoByPincodeRegion = async (pincode: string): Promise<D
     return result;
   } catch (error) {
     console.error('Error getting delivery info by pincode:', error);
-    return null;
+    
+    // Return a more user-friendly error message
+    if (error instanceof Error) {
+      throw new Error(`Unable to check delivery for this pincode: ${error.message}`);
+    }
+    
+    throw new Error('Unable to check delivery availability. Please try again later.');
   }
 };
