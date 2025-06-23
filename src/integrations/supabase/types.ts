@@ -209,6 +209,45 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_zones: {
+        Row: {
+          created_at: string
+          delivery_charge: number
+          delivery_days_max: number
+          delivery_days_min: number
+          description: string | null
+          id: string
+          is_active: boolean
+          updated_at: string
+          zone_name: string
+          zone_number: number
+        }
+        Insert: {
+          created_at?: string
+          delivery_charge?: number
+          delivery_days_max: number
+          delivery_days_min: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          zone_name: string
+          zone_number: number
+        }
+        Update: {
+          created_at?: string
+          delivery_charge?: number
+          delivery_days_max?: number
+          delivery_days_min?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          zone_name?: string
+          zone_number?: number
+        }
+        Relationships: []
+      }
       flash_sale_products: {
         Row: {
           created_at: string
@@ -494,8 +533,12 @@ export type Database = {
           created_at: string
           customer_id: string
           delivery_address_id: string
+          delivery_charge: number | null
           delivery_date: string | null
           delivery_partner_name: string | null
+          delivery_pincode: string | null
+          delivery_zone_id: string | null
+          estimated_delivery_days: number | null
           id: string
           order_number: string
           payment_method: string | null
@@ -512,8 +555,12 @@ export type Database = {
           created_at?: string
           customer_id: string
           delivery_address_id: string
+          delivery_charge?: number | null
           delivery_date?: string | null
           delivery_partner_name?: string | null
+          delivery_pincode?: string | null
+          delivery_zone_id?: string | null
+          estimated_delivery_days?: number | null
           id?: string
           order_number: string
           payment_method?: string | null
@@ -530,8 +577,12 @@ export type Database = {
           created_at?: string
           customer_id?: string
           delivery_address_id?: string
+          delivery_charge?: number | null
           delivery_date?: string | null
           delivery_partner_name?: string | null
+          delivery_pincode?: string | null
+          delivery_zone_id?: string | null
+          estimated_delivery_days?: number | null
           id?: string
           order_number?: string
           payment_method?: string | null
@@ -557,6 +608,48 @@ export type Database = {
             columns: ["delivery_address_id"]
             isOneToOne: false
             referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pincode_zones: {
+        Row: {
+          city: string | null
+          created_at: string
+          delivery_zone_id: string
+          id: string
+          pincode: string
+          state: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          delivery_zone_id: string
+          id?: string
+          pincode: string
+          state?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          delivery_zone_id?: string
+          id?: string
+          pincode?: string
+          state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pincode_zones_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
             referencedColumns: ["id"]
           },
         ]
@@ -961,6 +1054,19 @@ export type Database = {
           discount_percentage: number
           flash_sale_title: string
           flash_sale_end_date: string
+        }[]
+      }
+      get_delivery_info_by_pincode: {
+        Args: { pincode_param: string }
+        Returns: {
+          zone_id: string
+          zone_number: number
+          zone_name: string
+          delivery_days_min: number
+          delivery_days_max: number
+          delivery_charge: number
+          state: string
+          city: string
         }[]
       }
       get_products_paginated: {

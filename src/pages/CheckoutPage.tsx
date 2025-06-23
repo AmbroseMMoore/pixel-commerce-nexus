@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -11,9 +12,11 @@ import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAddresses } from "@/hooks/useAddresses";
 import { useRazorpay } from "@/hooks/useRazorpay";
+import { useDeliveryInfoByPincode } from "@/hooks/usePincodeZones";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useLogging } from "@/hooks/useLogging";
+import { MapPin, Truck, Clock } from "lucide-react";
 
 const CheckoutPage = () => {
   const { user } = useAuth();
@@ -50,6 +53,15 @@ const CheckoutPage = () => {
   });
   
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
+
+  // Get delivery info for the postal code
+  const { data: deliveryInfo } = useDeliveryInfoByPincode(
+    deliveryAddress.postalCode,
+    deliveryAddress.postalCode.length === 6
+  );
+
+  const deliveryCharge = deliveryInfo?.delivery_charge || 0;
+  const totalWithDelivery = cartTotal + deliveryCharge;
 
   if (!user) {
     navigate('/auth');
@@ -94,17 +106,21 @@ const CheckoutPage = () => {
     // Generate order number
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-    // Create order
+    // Create order with delivery information
     const { data: orderData, error: orderError } = await supabase
       .from('orders')
       .insert({
         customer_id: user.id,
         order_number: orderNumber,
-        total_amount: cartTotal,
+        total_amount: totalWithDelivery,
         status: 'pending',
         delivery_address_id: addressData.id,
         payment_method: paymentMethod,
-        payment_status: 'pending'
+        payment_status: 'pending',
+        delivery_zone_id: deliveryInfo?.zone_id || null,
+        delivery_charge: deliveryCharge,
+        estimated_delivery_days: deliveryInfo?.delivery_days_max || null,
+        delivery_pincode: deliveryAddress.postalCode
       })
       .select()
       .single();
@@ -141,6 +157,15 @@ const CheckoutPage = () => {
       return;
     }
 
+    if (!deliveryInfo) {
+      toast({
+        title: "Delivery not available",
+        description: "Please enter a valid pincode where delivery is available.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
@@ -154,9 +179,10 @@ const CheckoutPage = () => {
         logFormSuccess('checkout_form', 'order_placed', {
           orderId: orderData.id,
           orderNumber: orderData.order_number,
-          totalAmount: cartTotal,
+          totalAmount: totalWithDelivery,
           itemCount: cartItems.length,
-          paymentMethod: 'cod'
+          paymentMethod: 'cod',
+          deliveryCharge: deliveryCharge
         });
 
         toast({
@@ -171,7 +197,7 @@ const CheckoutPage = () => {
         
         // Initiate Razorpay payment
         await initiatePayment(
-          cartTotal,
+          totalWithDelivery,
           orderData.id,
           {
             name: deliveryAddress.fullName,
@@ -184,9 +210,10 @@ const CheckoutPage = () => {
             logFormSuccess('checkout_form', 'order_placed', {
               orderId: orderData.id,
               orderNumber: orderData.order_number,
-              totalAmount: cartTotal,
+              totalAmount: totalWithDelivery,
               itemCount: cartItems.length,
-              paymentMethod: 'razorpay'
+              paymentMethod: 'razorpay',
+              deliveryCharge: deliveryCharge
             });
             navigate('/profile?tab=orders');
           },
@@ -289,9 +316,10 @@ const CheckoutPage = () => {
                     <Input
                       id="postalCode"
                       value={deliveryAddress.postalCode}
-                      onChange={(e) => handleAddressChange('postalCode', e.target.value)}
+                      onChange={(e) => handleAddressChange('postalCode', e.target.value.replace(/\D/g, '').slice(0, 6))}
                       placeholder="PIN code"
                       required
+                      maxLength={6}
                     />
                   </div>
                   
@@ -306,6 +334,42 @@ const CheckoutPage = () => {
                     />
                   </div>
                 </div>
+
+                {/* Delivery Information */}
+                {deliveryAddress.postalCode.length === 6 && (
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                    {deliveryInfo ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-green-600">
+                          <MapPin className="h-4 w-4" />
+                          <span className="text-sm font-medium">
+                            Delivery available to {deliveryInfo.city}, {deliveryInfo.state}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-orange-600" />
+                            <span>
+                              {deliveryInfo.delivery_days_min === deliveryInfo.delivery_days_max 
+                                ? `${deliveryInfo.delivery_days_min} days`
+                                : `${deliveryInfo.delivery_days_min}-${deliveryInfo.delivery_days_max} days`
+                              }
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Truck className="h-4 w-4 text-blue-600" />
+                            <span>₹{deliveryInfo.delivery_charge} delivery charge</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-red-600 text-sm flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Delivery not available for this pincode
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -370,8 +434,8 @@ const CheckoutPage = () => {
                     <span>₹{cartTotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Shipping</span>
-                    <span>Free</span>
+                    <span>Delivery Charge</span>
+                    <span>₹{deliveryCharge.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tax</span>
@@ -380,7 +444,7 @@ const CheckoutPage = () => {
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span>₹{cartTotal.toFixed(2)}</span>
+                    <span>₹{totalWithDelivery.toFixed(2)}</span>
                   </div>
                 </div>
                 
@@ -388,10 +452,16 @@ const CheckoutPage = () => {
                   className="w-full" 
                   size="lg"
                   onClick={handlePlaceOrder}
-                  disabled={isLoading}
+                  disabled={isLoading || !deliveryInfo}
                 >
                   {isLoading ? "Processing..." : paymentMethod === "cod" ? "Place Order" : "Pay Now"}
                 </Button>
+
+                {!deliveryInfo && deliveryAddress.postalCode.length === 6 && (
+                  <p className="text-sm text-red-600 text-center">
+                    Please enter a valid pincode where delivery is available
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
