@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -13,12 +12,15 @@ import { useProduct } from "@/hooks/useProducts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
+import PincodeChecker from "@/components/products/PincodeChecker";
+import { useDeliveryInfo } from "@/hooks/useDeliveryInfo";
 
 const ProductDetailsPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading, error } = useProduct(slug || "");
   const { addToCart, isAddingToCart } = useCart();
   const { user } = useAuth();
+  const { deliveryInfo, handleDeliveryInfoChange } = useDeliveryInfo();
 
   const [selectedColor, setSelectedColor] = useState<ColorVariant | null>(null);
   const [selectedSize, setSelectedSize] = useState<SizeVariant | null>(null);
@@ -277,6 +279,11 @@ const ProductDetailsPage = () => {
               </div>
             </div>
 
+            {/* Pincode Checker */}
+            <div className="mb-6">
+              <PincodeChecker onDeliveryInfoChange={handleDeliveryInfoChange} />
+            </div>
+
             {/* Add to Cart */}
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <Button
@@ -297,6 +304,22 @@ const ProductDetailsPage = () => {
                 <span>Add to Wishlist</span>
               </Button>
             </div>
+
+            {/* Delivery Information Display */}
+            {deliveryInfo && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="font-semibold text-green-800 mb-2">Delivery Information</h4>
+                <div className="text-sm text-green-700 space-y-1">
+                  <p>Delivering to: {deliveryInfo.city}, {deliveryInfo.state}</p>
+                  <p>Delivery Time: {deliveryInfo.delivery_days_min === deliveryInfo.delivery_days_max 
+                    ? `${deliveryInfo.delivery_days_min} days`
+                    : `${deliveryInfo.delivery_days_min}-${deliveryInfo.delivery_days_max} days`
+                  }</p>
+                  <p>Delivery Charge: ₹{deliveryInfo.delivery_charge}</p>
+                  <p className="font-medium">{deliveryInfo.zone_name} - Zone {deliveryInfo.zone_number}</p>
+                </div>
+              </div>
+            )}
 
             {/* Product Specifications */}
             {product.specifications && (
