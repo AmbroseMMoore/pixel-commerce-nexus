@@ -35,6 +35,18 @@ export interface DeliveryInfo {
   city?: string;
 }
 
+// Type for creating/updating delivery zones
+interface DeliveryZoneInput {
+  id?: string;
+  zone_number: number;
+  zone_name: string;
+  delivery_days_min: number;
+  delivery_days_max: number;
+  delivery_charge: number;
+  description?: string;
+  is_active: boolean;
+}
+
 // Get all delivery zones
 export const fetchDeliveryZones = async (): Promise<DeliveryZone[]> => {
   const { data, error } = await supabase
@@ -57,7 +69,7 @@ export const getDeliveryInfoByPincode = async (pincode: string): Promise<Deliver
 };
 
 // Create or update delivery zone
-export const upsertDeliveryZone = async (zone: Partial<DeliveryZone>): Promise<DeliveryZone> => {
+export const upsertDeliveryZone = async (zone: DeliveryZoneInput): Promise<DeliveryZone> => {
   const { data, error } = await supabase
     .from('delivery_zones')
     .upsert(zone)

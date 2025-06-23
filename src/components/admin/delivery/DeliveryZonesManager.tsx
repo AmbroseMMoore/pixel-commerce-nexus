@@ -27,13 +27,25 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+// Type for editing zone form
+interface EditingZone {
+  id?: string;
+  zone_number: number;
+  zone_name: string;
+  delivery_days_min: number;
+  delivery_days_max: number;
+  delivery_charge: number;
+  description?: string;
+  is_active: boolean;
+}
+
 const DeliveryZonesManager = () => {
   const { data: zones = [], isLoading } = useDeliveryZones();
   const upsertZone = useUpsertDeliveryZone();
   const deleteZone = useDeleteDeliveryZone();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingZone, setEditingZone] = useState<Partial<DeliveryZone> | null>(null);
+  const [editingZone, setEditingZone] = useState<EditingZone | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,13 +57,22 @@ const DeliveryZonesManager = () => {
   };
 
   const handleEdit = (zone: DeliveryZone) => {
-    setEditingZone(zone);
+    setEditingZone({
+      id: zone.id,
+      zone_number: zone.zone_number,
+      zone_name: zone.zone_name,
+      delivery_days_min: zone.delivery_days_min,
+      delivery_days_max: zone.delivery_days_max,
+      delivery_charge: zone.delivery_charge,
+      description: zone.description || '',
+      is_active: zone.is_active
+    });
     setIsDialogOpen(true);
   };
 
   const handleAdd = () => {
     setEditingZone({
-      zone_number: Math.max(...zones.map(z => z.zone_number)) + 1,
+      zone_number: Math.max(...zones.map(z => z.zone_number), 0) + 1,
       zone_name: '',
       delivery_days_min: 1,
       delivery_days_max: 1,
@@ -95,7 +116,7 @@ const DeliveryZonesManager = () => {
                     id="zone_number"
                     type="number"
                     value={editingZone?.zone_number || ''}
-                    onChange={(e) => setEditingZone(prev => ({ ...prev, zone_number: parseInt(e.target.value) }))}
+                    onChange={(e) => setEditingZone(prev => prev ? ({ ...prev, zone_number: parseInt(e.target.value) || 0 }) : null)}
                     required
                   />
                 </div>
@@ -106,7 +127,7 @@ const DeliveryZonesManager = () => {
                     type="number"
                     step="0.01"
                     value={editingZone?.delivery_charge || ''}
-                    onChange={(e) => setEditingZone(prev => ({ ...prev, delivery_charge: parseFloat(e.target.value) }))}
+                    onChange={(e) => setEditingZone(prev => prev ? ({ ...prev, delivery_charge: parseFloat(e.target.value) || 0 }) : null)}
                     required
                   />
                 </div>
@@ -117,7 +138,7 @@ const DeliveryZonesManager = () => {
                 <Input
                   id="zone_name"
                   value={editingZone?.zone_name || ''}
-                  onChange={(e) => setEditingZone(prev => ({ ...prev, zone_name: e.target.value }))}
+                  onChange={(e) => setEditingZone(prev => prev ? ({ ...prev, zone_name: e.target.value }) : null)}
                   required
                 />
               </div>
@@ -129,7 +150,7 @@ const DeliveryZonesManager = () => {
                     id="delivery_days_min"
                     type="number"
                     value={editingZone?.delivery_days_min || ''}
-                    onChange={(e) => setEditingZone(prev => ({ ...prev, delivery_days_min: parseInt(e.target.value) }))}
+                    onChange={(e) => setEditingZone(prev => prev ? ({ ...prev, delivery_days_min: parseInt(e.target.value) || 0 }) : null)}
                     required
                   />
                 </div>
@@ -139,7 +160,7 @@ const DeliveryZonesManager = () => {
                     id="delivery_days_max"
                     type="number"
                     value={editingZone?.delivery_days_max || ''}
-                    onChange={(e) => setEditingZone(prev => ({ ...prev, delivery_days_max: parseInt(e.target.value) }))}
+                    onChange={(e) => setEditingZone(prev => prev ? ({ ...prev, delivery_days_max: parseInt(e.target.value) || 0 }) : null)}
                     required
                   />
                 </div>
@@ -150,7 +171,7 @@ const DeliveryZonesManager = () => {
                 <Textarea
                   id="description"
                   value={editingZone?.description || ''}
-                  onChange={(e) => setEditingZone(prev => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) => setEditingZone(prev => prev ? ({ ...prev, description: e.target.value }) : null)}
                   rows={2}
                 />
               </div>
@@ -159,7 +180,7 @@ const DeliveryZonesManager = () => {
                 <Switch
                   id="is_active"
                   checked={editingZone?.is_active ?? true}
-                  onCheckedChange={(checked) => setEditingZone(prev => ({ ...prev, is_active: checked }))}
+                  onCheckedChange={(checked) => setEditingZone(prev => prev ? ({ ...prev, is_active: checked }) : null)}
                 />
                 <Label htmlFor="is_active">Active</Label>
               </div>

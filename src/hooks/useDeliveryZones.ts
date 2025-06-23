@@ -3,10 +3,21 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   fetchDeliveryZones, 
   upsertDeliveryZone, 
-  deleteDeliveryZone,
-  DeliveryZone 
+  deleteDeliveryZone
 } from "@/services/deliveryApi";
 import { toast } from "sonner";
+
+// Type for the upsert input
+interface DeliveryZoneInput {
+  id?: string;
+  zone_number: number;
+  zone_name: string;
+  delivery_days_min: number;
+  delivery_days_max: number;
+  delivery_charge: number;
+  description?: string;
+  is_active: boolean;
+}
 
 export const useDeliveryZones = () => {
   return useQuery({
@@ -20,7 +31,7 @@ export const useUpsertDeliveryZone = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: upsertDeliveryZone,
+    mutationFn: (zone: DeliveryZoneInput) => upsertDeliveryZone(zone),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["delivery-zones"] });
       toast.success(data.id ? "Delivery zone updated successfully!" : "Delivery zone created successfully!");
