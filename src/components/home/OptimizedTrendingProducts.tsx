@@ -1,6 +1,6 @@
 
 import React from "react";
-import OptimizedProductCard, { OptimizedProductCardSkeleton } from "@/components/products/OptimizedProductCard";
+import ProductCard, { ProductCardSkeleton } from "@/components/products/ProductCard";
 import { useOptimizedTrendingProducts } from "@/hooks/useOptimizedProducts";
 import { TrendingUp } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -57,7 +57,7 @@ const OptimizedTrendingProducts = ({
           <div className="grid grid-cols-2 gap-4">
             {isLoading ? (
               skeletonArray.map((_, index) => (
-                <OptimizedProductCardSkeleton key={index} />
+                <ProductCardSkeleton key={index} />
               ))
             ) : products.length === 0 ? (
               <div className="col-span-2 text-center py-8">
@@ -66,7 +66,7 @@ const OptimizedTrendingProducts = ({
               </div>
             ) : (
               products.slice(0, 6).map((product) => (
-                <OptimizedProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} />
               ))
             )}
           </div>
@@ -83,7 +83,7 @@ const OptimizedTrendingProducts = ({
               {isLoading ? (
                 skeletonArray.map((_, index) => (
                   <CarouselItem key={index} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
-                    <OptimizedProductCardSkeleton />
+                    <ProductCardSkeleton />
                   </CarouselItem>
                 ))
               ) : products.length === 0 ? (
@@ -96,7 +96,7 @@ const OptimizedTrendingProducts = ({
               ) : (
                 products.map((product) => (
                   <CarouselItem key={product.id} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
-                    <OptimizedProductCard product={product} />
+                    <ProductCard product={product} />
                   </CarouselItem>
                 ))
               )}

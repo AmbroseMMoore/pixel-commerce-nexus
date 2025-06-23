@@ -1,3 +1,4 @@
+
 import React from "react";
 import ProductCard, { ProductCardSkeleton } from "@/components/products/ProductCard";
 import { Product } from "@/types/product";
@@ -32,15 +33,15 @@ const TrendingProducts = ({
         </div>
         
         {isMobile ? (
-          // Mobile: Regular grid layout with minimal spacing
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
+          // Mobile: Regular grid layout
+          <div className="grid grid-cols-2 gap-4">
             {isLoading ? (
               // Skeleton loader
               skeletonArray.map((_, index) => (
                 <ProductCardSkeleton key={index} />
               ))
             ) : products.length === 0 ? (
-              <div className="col-span-full text-center py-8">
+              <div className="col-span-2 text-center py-8">
                 <TrendingUp className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500">No trending products available yet.</p>
                 <p className="text-sm text-gray-400 mt-2">Trending products will appear here once they are marked as trending.</p>
@@ -53,7 +54,7 @@ const TrendingProducts = ({
             )}
           </div>
         ) : (
-          // Desktop: Horizontal scrolling carousel with minimal spacing
+          // Desktop: Horizontal scrolling carousel
           <Carousel
             opts={{
               align: "start",
@@ -61,16 +62,16 @@ const TrendingProducts = ({
             }}
             className="w-full"
           >
-            <CarouselContent className="-ml-1">
+            <CarouselContent className="-ml-4">
               {isLoading ? (
                 // Skeleton loader
                 skeletonArray.map((_, index) => (
-                  <CarouselItem key={index} className="pl-1 basis-1/2 md:basis-1/3 lg:basis-1/4">
+                  <CarouselItem key={index} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
                     <ProductCardSkeleton />
                   </CarouselItem>
                 ))
               ) : products.length === 0 ? (
-                <CarouselItem className="pl-1 basis-full">
+                <CarouselItem className="pl-4 basis-full">
                   <div className="text-center py-8">
                     <TrendingUp className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">No trending products available yet.</p>
@@ -80,7 +81,7 @@ const TrendingProducts = ({
               ) : (
                 // Actual products
                 products.map((product) => (
-                  <CarouselItem key={product.id} className="pl-1 basis-1/2 md:basis-1/3 lg:basis-1/4">
+                  <CarouselItem key={product.id} className="pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4">
                     <ProductCard product={product} />
                   </CarouselItem>
                 ))
