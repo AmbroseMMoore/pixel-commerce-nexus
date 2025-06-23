@@ -14,6 +14,7 @@ export const useZoneRegions = () => {
     queryKey: ["zone-regions"],
     queryFn: fetchZoneRegions,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
   });
 };
 
@@ -23,6 +24,7 @@ export const useZoneRegionsByZone = (zoneId: string, enabled: boolean = true) =>
     queryFn: () => fetchZoneRegionsByZone(zoneId),
     enabled: !!zoneId && enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
   });
 };
 
@@ -32,7 +34,11 @@ export const useDeliveryInfoByPincodeRegion = (pincode: string, enabled: boolean
     queryFn: () => getDeliveryInfoByPincodeRegion(pincode),
     enabled: !!pincode && enabled && /^\d{6}$/.test(pincode),
     staleTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2,
+    retry: (failureCount, error) => {
+      console.log(`Retry attempt ${failureCount} for pincode ${pincode}:`, error);
+      return failureCount < 2;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };
 
@@ -46,6 +52,7 @@ export const useAddZoneRegion = () => {
       toast.success("Region added to zone successfully!");
     },
     onError: (error: any) => {
+      console.error("Failed to add region:", error);
       toast.error("Failed to add region: " + error.message);
     },
   });
@@ -61,6 +68,7 @@ export const useRemoveZoneRegion = () => {
       toast.success("Region removed from zone successfully!");
     },
     onError: (error: any) => {
+      console.error("Failed to remove region:", error);
       toast.error("Failed to remove region: " + error.message);
     },
   });

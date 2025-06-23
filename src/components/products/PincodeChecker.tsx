@@ -1,9 +1,9 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Truck, Clock, CheckCircle, Loader2 } from "lucide-react";
+import { MapPin, Truck, Clock, CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { useDeliveryInfoByPincodeRegion } from "@/hooks/useZoneRegions";
 
 interface PincodeCheckerProps {
@@ -13,15 +13,23 @@ interface PincodeCheckerProps {
 const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange }) => {
   const [pincode, setPincode] = useState("");
   const [checkedPincode, setCheckedPincode] = useState("");
+  const [isManualCheck, setIsManualCheck] = useState(false);
   
-  const { data: deliveryInfo, isLoading, error } = useDeliveryInfoByPincodeRegion(
+  const { data: deliveryInfo, isLoading, error, refetch } = useDeliveryInfoByPincodeRegion(
     checkedPincode, 
     !!checkedPincode
   );
 
-  const handleCheck = () => {
+  const handleCheck = async () => {
     if (pincode.length === 6) {
+      console.log(`Checking pincode: ${pincode}`);
+      setIsManualCheck(true);
       setCheckedPincode(pincode);
+      
+      // Force refetch if same pincode
+      if (checkedPincode === pincode) {
+        await refetch();
+      }
     }
   };
 
@@ -29,13 +37,27 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
     // Only allow numbers and limit to 6 digits
     const numericValue = value.replace(/\D/g, '').slice(0, 6);
     setPincode(numericValue);
+    
+    // Reset check state if pincode changes
+    if (numericValue !== checkedPincode) {
+      setIsManualCheck(false);
+    }
   };
 
-  React.useEffect(() => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && pincode.length === 6) {
+      handleCheck();
+    }
+  };
+
+  useEffect(() => {
     if (deliveryInfo && onDeliveryInfoChange) {
       onDeliveryInfoChange(deliveryInfo);
     }
   }, [deliveryInfo, onDeliveryInfoChange]);
+
+  // Show results only if we've made a manual check or have data
+  const showResults = checkedPincode && (isManualCheck || deliveryInfo || error);
 
   return (
     <Card className="w-full">
@@ -51,6 +73,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
               placeholder="Enter your pincode (6 digits)"
               value={pincode}
               onChange={(e) => handlePincodeChange(e.target.value)}
+              onKeyPress={handleKeyPress}
               className="text-center font-mono"
               maxLength={6}
             />
@@ -70,12 +93,17 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
           </Button>
         </div>
 
-        {checkedPincode && (
+        {showResults && (
           <div className="pt-2 border-t">
             {error && (
               <div className="text-red-600 text-sm flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Delivery not available for pincode {checkedPincode}
+                <AlertCircle className="h-4 w-4" />
+                <div>
+                  <div>Delivery not available for pincode {checkedPincode}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Please check the pincode or contact support
+                  </div>
+                </div>
               </div>
             )}
             
@@ -113,6 +141,18 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
                 
                 <div className="bg-blue-50 p-2 rounded text-xs text-blue-800">
                   <strong>{deliveryInfo.zone_name}</strong> - Zone {deliveryInfo.zone_number}
+                </div>
+              </div>
+            )}
+            
+            {!deliveryInfo && !error && !isLoading && checkedPincode && (
+              <div className="text-amber-600 text-sm flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                <div>
+                  <div>No delivery information found for {checkedPincode}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    This area might not be covered yet
+                  </div>
                 </div>
               </div>
             )}

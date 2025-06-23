@@ -99,54 +99,86 @@ export const removeZoneRegion = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-// Get delivery info by pincode using API + region matching
+// Improved delivery info lookup with better matching logic
 export const getDeliveryInfoByPincodeRegion = async (pincode: string): Promise<DeliveryInfoByRegion | null> => {
   try {
+    console.log(`Getting delivery info for pincode: ${pincode}`);
+    
     // First, get location details from PostalPincode.in API
     const pincodeResponse = await fetchPincodeDetails(pincode);
     
     if (pincodeResponse.Status !== "Success" || !pincodeResponse.PostOffice || pincodeResponse.PostOffice.length === 0) {
+      console.log(`No data found for pincode: ${pincode}`);
       return null;
     }
 
     const postOffice = pincodeResponse.PostOffice[0];
     const state = postOffice.State;
     const district = postOffice.District;
+    
+    console.log(`Found location: ${district}, ${state}`);
 
     // Get all zone regions to match against
     const zoneRegions = await fetchZoneRegions();
+    console.log(`Loaded ${zoneRegions.length} zone regions`);
 
-    // Find matching zone region
+    // Find matching zone region with improved logic
     let matchedRegion: ZoneRegion | null = null;
 
-    // First, try to match by specific district
+    // Step 1: Try exact district match (state + district)
     matchedRegion = zoneRegions.find(region => 
       region.region_type === 'district' && 
       region.state_name.toLowerCase().includes(state.toLowerCase()) &&
       region.state_name.toLowerCase().includes(district.toLowerCase())
     ) || null;
 
-    // If no district match, try to match by state
+    if (matchedRegion) {
+      console.log(`Found exact district match: ${matchedRegion.state_name}`);
+    }
+
+    // Step 2: Try district name matching in state_name field
+    if (!matchedRegion) {
+      matchedRegion = zoneRegions.find(region => 
+        region.region_type === 'district' && 
+        (region.state_name.toLowerCase().includes(district.toLowerCase()) ||
+         district.toLowerCase().includes(region.state_name.toLowerCase().split(' - ')[1] || ''))
+      ) || null;
+      
+      if (matchedRegion) {
+        console.log(`Found district name match: ${matchedRegion.state_name}`);
+      }
+    }
+
+    // Step 3: Try exact state match
     if (!matchedRegion) {
       matchedRegion = zoneRegions.find(region => 
         region.region_type === 'state' && 
         region.state_name.toLowerCase() === state.toLowerCase()
       ) || null;
+      
+      if (matchedRegion) {
+        console.log(`Found exact state match: ${matchedRegion.state_name}`);
+      }
     }
 
-    // If still no match, try partial state matching
+    // Step 4: Try partial state matching
     if (!matchedRegion) {
       matchedRegion = zoneRegions.find(region => 
         region.state_name.toLowerCase().includes(state.toLowerCase()) ||
         state.toLowerCase().includes(region.state_name.toLowerCase())
       ) || null;
+      
+      if (matchedRegion) {
+        console.log(`Found partial state match: ${matchedRegion.state_name}`);
+      }
     }
 
     if (!matchedRegion || !matchedRegion.delivery_zone) {
+      console.log(`No matching region found for ${district}, ${state}`);
       return null;
     }
 
-    return {
+    const result = {
       zone_id: matchedRegion.delivery_zone.id,
       zone_number: matchedRegion.delivery_zone.zone_number,
       zone_name: matchedRegion.delivery_zone.zone_name,
@@ -156,6 +188,9 @@ export const getDeliveryInfoByPincodeRegion = async (pincode: string): Promise<D
       state: state,
       city: district
     };
+
+    console.log(`Delivery info found:`, result);
+    return result;
   } catch (error) {
     console.error('Error getting delivery info by pincode:', error);
     return null;
