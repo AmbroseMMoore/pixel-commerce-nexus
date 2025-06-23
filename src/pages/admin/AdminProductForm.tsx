@@ -130,13 +130,19 @@ const AdminProductForm = () => {
       setSlug(existingProduct.slug);
       setSelectedAgeRanges(existingProduct.ageRanges || []);
 
-      // Set color variants from existing product
+      // Set color variants from existing product - fix the image structure
       if (existingProduct.colorVariants && existingProduct.colorVariants.length > 0) {
         setColorVariants(existingProduct.colorVariants.map(variant => ({
           id: variant.id,
           name: variant.name,
           colorCode: variant.colorCode,
-          images: variant.images || []
+          images: variant.images && Array.isArray(variant.images) 
+            ? variant.images.map(img => 
+                typeof img === 'string' 
+                  ? { url: img, filename: "", fileType: "jpg" }
+                  : { url: img.url || "", filename: img.filename || "", fileType: img.fileType || "jpg" }
+              )
+            : Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg" }))
         })));
       }
 
@@ -622,22 +628,246 @@ const AdminProductForm = () => {
                 <TabsTrigger value="specifications">Specifications</TabsTrigger>
               </TabsList>
 
-              {/* Basic Info Tab - keep existing code */}
+              {/* Basic Info Tab */}
               <TabsContent value="basic">
-                {/* ... keep existing basic info tab content */}
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="title">Title</Label>
+                    <Input
+                      id="title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="slug">Slug</Label>
+                    <Input
+                      id="slug"
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="shortDescription">Short Description</Label>
+                    <Textarea
+                      id="shortDescription"
+                      value={shortDescription}
+                      onChange={(e) => setShortDescription(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="longDescription">Long Description</Label>
+                    <Textarea
+                      id="longDescription"
+                      value={longDescription}
+                      onChange={(e) => setLongDescription(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="originalPrice">Original Price</Label>
+                      <Input
+                        id="originalPrice"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={originalPrice}
+                        onChange={(e) => setOriginalPrice(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="discountedPrice">Discounted Price</Label>
+                      <Input
+                        id="discountedPrice"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={discountedPrice}
+                        onChange={(e) => setDiscountedPrice(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="mainCategory">Main Category</Label>
+                      <Select
+                        value={mainCategoryId}
+                        onValueChange={(value) => setMainCategoryId(value)}
+                      >
+                        <SelectTrigger id="mainCategory">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="subCategory">Subcategory</Label>
+                      <Select
+                        value={subCategoryId}
+                        onValueChange={(value) => setSubCategoryId(value)}
+                        disabled={!mainCategoryId}
+                      >
+                        <SelectTrigger id="subCategory">
+                          <SelectValue placeholder="Select subcategory" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subcategories.map((sub) => (
+                            <SelectItem key={sub.id} value={sub.id}>
+                              {sub.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Label>Age Ranges</Label>
+                    {AGE_RANGES.map((ageRange) => (
+                      <Checkbox
+                        key={ageRange}
+                        id={`ageRange-${ageRange}`}
+                        checked={selectedAgeRanges.includes(ageRange)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedAgeRanges([...selectedAgeRanges, ageRange]);
+                          } else {
+                            setSelectedAgeRanges(selectedAgeRanges.filter(a => a !== ageRange));
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="isLowStock"
+                        checked={isLowStock}
+                        onCheckedChange={setIsLowStock}
+                      />
+                      <Label htmlFor="isLowStock">Low Stock</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="isOutOfStock"
+                        checked={isOutOfStock}
+                        onCheckedChange={setIsOutOfStock}
+                      />
+                      <Label htmlFor="isOutOfStock">Out of Stock</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="isFeatured"
+                        checked={isFeatured}
+                        onCheckedChange={setIsFeatured}
+                      />
+                      <Label htmlFor="isFeatured">Featured</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="isTrending"
+                        checked={isTrending}
+                        onCheckedChange={setIsTrending}
+                      />
+                      <Label htmlFor="isTrending">Trending</Label>
+                    </div>
+                  </div>
+                </div>
               </TabsContent>
 
               {/* Updated Color Variants Tab */}
               {renderColorVariantsTab()}
 
-              {/* Size Variants Tab - keep existing code */}
+              {/* Size Variants Tab */}
               <TabsContent value="sizes">
-                {/* ... keep existing sizes tab content */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Size Variants</CardTitle>
+                    <Button onClick={addSizeVariant} type="button" variant="outline">
+                      <Plus className="mr-2 h-4 w-4" /> Add Size
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {sizeVariants.map((variant, index) => (
+                        <div key={variant.id} className="flex items-center gap-4">
+                          <Input
+                            value={variant.name}
+                            onChange={(e) => updateSizeVariant(variant.id, "name", e.target.value)}
+                            placeholder="Size name"
+                            className="flex-1"
+                          />
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              checked={variant.inStock}
+                              onCheckedChange={(checked) => updateSizeVariant(variant.id, "inStock", checked)}
+                            />
+                            <Label>In Stock</Label>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeSizeVariant(variant.id)}
+                            disabled={sizeVariants.length === 1}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
-              {/* Specifications Tab - keep existing code */}
+              {/* Specifications Tab */}
               <TabsContent value="specifications">
-                {/* ... keep existing specifications tab content */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Specifications</CardTitle>
+                    <Button onClick={addSpecification} type="button" variant="outline">
+                      <Plus className="mr-2 h-4 w-4" /> Add Specification
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {specifications.map((spec, index) => (
+                        <div key={index} className="flex items-center gap-4">
+                          <Input
+                            value={spec.key}
+                            onChange={(e) => updateSpecification(index, "key", e.target.value)}
+                            placeholder="Key"
+                            className="flex-1"
+                          />
+                          <Input
+                            value={spec.value}
+                            onChange={(e) => updateSpecification(index, "value", e.target.value)}
+                            placeholder="Value"
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeSpecification(index)}
+                            disabled={specifications.length === 1}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </form>
