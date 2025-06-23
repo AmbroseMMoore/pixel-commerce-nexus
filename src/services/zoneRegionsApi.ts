@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { fetchPincodeDetails } from "./pincodeApi";
 
@@ -175,7 +174,7 @@ export const getDeliveryInfoByPincodeRegion = async (pincode: string): Promise<D
     // Step 5: If still no match, try a default zone (if available)
     if (!matchedRegion) {
       matchedRegion = zoneRegions.find(region => 
-        region.zone_name?.toLowerCase().includes('default') ||
+        region.delivery_zone?.zone_name?.toLowerCase().includes('default') ||
         region.state_name.toLowerCase().includes('general')
       ) || null;
       
