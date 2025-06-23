@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { fetchPincodeDetails } from "./pincodeApi";
 
@@ -7,6 +8,14 @@ export interface ZoneRegion {
   state_name: string;
   district_name?: string;
   region_type: 'state' | 'district';
+  circle_name?: string;
+  region_name?: string;
+  division_name?: string;
+  office_name?: string;
+  office_type?: string;
+  delivery?: string;
+  latitude?: number;
+  longitude?: number;
   created_at: string;
   updated_at: string;
   delivery_zone?: {
@@ -69,6 +78,14 @@ export const addZoneRegion = async (zoneRegion: {
   state_name: string;
   district_name?: string;
   region_type: 'state' | 'district';
+  circle_name?: string;
+  region_name?: string;
+  division_name?: string;
+  office_name?: string;
+  office_type?: string;
+  delivery?: string;
+  latitude?: number;
+  longitude?: number;
 }): Promise<ZoneRegion> => {
   const { data, error } = await supabase
     .from('zone_regions')

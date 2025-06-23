@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -304,10 +305,6 @@ const ProductDetailsPage = () => {
                 <span>Add to Wishlist</span>
               </Button>
             </div>
-
-            {/* Delivery Information Display */}
-           
-            )}
 
             {/* Product Specifications */}
             {product.specifications && (

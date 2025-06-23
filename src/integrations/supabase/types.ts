@@ -1016,28 +1016,52 @@ export type Database = {
       }
       zone_regions: {
         Row: {
+          circle_name: string | null
           created_at: string
+          delivery: string | null
           delivery_zone_id: string
           district_name: string | null
+          division_name: string | null
           id: string
+          latitude: number | null
+          longitude: number | null
+          office_name: string | null
+          office_type: string | null
+          region_name: string | null
           region_type: string
           state_name: string
           updated_at: string
         }
         Insert: {
+          circle_name?: string | null
           created_at?: string
+          delivery?: string | null
           delivery_zone_id: string
           district_name?: string | null
+          division_name?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
+          office_name?: string | null
+          office_type?: string | null
+          region_name?: string | null
           region_type?: string
           state_name: string
           updated_at?: string
         }
         Update: {
+          circle_name?: string | null
           created_at?: string
+          delivery?: string | null
           delivery_zone_id?: string
           district_name?: string | null
+          division_name?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
+          office_name?: string | null
+          office_type?: string | null
+          region_name?: string | null
           region_type?: string
           state_name?: string
           updated_at?: string
