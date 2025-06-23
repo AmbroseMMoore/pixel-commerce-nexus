@@ -1,3 +1,4 @@
+
 export type MediaStorageType = 'cloud' | 'local' | 'custom';
 
 export interface MediaStorageConfig {
@@ -15,6 +16,7 @@ export interface MediaStorageConfig {
     publicUrl: string;
     httpsUrl: string;
     httpUrl: string;
+    deleteUrl: string;
   };
 }
 
@@ -34,6 +36,7 @@ export const MEDIA_STORAGE_CONFIG: MediaStorageConfig = {
     uploadUrl: 'https://bucket.ezeelux.in/cutebae_app/upload',
     publicUrl: 'https://bucket.ezeelux.in/cutebae_app/file/',
     httpUrl: 'http://bucket.ezeelux.in/cutebae_app/file/', // Fallback HTTP URL
+    httpsUrl: 'https://bucket.ezeelux.in/cutebae_app/file/', // HTTPS URL
     deleteUrl: 'https://bucket.ezeelux.in/cutebae_app/delete'
   }
 };

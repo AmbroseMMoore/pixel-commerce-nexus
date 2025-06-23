@@ -14,8 +14,8 @@ export interface ZoneRegion {
   office_name?: string;
   office_type?: string;
   delivery?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude?: string; // Changed from number to string to match database
+  longitude?: string; // Changed from number to string to match database
   created_at: string;
   updated_at: string;
   delivery_zone?: {
@@ -84,8 +84,8 @@ export const addZoneRegion = async (zoneRegion: {
   office_name?: string;
   office_type?: string;
   delivery?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude?: string; // Changed from number to string
+  longitude?: string; // Changed from number to string
 }): Promise<ZoneRegion> => {
   const { data, error } = await supabase
     .from('zone_regions')
