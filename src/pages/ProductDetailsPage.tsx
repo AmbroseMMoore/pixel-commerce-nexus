@@ -306,19 +306,7 @@ const ProductDetailsPage = () => {
             </div>
 
             {/* Delivery Information Display */}
-            {deliveryInfo && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <h4 className="font-semibold text-green-800 mb-2">Delivery Information</h4>
-                <div className="text-sm text-green-700 space-y-1">
-                  <p>Delivering to: {deliveryInfo.city}, {deliveryInfo.state}</p>
-                  <p>Delivery Time: {deliveryInfo.delivery_days_min === deliveryInfo.delivery_days_max 
-                    ? `${deliveryInfo.delivery_days_min} days`
-                    : `${deliveryInfo.delivery_days_min}-${deliveryInfo.delivery_days_max} days`
-                  }</p>
-                  <p>Delivery Charge: ₹{deliveryInfo.delivery_charge}</p>
-                  <p className="font-medium">{deliveryInfo.zone_name} - Zone {deliveryInfo.zone_number}</p>
-                </div>
-              </div>
+           
             )}
 
             {/* Product Specifications */}
