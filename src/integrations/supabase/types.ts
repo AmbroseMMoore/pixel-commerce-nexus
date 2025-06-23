@@ -735,21 +735,30 @@ export type Database = {
       product_images: {
         Row: {
           color_id: string
+          custom_media_crud_url: string | null
           id: string
+          image_file_type: string | null
+          image_name: string | null
           image_url: string
           is_primary: boolean | null
           product_id: string
         }
         Insert: {
           color_id: string
+          custom_media_crud_url?: string | null
           id?: string
+          image_file_type?: string | null
+          image_name?: string | null
           image_url: string
           is_primary?: boolean | null
           product_id: string
         }
         Update: {
           color_id?: string
+          custom_media_crud_url?: string | null
           id?: string
+          image_file_type?: string | null
+          image_name?: string | null
           image_url?: string
           is_primary?: boolean | null
           product_id?: string
@@ -1023,10 +1032,11 @@ export type Database = {
           district_name: string | null
           division_name: string | null
           id: string
-          latitude: number | null
-          longitude: number | null
+          latitude: string | null
+          longitude: string | null
           office_name: string | null
           office_type: string | null
+          pincode: string | null
           region_name: string | null
           region_type: string
           state_name: string
@@ -1040,10 +1050,11 @@ export type Database = {
           district_name?: string | null
           division_name?: string | null
           id?: string
-          latitude?: number | null
-          longitude?: number | null
+          latitude?: string | null
+          longitude?: string | null
           office_name?: string | null
           office_type?: string | null
+          pincode?: string | null
           region_name?: string | null
           region_type?: string
           state_name: string
@@ -1057,10 +1068,11 @@ export type Database = {
           district_name?: string | null
           division_name?: string | null
           id?: string
-          latitude?: number | null
-          longitude?: number | null
+          latitude?: string | null
+          longitude?: string | null
           office_name?: string | null
           office_type?: string | null
+          pincode?: string | null
           region_name?: string | null
           region_type?: string
           state_name?: string

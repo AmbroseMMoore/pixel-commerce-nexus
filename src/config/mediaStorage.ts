@@ -1,4 +1,3 @@
-
 export type MediaStorageType = 'cloud' | 'local' | 'custom';
 
 export interface MediaStorageConfig {
@@ -21,7 +20,8 @@ export interface MediaStorageConfig {
 
 // Updated configuration to use your new custom storage URL
 export const MEDIA_STORAGE_CONFIG: MediaStorageConfig = {
-  type: 'custom',
+  type: 'custom' as 'cloud' | 'local' | 'custom',
+  
   cloudConfig: {
     bucket: 'cms-images',
     publicUrl: 'https://hvqdzrztwjegbtpixmke.supabase.co/storage/v1/object/public/cms-images/'
@@ -31,10 +31,10 @@ export const MEDIA_STORAGE_CONFIG: MediaStorageConfig = {
     publicPath: '/uploads'
   },
   customConfig: {
-    uploadUrl: 'https://bucket.ezeelux.in/cutebae/media/upload.php',
-    publicUrl: 'https://bucket.ezeelux.in/cutebae/media/',
-    httpsUrl: 'https://bucket.ezeelux.in/cutebae/media/',
-    httpUrl: 'http://bucket.ezeelux.in/cutebae/media/'
+    uploadUrl: 'https://bucket.ezeelux.in/cutebae_app/upload',
+    publicUrl: 'https://bucket.ezeelux.in/cutebae_app/file/',
+    httpUrl: 'http://bucket.ezeelux.in/cutebae_app/file/', // Fallback HTTP URL
+    deleteUrl: 'https://bucket.ezeelux.in/cutebae_app/delete'
   }
 };
 
@@ -59,27 +59,25 @@ export const testCustomStorageConnectivity = async (): Promise<{ https: boolean;
   const results = { https: false, http: false };
   
   try {
-    // Test HTTPS first
-    const httpsResponse = await fetch(MEDIA_STORAGE_CONFIG.customConfig!.httpsUrl, { 
+    // Test HTTPS connectivity
+    const httpsResponse = await fetch('https://bucket.ezeelux.in/cutebae_app/file/test.txt', { 
       method: 'HEAD',
-      mode: 'no-cors' 
+      mode: 'no-cors'
     });
     results.https = true;
-    console.log('HTTPS connection successful to:', MEDIA_STORAGE_CONFIG.customConfig!.httpsUrl);
   } catch (error) {
-    console.log('HTTPS connection failed:', error);
+    console.log('HTTPS connectivity test failed:', error);
   }
   
   try {
-    // Test HTTP as fallback
-    const httpResponse = await fetch(MEDIA_STORAGE_CONFIG.customConfig!.httpUrl, { 
+    // Test HTTP connectivity as fallback
+    const httpResponse = await fetch('http://bucket.ezeelux.in/cutebae_app/file/test.txt', { 
       method: 'HEAD',
-      mode: 'no-cors' 
+      mode: 'no-cors'
     });
     results.http = true;
-    console.log('HTTP connection successful to:', MEDIA_STORAGE_CONFIG.customConfig!.httpUrl);
   } catch (error) {
-    console.log('HTTP connection failed:', error);
+    console.log('HTTP connectivity test failed:', error);
   }
   
   return results;
