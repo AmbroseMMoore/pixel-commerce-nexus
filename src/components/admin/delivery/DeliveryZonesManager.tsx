@@ -1,13 +1,14 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Edit, Trash2, Save, X } from "lucide-react";
+import { Plus, Edit, Trash2, Save, X, MapPin, Settings } from "lucide-react";
 import { useDeliveryZones, useUpsertDeliveryZone, useDeleteDeliveryZone } from "@/hooks/useDeliveryZones";
+import { useZoneRegionsByZone } from "@/hooks/useZoneRegions";
 import { DeliveryZone } from "@/services/deliveryApi";
+import ZoneRegionManager from "./ZoneRegionManager";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,7 @@ const DeliveryZonesManager = () => {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingZone, setEditingZone] = useState<EditingZone | null>(null);
+  const [selectedZoneForRegions, setSelectedZoneForRegions] = useState<DeliveryZone | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +87,33 @@ const DeliveryZonesManager = () => {
 
   const handleDelete = async (id: string) => {
     await deleteZone.mutateAsync(id);
+  };
+
+  const ZoneRegionDialog = ({ zone }: { zone: DeliveryZone }) => {
+    const { data: regions = [] } = useZoneRegionsByZone(zone.id);
+    
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <MapPin className="h-4 w-4 mr-1" />
+            Regions ({regions.length})
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Manage Regions for Zone {zone.zone_number}</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto">
+            <ZoneRegionManager 
+              zoneId={zone.id}
+              zoneName={zone.zone_name}
+              zoneNumber={zone.zone_number}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
   };
 
   if (isLoading) {
@@ -204,7 +233,7 @@ const DeliveryZonesManager = () => {
         {zones.map((zone) => (
           <div key={zone.id} className="flex items-center justify-between p-4 border rounded-lg">
             <div className="flex-1">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 mb-2">
                 <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-medium">
                   Zone {zone.zone_number}
                 </div>
@@ -219,13 +248,14 @@ const DeliveryZonesManager = () => {
                 </div>
               </div>
               {zone.description && (
-                <p className="text-sm text-gray-600 mt-2">{zone.description}</p>
+                <p className="text-sm text-gray-600">{zone.description}</p>
               )}
             </div>
             <div className="flex items-center gap-2">
               <div className={`px-2 py-1 rounded text-xs ${zone.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                 {zone.is_active ? 'Active' : 'Inactive'}
               </div>
+              <ZoneRegionDialog zone={zone} />
               <Button variant="outline" size="sm" onClick={() => handleEdit(zone)}>
                 <Edit className="h-4 w-4" />
               </Button>

@@ -3,8 +3,8 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Truck, Clock, CheckCircle } from "lucide-react";
-import { useDeliveryInfoByPincode } from "@/hooks/usePincodeZones";
+import { MapPin, Truck, Clock, CheckCircle, Loader2 } from "lucide-react";
+import { useDeliveryInfoByPincodeRegion } from "@/hooks/useZoneRegions";
 
 interface PincodeCheckerProps {
   onDeliveryInfoChange?: (deliveryInfo: any) => void;
@@ -14,7 +14,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
   const [pincode, setPincode] = useState("");
   const [checkedPincode, setCheckedPincode] = useState("");
   
-  const { data: deliveryInfo, isLoading, error } = useDeliveryInfoByPincode(
+  const { data: deliveryInfo, isLoading, error } = useDeliveryInfoByPincodeRegion(
     checkedPincode, 
     !!checkedPincode
   );
@@ -59,7 +59,14 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
             onClick={handleCheck}
             disabled={pincode.length !== 6 || isLoading}
           >
-            {isLoading ? "Checking..." : "Check"}
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                Checking...
+              </>
+            ) : (
+              "Check"
+            )}
           </Button>
         </div>
 

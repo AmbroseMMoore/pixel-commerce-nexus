@@ -1014,6 +1014,44 @@ export type Database = {
         }
         Relationships: []
       }
+      zone_regions: {
+        Row: {
+          created_at: string
+          delivery_zone_id: string
+          district_name: string | null
+          id: string
+          region_type: string
+          state_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_zone_id: string
+          district_name?: string | null
+          id?: string
+          region_type?: string
+          state_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivery_zone_id?: string
+          district_name?: string | null
+          id?: string
+          region_type?: string
+          state_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zone_regions_delivery_zone_id_fkey"
+            columns: ["delivery_zone_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       product_list_view: {
@@ -1057,6 +1095,19 @@ export type Database = {
         }[]
       }
       get_delivery_info_by_pincode: {
+        Args: { pincode_param: string }
+        Returns: {
+          zone_id: string
+          zone_number: number
+          zone_name: string
+          delivery_days_min: number
+          delivery_days_max: number
+          delivery_charge: number
+          state: string
+          city: string
+        }[]
+      }
+      get_delivery_info_by_pincode_regions: {
         Args: { pincode_param: string }
         Returns: {
           zone_id: string
