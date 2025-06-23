@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   Eye,
   Upload,
-  Globe
+  Globe,
+  Info
 } from "lucide-react";
 import { useStates, useDistrictsByState, usePincodeImport } from "@/hooks/usePincodeApi";
 import { useDeliveryZones } from "@/hooks/useDeliveryZones";
@@ -61,10 +62,18 @@ const PincodeApiImport = () => {
 
     try {
       const regionName = importType === 'state' ? selectedState : selectedDistrict;
+      console.log(`Starting fetch for ${importType}: ${regionName}`);
+      
       await fetchPincodesByRegion(importType, regionName, selectedState);
-      toast.success(`Fetched ${importData.length} pincodes successfully`);
-      setShowPreview(true);
+      
+      if (importData.length > 0) {
+        toast.success(`Fetched ${importData.length} pincodes successfully`);
+        setShowPreview(true);
+      } else {
+        toast.warning("No pincodes found for the selected region. This might be due to API limitations or the region not having data in our sample set.");
+      }
     } catch (error: any) {
+      console.error('Fetch error:', error);
       toast.error(`Failed to fetch data: ${error.message}`);
     }
   };
@@ -112,6 +121,21 @@ const PincodeApiImport = () => {
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-blue-800">How this works:</p>
+              <ul className="text-blue-700 mt-1 space-y-1">
+                <li>• We use sample pincodes to fetch real data from the API</li>
+                <li>• Data availability depends on the selected state/region</li>
+                <li>• Some regions may have limited data due to API constraints</li>
+                <li>• The system will fetch all available pincodes for the selected area</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="import-type">Import Type</Label>
@@ -235,17 +259,14 @@ const PincodeApiImport = () => {
               </Dialog>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
               <div className="flex items-start gap-2">
-                <Globe className="h-4 w-4 text-blue-600 mt-0.5" />
+                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
                 <div className="text-sm">
-                  <p className="font-medium text-blue-800">PostalPincode.in API Benefits:</p>
-                  <ul className="text-blue-700 mt-1 space-y-1">
-                    <li>• Comprehensive Indian postal data</li>
-                    <li>• Detailed post office information</li>
-                    <li>• Regular updates from postal department</li>
-                    <li>• District and state mapping included</li>
-                  </ul>
+                  <p className="font-medium text-green-800">Data fetched successfully!</p>
+                  <p className="text-green-700 mt-1">
+                    Found {importData.length} pincodes with detailed post office information including district mapping and delivery status.
+                  </p>
                 </div>
               </div>
             </div>
