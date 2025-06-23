@@ -7,6 +7,7 @@ import {
   fetchPincodesByState,
   fetchPincodesByDistrict,
   transformPincodeData,
+  fetchPincodeDetails,
   type PincodeImportData
 } from "@/services/pincodeApi";
 
@@ -14,7 +15,7 @@ export const useStates = () => {
   return useQuery({
     queryKey: ["api-states"],
     queryFn: fetchStates,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 60 * 60 * 1000, // 1 hour (static data)
     retry: 2,
   });
 };
@@ -24,7 +25,17 @@ export const useDistrictsByState = (stateName: string, enabled: boolean = true) 
     queryKey: ["api-districts", stateName],
     queryFn: () => fetchDistrictsByState(stateName),
     enabled: !!stateName && enabled,
-    staleTime: 10 * 60 * 1000,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    retry: 2,
+  });
+};
+
+export const usePincodeDetails = (pincode: string, enabled: boolean = true) => {
+  return useQuery({
+    queryKey: ["pincode-details", pincode],
+    queryFn: () => fetchPincodeDetails(pincode),
+    enabled: !!pincode && enabled && /^\d{6}$/.test(pincode),
+    staleTime: 10 * 60 * 1000, // 10 minutes
     retry: 2,
   });
 };
@@ -45,7 +56,7 @@ export const usePincodeImport = () => {
     try {
       let allRecords: PincodeImportData[] = [];
       let offset = 0;
-      const limit = 1000;
+      const limit = 100; // Smaller batches for the new API
       let hasMore = true;
 
       while (hasMore) {
@@ -53,17 +64,16 @@ export const usePincodeImport = () => {
           ? await fetchPincodesByState(regionName, limit, offset)
           : await fetchPincodesByDistrict(regionName, stateName, limit, offset);
 
-        const transformedData = transformPincodeData(response.records);
-        allRecords = [...allRecords, ...transformedData];
-
-        setImportProgress(Math.min((allRecords.length / response.total) * 100, 100));
+        allRecords = [...allRecords, ...response.records];
+        
+        setImportProgress(Math.min((allRecords.length / Math.max(response.total, 1)) * 100, 100));
 
         hasMore = response.records.length === limit && allRecords.length < response.total;
         offset += limit;
 
-        // Add small delay to prevent rate limiting
+        // Add delay to be respectful to the API
         if (hasMore) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
 

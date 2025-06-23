@@ -13,7 +13,8 @@ import {
   CheckCircle, 
   AlertTriangle,
   Eye,
-  Upload
+  Upload,
+  Globe
 } from "lucide-react";
 import { useStates, useDistrictsByState, usePincodeImport } from "@/hooks/usePincodeApi";
 import { useDeliveryZones } from "@/hooks/useDeliveryZones";
@@ -103,9 +104,12 @@ const PincodeApiImport = () => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Download className="h-5 w-5" />
-          Import Pincodes from Data.gov.in API
+          <Globe className="h-5 w-5" />
+          Import Pincodes from PostalPincode.in API
         </CardTitle>
+        <p className="text-sm text-gray-600">
+          Fetch comprehensive pincode data from PostalPincode.in API with detailed post office information
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -117,7 +121,7 @@ const PincodeApiImport = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="state">By State</SelectItem>
-                <SelectItem value="district">By District</SelectItem>
+                <SelectItem value="district">By District/City</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -140,14 +144,14 @@ const PincodeApiImport = () => {
 
           {importType === 'district' && (
             <div>
-              <Label htmlFor="district">District *</Label>
+              <Label htmlFor="district">District/City *</Label>
               <Select 
                 value={selectedDistrict} 
                 onValueChange={setSelectedDistrict} 
                 disabled={districtsLoading || !selectedState}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={districtsLoading ? "Loading..." : "Select district"} />
+                  <SelectValue placeholder={districtsLoading ? "Loading..." : "Select district/city"} />
                 </SelectTrigger>
                 <SelectContent>
                   {districts?.map((district) => (
@@ -181,7 +185,7 @@ const PincodeApiImport = () => {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Fetching pincode data...</span>
+              <span className="text-sm">Fetching pincode data from PostalPincode.in API...</span>
             </div>
             <Progress value={importProgress} className="w-full" />
             <p className="text-xs text-gray-500">{Math.round(importProgress)}% complete</p>
@@ -229,6 +233,21 @@ const PincodeApiImport = () => {
                   </ScrollArea>
                 </DialogContent>
               </Dialog>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Globe className="h-4 w-4 text-blue-600 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-blue-800">PostalPincode.in API Benefits:</p>
+                  <ul className="text-blue-700 mt-1 space-y-1">
+                    <li>• Comprehensive Indian postal data</li>
+                    <li>• Detailed post office information</li>
+                    <li>• Regular updates from postal department</li>
+                    <li>• District and state mapping included</li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
