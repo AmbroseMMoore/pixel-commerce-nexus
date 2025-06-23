@@ -18,6 +18,13 @@ export const usePincodeZones = (options: {
     queryKey: ["pincode-zones", options],
     queryFn: () => fetchPincodeZones(options),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: (failureCount, error: any) => {
+      // Don't retry on client errors (4xx)
+      if (error?.status >= 400 && error?.status < 500) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 };
 
@@ -25,8 +32,14 @@ export const useDeliveryInfoByPincode = (pincode: string, enabled: boolean = tru
   return useQuery({
     queryKey: ["delivery-info", pincode],
     queryFn: () => getDeliveryInfoByPincode(pincode),
-    enabled: !!pincode && enabled,
+    enabled: !!pincode && enabled && /^\d{6}$/.test(pincode), // Only run for valid 6-digit pincodes
     staleTime: 10 * 60 * 1000, // 10 minutes
+    retry: (failureCount, error: any) => {
+      if (error?.status >= 400 && error?.status < 500) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 };
 
@@ -35,12 +48,14 @@ export const useBulkUploadPincodes = () => {
 
   return useMutation({
     mutationFn: bulkUploadPincodes,
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["pincode-zones"] });
-      toast.success("Pincodes uploaded successfully!");
+      const count = Array.isArray(variables) ? variables.length : 1;
+      console.log(`Successfully uploaded ${count} pincodes`);
     },
     onError: (error: any) => {
-      toast.error("Failed to upload pincodes: " + error.message);
+      console.error("Bulk upload failed:", error);
+      // Don't show toast here as it's handled in the component
     },
   });
 };
@@ -52,10 +67,11 @@ export const useDeletePincodeZone = () => {
     mutationFn: deletePincodeZone,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pincode-zones"] });
-      toast.success("Pincode deleted successfully!");
+      console.log("Pincode deleted successfully");
     },
     onError: (error: any) => {
-      toast.error("Failed to delete pincode: " + error.message);
+      console.error("Delete pincode failed:", error);
+      // Don't show toast here as it's handled in the component
     },
   });
 };
