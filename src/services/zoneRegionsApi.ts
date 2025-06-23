@@ -42,7 +42,10 @@ export const fetchZoneRegions = async (): Promise<ZoneRegion[]> => {
     .order('state_name');
 
   if (error) throw error;
-  return data || [];
+  return (data || []).map(item => ({
+    ...item,
+    region_type: item.region_type as 'state' | 'district'
+  }));
 };
 
 // Get regions for a specific zone
@@ -57,7 +60,10 @@ export const fetchZoneRegionsByZone = async (zoneId: string): Promise<ZoneRegion
     .order('state_name');
 
   if (error) throw error;
-  return data || [];
+  return (data || []).map(item => ({
+    ...item,
+    region_type: item.region_type as 'state' | 'district'
+  }));
 };
 
 // Add a region to a zone
@@ -77,7 +83,10 @@ export const addZoneRegion = async (zoneRegion: {
     .single();
 
   if (error) throw error;
-  return data;
+  return {
+    ...data,
+    region_type: data.region_type as 'state' | 'district'
+  };
 };
 
 // Remove a region from a zone
