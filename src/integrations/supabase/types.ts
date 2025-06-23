@@ -405,6 +405,33 @@ export type Database = {
         }
         Relationships: []
       }
+      media_server_api_table: {
+        Row: {
+          active_or_no: boolean
+          api_url: string
+          created_at: string
+          id: string
+          order_of_procedence: number
+          updated_at: string
+        }
+        Insert: {
+          active_or_no?: boolean
+          api_url?: string
+          created_at?: string
+          id?: string
+          order_of_procedence?: number
+          updated_at?: string
+        }
+        Update: {
+          active_or_no?: boolean
+          api_url?: string
+          created_at?: string
+          id?: string
+          order_of_procedence?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           color_id: string
@@ -741,6 +768,9 @@ export type Database = {
           image_name: string | null
           image_url: string
           is_primary: boolean | null
+          media_file_name: string | null
+          media_file_type: string | null
+          media_server_api_url_fk: string | null
           product_id: string
         }
         Insert: {
@@ -751,6 +781,9 @@ export type Database = {
           image_name?: string | null
           image_url: string
           is_primary?: boolean | null
+          media_file_name?: string | null
+          media_file_type?: string | null
+          media_server_api_url_fk?: string | null
           product_id: string
         }
         Update: {
@@ -761,6 +794,9 @@ export type Database = {
           image_name?: string | null
           image_url?: string
           is_primary?: boolean | null
+          media_file_name?: string | null
+          media_file_type?: string | null
+          media_server_api_url_fk?: string | null
           product_id?: string
         }
         Relationships: [
@@ -769,6 +805,13 @@ export type Database = {
             columns: ["color_id"]
             isOneToOne: false
             referencedRelation: "product_colors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_images_media_server_api_url_fk_fkey"
+            columns: ["media_server_api_url_fk"]
+            isOneToOne: false
+            referencedRelation: "media_server_api_table"
             referencedColumns: ["id"]
           },
           {

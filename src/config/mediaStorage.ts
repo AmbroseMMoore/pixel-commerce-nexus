@@ -33,11 +33,11 @@ export const MEDIA_STORAGE_CONFIG: MediaStorageConfig = {
     publicPath: '/uploads'
   },
   customConfig: {
-    uploadUrl: 'https://bucket.ezeelux.in/cutebae_app/upload',
-    publicUrl: 'https://bucket.ezeelux.in/cutebae_app/file/',
-    httpUrl: 'http://bucket.ezeelux.in/cutebae_app/file/', // Fallback HTTP URL
-    httpsUrl: 'https://bucket.ezeelux.in/cutebae_app/file/', // HTTPS URL
-    deleteUrl: 'https://bucket.ezeelux.in/cutebae_app/delete'
+    uploadUrl: 'https://bucket.trulle.in/cutebae_app/upload',
+    publicUrl: 'https://bucket.trulle.in/cutebae_app/file/',
+    httpUrl: 'http://bucket.trulle.in/cutebae_app/file/',
+    httpsUrl: 'https://bucket.trulle.in/cutebae_app/file/',
+    deleteUrl: 'https://bucket.trulle.in/cutebae_app/delete'
   }
 };
 
@@ -63,7 +63,7 @@ export const testCustomStorageConnectivity = async (): Promise<{ https: boolean;
   
   try {
     // Test HTTPS connectivity
-    const httpsResponse = await fetch('https://bucket.ezeelux.in/cutebae_app/file/test.txt', { 
+    const httpsResponse = await fetch('https://bucket.trulle.in/cutebae_app/file/test.txt', { 
       method: 'HEAD',
       mode: 'no-cors'
     });
@@ -74,7 +74,7 @@ export const testCustomStorageConnectivity = async (): Promise<{ https: boolean;
   
   try {
     // Test HTTP connectivity as fallback
-    const httpResponse = await fetch('http://bucket.ezeelux.in/cutebae_app/file/test.txt', { 
+    const httpResponse = await fetch('http://bucket.trulle.in/cutebae_app/file/test.txt', { 
       method: 'HEAD',
       mode: 'no-cors'
     });

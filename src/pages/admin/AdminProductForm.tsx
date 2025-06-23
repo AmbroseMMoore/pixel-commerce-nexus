@@ -14,19 +14,22 @@ import { Trash2, Plus, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useCategories } from "@/hooks/useCategories";
-import { useQuery } from "@tanstack/react-query";
-import { fetchProductBySlug } from "@/services/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProductById } from "@/hooks/useProducts";
-import CustomImageUpload from "@/components/admin/CustomImageUpload";
+import MediaServerImageUpload from "@/components/admin/MediaServerImageUpload";
+import { deleteFromMediaServer, getActiveMediaServerConfig, generateProductImageUrl } from "@/services/mediaServerApi";
 
 interface ColorVariant {
   id: string;
   name: string;
   colorCode: string;
-  images: string[];
+  images: Array<{
+    url: string;
+    filename?: string;
+    fileType?: string;
+  }>;
 }
 
 interface SizeVariant {
@@ -43,7 +46,7 @@ interface Specification {
 // Common age ranges for kids
 const AGE_RANGES = [
   "0-6 months",
-  "6-12 months",
+  "6-12 months", 
   "1-2 years",
   "2-3 years",
   "3-4 years",
@@ -56,22 +59,13 @@ const AGE_RANGES = [
   "10+ years"
 ];
 
-// Updated interface for color variants to include media metadata
-interface ColorVariantWithMedia extends ColorVariant {
-  imageMetadata?: Array<{
-    imageName: string;
-    imageFileType: string;
-    url: string;
-  }>;
-}
-
 const AdminProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isEditMode = !!id;
 
-  // Fetch data - use useProductById for admin edit functionality
+  // Fetch data
   const { categories, isLoading: isCategoriesLoading } = useCategories();
   const { data: existingProduct, isLoading: isProductLoading } = useProductById(isEditMode ? id! : "");
 
@@ -99,7 +93,12 @@ const AdminProductForm = () => {
 
   // Variants
   const [colorVariants, setColorVariants] = useState<ColorVariant[]>([
-    { id: "color-1", name: "Black", colorCode: "#000000", images: [] }
+    { 
+      id: "color-1", 
+      name: "Black", 
+      colorCode: "#000000", 
+      images: Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg" }))
+    }
   ]);
 
   const [sizeVariants, setSizeVariants] = useState<SizeVariant[]>([
@@ -175,25 +174,6 @@ const AdminProductForm = () => {
     }
   }, [title, isEditMode]);
 
-  // Convert file to base64 data URL
-  const fileToDataURL = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // Toggle age range selection
-  const toggleAgeRange = (ageRange: string) => {
-    setSelectedAgeRanges(prev =>
-      prev.includes(ageRange)
-        ? prev.filter(ar => ar !== ageRange)
-        : [...prev, ageRange]
-    );
-  };
-
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,6 +191,12 @@ const AdminProductForm = () => {
     setIsSubmitting(true);
     
     try {
+      // Get media server config
+      const mediaServerConfig = await getActiveMediaServerConfig();
+      if (!mediaServerConfig) {
+        throw new Error('No active media server configuration found');
+      }
+
       // Create specifications object from array
       const specsObj: Record<string, string> = {};
       specifications.forEach(spec => {
@@ -298,15 +284,19 @@ const AdminProductForm = () => {
           if (colorError) throw colorError;
 
           // Handle images for this color
-          for (const imageUrl of colorVariant.images) {
-            if (imageUrl) {
+          for (let i = 0; i < colorVariant.images.length; i++) {
+            const imageData = colorVariant.images[i];
+            if (imageData.url && imageData.filename && imageData.fileType) {
               const { error: imageError } = await supabase
                 .from('product_images')
                 .insert({
                   product_id: productId,
                   color_id: newColor.id,
-                  image_url: imageUrl,
-                  is_primary: colorVariant.images.indexOf(imageUrl) === 0
+                  image_url: imageData.url,
+                  media_server_api_url_fk: mediaServerConfig.id,
+                  media_file_name: imageData.filename,
+                  media_file_type: imageData.fileType,
+                  is_primary: i === 0
                 });
                 
               if (imageError) {
@@ -359,7 +349,7 @@ const AdminProductForm = () => {
         id: `color-${Date.now()}`, 
         name: "", 
         colorCode: "#ffffff", 
-        images: [] 
+        images: Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg" }))
       }
     ]);
   };
@@ -376,49 +366,43 @@ const AdminProductForm = () => {
     ));
   };
 
-  // Handle image upload - convert to data URL for persistence
-  const handleImageUpload = async (colorId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      const dataUrls: string[] = [];
-
-      try {
-        for (const file of files) {
-          const dataUrl = await fileToDataURL(file);
-          dataUrls.push(dataUrl);
-        }
-
-        setColorVariants(colorVariants.map(variant => {
-          if (variant.id === colorId) {
-            // Limit to 6 images
-            const currentImages = [...variant.images];
-            const newImages = [...currentImages, ...dataUrls].slice(0, 6);
-            return { ...variant, images: newImages };
-          }
-          return variant;
-        }));
-      } catch (error) {
-        console.error('Error converting files to data URLs:', error);
-        toast({
-          title: "Error",
-          description: "Failed to process images. Please try again.",
-          variant: "destructive"
-        });
-      }
-    }
-  };
-
-  // Remove image
-  const removeImage = (colorId: string, imageUrl: string) => {
+  // Handle image upload with media server
+  const handleImageUpload = (colorId: string, imageIndex: number, url: string, filename?: string, fileType?: string) => {
     setColorVariants(colorVariants.map(variant => {
       if (variant.id === colorId) {
-        return {
-          ...variant,
-          images: variant.images.filter(img => img !== imageUrl)
+        const updatedImages = [...variant.images];
+        updatedImages[imageIndex] = {
+          url,
+          filename: filename || '',
+          fileType: fileType || 'jpg'
         };
+        return { ...variant, images: updatedImages };
       }
       return variant;
     }));
+  };
+
+  // Remove image with media server cleanup
+  const removeImage = async (colorId: string, imageIndex: number) => {
+    const variant = colorVariants.find(v => v.id === colorId);
+    if (variant && variant.images[imageIndex]) {
+      const imageData = variant.images[imageIndex];
+      
+      // Delete from media server if it has filename and fileType
+      if (imageData.filename && imageData.fileType) {
+        await deleteFromMediaServer(imageData.filename, imageData.fileType);
+      }
+
+      // Update state
+      setColorVariants(colorVariants.map(v => {
+        if (v.id === colorId) {
+          const updatedImages = [...v.images];
+          updatedImages[imageIndex] = { url: "", filename: "", fileType: "jpg" };
+          return { ...v, images: updatedImages };
+        }
+        return v;
+      }));
+    }
   };
 
   // Add a size variant
@@ -466,31 +450,6 @@ const AdminProductForm = () => {
     setSpecifications(newSpecifications);
   };
 
-  // Updated handle image upload for custom media server
-  const handleCustomImageUpload = (colorId: string, url: string, imageName?: string, imageFileType?: string) => {
-    setColorVariants(colorVariants.map(variant => {
-      if (variant.id === colorId) {
-        const updatedImages = [...variant.images, url];
-        const updatedMetadata = (variant as ColorVariantWithMedia).imageMetadata || [];
-        
-        if (imageName && imageFileType) {
-          updatedMetadata.push({
-            imageName,
-            imageFileType,
-            url
-          });
-        }
-
-        return {
-          ...variant,
-          images: updatedImages.slice(0, 6), // Limit to 6 images
-          imageMetadata: updatedMetadata
-        } as ColorVariantWithMedia;
-      }
-      return variant;
-    }));
-  };
-
   // Display loading state
   const isLoading = isCategoriesLoading || (isEditMode && isProductLoading);
 
@@ -516,13 +475,23 @@ const AdminProductForm = () => {
     );
   }
 
-  // Updated Color Variants Tab content
+  // Color Variants Tab with media server integration
   const renderColorVariantsTab = () => (
     <TabsContent value="colors">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Color Variants</CardTitle>
-          <Button onClick={addColorVariant} type="button" variant="outline">
+          <Button onClick={() => {
+            setColorVariants([
+              ...colorVariants, 
+              { 
+                id: `color-${Date.now()}`, 
+                name: "", 
+                colorCode: "#ffffff", 
+                images: Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg" }))
+              }
+            ]);
+          }} type="button" variant="outline">
             <Plus className="mr-2 h-4 w-4" /> Add Color
           </Button>
         </CardHeader>
@@ -533,7 +502,7 @@ const AdminProductForm = () => {
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-medium">Color #{index + 1}</h3>
                   <Button
-                    onClick={() => removeColorVariant(variant.id)}
+                    onClick={() => setColorVariants(colorVariants.filter(v => v.id !== variant.id))}
                     type="button"
                     variant="ghost"
                     size="sm"
@@ -549,7 +518,11 @@ const AdminProductForm = () => {
                     <Input
                       id={`color-name-${variant.id}`}
                       value={variant.name}
-                      onChange={(e) => updateColorVariant(variant.id, "name", e.target.value)}
+                      onChange={(e) => {
+                        setColorVariants(colorVariants.map(v => 
+                          v.id === variant.id ? { ...v, name: e.target.value } : v
+                        ));
+                      }}
                       placeholder="e.g. Navy Blue"
                     />
                   </div>
@@ -560,12 +533,20 @@ const AdminProductForm = () => {
                         id={`color-code-${variant.id}`}
                         type="color"
                         value={variant.colorCode}
-                        onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
+                        onChange={(e) => {
+                          setColorVariants(colorVariants.map(v => 
+                            v.id === variant.id ? { ...v, colorCode: e.target.value } : v
+                          ));
+                        }}
                         className="w-12 h-10 p-1"
                       />
                       <Input
                         value={variant.colorCode}
-                        onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
+                        onChange={(e) => {
+                          setColorVariants(colorVariants.map(v => 
+                            v.id === variant.id ? { ...v, colorCode: e.target.value } : v
+                          ));
+                        }}
                         placeholder="#000000"
                         className="flex-1"
                       />
@@ -573,54 +554,32 @@ const AdminProductForm = () => {
                   </div>
                 </div>
 
-                {/* Custom Image Upload for each image slot */}
+                {/* Media Server Image Uploads */}
                 <div className="space-y-4">
                   {Array.from({ length: 6 }, (_, imgIndex) => (
-                    <div key={imgIndex}>
-                      <CustomImageUpload
+                    <div key={imgIndex} className="relative">
+                      <MediaServerImageUpload
                         label={`Image ${imgIndex + 1} for ${variant.name || 'Color'}`}
-                        value={variant.images[imgIndex] || ''}
-                        onChange={(url, imageName, imageFileType) => {
-                          if (url) {
-                            handleCustomImageUpload(variant.id, url, imageName, imageFileType);
-                          } else {
-                            // Handle image removal
-                            const updatedImages = [...variant.images];
-                            updatedImages[imgIndex] = '';
-                            updateColorVariant(variant.id, "images", updatedImages.filter(img => img));
-                          }
+                        value={variant.images[imgIndex]?.url || ''}
+                        onChange={(url, filename, fileType) => {
+                          handleImageUpload(variant.id, imgIndex, url, filename, fileType);
                         }}
                         placeholder={`Enter URL for image ${imgIndex + 1}`}
                       />
-                    </div>
-                  ))}
-                </div>
-
-                {variant.images.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2 mt-3">
-                    {variant.images.map((image, imgIndex) => (
-                      <div key={imgIndex} className="relative">
-                        <img
-                          src={image}
-                          alt={`Color ${variant.name} - Image ${imgIndex + 1}`}
-                          className="w-full h-32 object-cover rounded border"
-                          onError={(e) => {
-                            e.currentTarget.src = '/placeholder.svg';
-                          }}
-                        />
+                      {variant.images[imgIndex]?.url && (
                         <Button
                           type="button"
                           variant="destructive"
                           size="sm"
-                          className="absolute top-1 right-1 h-6 w-6 p-0"
-                          onClick={() => removeImage(variant.id, image)}
+                          className="absolute top-2 right-2 h-6 w-6 p-0"
+                          onClick={() => removeImage(variant.id, imgIndex)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -665,7 +624,7 @@ const AdminProductForm = () => {
 
               {/* Basic Info Tab - keep existing code */}
               <TabsContent value="basic">
-                {/* ... keep existing basic info tab content the same */}
+                {/* ... keep existing basic info tab content */}
               </TabsContent>
 
               {/* Updated Color Variants Tab */}
@@ -673,12 +632,12 @@ const AdminProductForm = () => {
 
               {/* Size Variants Tab - keep existing code */}
               <TabsContent value="sizes">
-                {/* ... keep existing sizes tab content the same */}
+                {/* ... keep existing sizes tab content */}
               </TabsContent>
 
               {/* Specifications Tab - keep existing code */}
               <TabsContent value="specifications">
-                {/* ... keep existing specifications tab content the same */}
+                {/* ... keep existing specifications tab content */}
               </TabsContent>
             </Tabs>
           </form>
