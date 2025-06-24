@@ -27,6 +27,13 @@ export interface PincodeImportData {
   city: string;
   district: string;
   office_name: string;
+  circle_name?: string;
+  region_name?: string;
+  division_name?: string;
+  office_type?: string;
+  delivery?: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 // Fallback pincode data for common areas
@@ -333,7 +340,14 @@ export const transformPincodeData = (postOffices: PostOfficeInfo[]): PincodeImpo
     state: office.State,
     city: office.District,
     district: office.District,
-    office_name: office.Name
+    office_name: office.Name,
+    circle_name: office.Circle,
+    region_name: office.Region,
+    division_name: office.Division,
+    office_type: office.BranchType,
+    delivery: office.DeliveryStatus,
+    latitude: undefined, // API doesn't provide coordinates
+    longitude: undefined // API doesn't provide coordinates
   }));
 };
 
