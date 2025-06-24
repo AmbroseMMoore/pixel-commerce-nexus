@@ -53,7 +53,7 @@ const OptimizedTrendingProducts = ({
         </div>
         
         {isMobile ? (
-          // Mobile: Regular grid layout
+          // Mobile: Regular grid layout using ProductCard
           <div className="grid grid-cols-2 gap-4">
             {isLoading ? (
               skeletonArray.map((_, index) => (
@@ -71,7 +71,7 @@ const OptimizedTrendingProducts = ({
             )}
           </div>
         ) : (
-          // Desktop: Carousel
+          // Desktop: Carousel using ProductCard
           <Carousel
             opts={{
               align: "start",
