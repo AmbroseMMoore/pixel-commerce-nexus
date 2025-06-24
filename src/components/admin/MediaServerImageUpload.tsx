@@ -53,7 +53,8 @@ const MediaServerImageUpload = ({
     setIsUploading(true);
 
     try {
-      const { customFilename, fileType: detectedFileType } = generateCustomFilename(file.name);
+      const filenameResult = generateCustomFilename(file.name);
+      const { customFilename, fileType: detectedFileType } = filenameResult;
       
       const result = await uploadToMediaServer(file, customFilename);
       

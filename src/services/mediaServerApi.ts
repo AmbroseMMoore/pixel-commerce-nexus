@@ -15,6 +15,11 @@ export interface MediaUploadResult {
   error?: string;
 }
 
+export interface CustomFilenameResult {
+  customFilename: string;
+  fileType: string;
+}
+
 // Get active media server configuration
 export const getActiveMediaServerConfig = async (): Promise<MediaServerApiConfig | null> => {
   const { data, error } = await supabase
@@ -34,7 +39,7 @@ export const getActiveMediaServerConfig = async (): Promise<MediaServerApiConfig
 };
 
 // Generate custom filename according to your specifications
-export const generateCustomFilename = (originalFilename: string): string => {
+export const generateCustomFilename = (originalFilename: string): CustomFilenameResult => {
   // Get file extension
   const ext = originalFilename.split('.').pop()?.toLowerCase() || 'jpg';
   
