@@ -15,12 +15,6 @@ export interface MediaUploadResult {
   error?: string;
 }
 
-export interface MediaFileData {
-  file: File;
-  customFilename: string;
-  fileType: string;
-}
-
 // Get active media server configuration
 export const getActiveMediaServerConfig = async (): Promise<MediaServerApiConfig | null> => {
   const { data, error } = await supabase
@@ -39,47 +33,54 @@ export const getActiveMediaServerConfig = async (): Promise<MediaServerApiConfig
   return data;
 };
 
-// Generate custom filename with timestamp and prefix handling
-export const generateCustomFilename = (files: File[], index: number): string => {
-  const file = files[index];
-  const timestamp = new Date().getTime();
-  const originalName = file.name.split('.')[0];
+// Generate custom filename according to your specifications
+export const generateCustomFilename = (originalFilename: string): string => {
+  // Get file extension
+  const ext = originalFilename.split('.').pop()?.toLowerCase() || 'jpg';
   
-  // Strip filename to 150 characters
-  let baseName = originalName.substring(0, 150).replace(/[^a-zA-Z0-9_-]/g, '_');
-  
-  // Check for duplicate names and add prefix if needed
-  const duplicateIndex = files.slice(0, index).findIndex(f => 
-    f.name.split('.')[0].substring(0, 150).replace(/[^a-zA-Z0-9_-]/g, '_') === baseName
-  );
-  
-  if (duplicateIndex !== -1 || files.slice(index + 1).some(f => 
-    f.name.split('.')[0].substring(0, 150).replace(/[^a-zA-Z0-9_-]/g, '_') === baseName
-  )) {
-    baseName = `${index + 1}_${baseName}`;
+  // Get base filename without extension and trim to 150 characters
+  let baseName = originalFilename.replace(/\.[^/.]+$/, "");
+  if (baseName.length > 150) {
+    baseName = baseName.substring(0, 150);
   }
   
-  return `${baseName}_${timestamp}`;
+  // Clean filename to match server.js logic: replace non-alphanumeric chars with underscore
+  const safeName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_');
+  
+  // Generate datetime suffix: ddmmyyyyhrhrminminsecmilliseconds
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = now.getFullYear();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
+  
+  const dateTimeSuffix = `${day}${month}${year}${hours}${minutes}${seconds}${milliseconds}`;
+  
+  return {
+    customFilename: `${safeName}_${dateTimeSuffix}`,
+    fileType: ext
+  };
 };
 
-// Get file extension
-export const getFileType = (filename: string): string => {
-  const extension = filename.split('.').pop()?.toLowerCase();
-  return extension || 'jpg';
-};
-
-// Upload single file to media server
+// Upload file to media server
 export const uploadToMediaServer = async (
   file: File,
-  customFilename: string,
-  apiUrl: string
+  customFilename: string
 ): Promise<MediaUploadResult> => {
   try {
+    const mediaServerConfig = await getActiveMediaServerConfig();
+    if (!mediaServerConfig) {
+      throw new Error('No active media server configuration found');
+    }
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('filename', customFilename);
 
-    const response = await fetch(`https://${apiUrl}upload`, {
+    const response = await fetch(`https://${mediaServerConfig.api_url}upload`, {
       method: 'POST',
       body: formData,
     });
@@ -111,35 +112,14 @@ export const uploadToMediaServer = async (
   }
 };
 
-// Upload multiple files with generated names
-export const uploadMultipleFiles = async (files: File[]): Promise<MediaFileData[]> => {
+// Get file URL from media server
+export const getMediaFileUrl = async (filename: string, fileType: string): Promise<string> => {
   const mediaServerConfig = await getActiveMediaServerConfig();
   if (!mediaServerConfig) {
-    throw new Error('No active media server configuration found');
-  }
-
-  const mediaFiles: MediaFileData[] = [];
-  
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    const customFilename = generateCustomFilename(files, i);
-    const fileType = getFileType(file.name);
-    const fullFilename = `${customFilename}.${fileType}`;
-    
-    const result = await uploadToMediaServer(file, fullFilename, mediaServerConfig.api_url);
-    
-    if (result.success && result.filename) {
-      mediaFiles.push({
-        file,
-        customFilename: result.filename.split('.')[0], // Remove extension for storage
-        fileType
-      });
-    } else {
-      throw new Error(`Failed to upload ${file.name}: ${result.error}`);
-    }
+    return '';
   }
   
-  return mediaFiles;
+  return `https://${mediaServerConfig.api_url}file/${filename}.${fileType}`;
 };
 
 // Delete file from media server
@@ -166,19 +146,4 @@ export const deleteFromMediaServer = async (filename: string, fileType: string):
     console.error('Media server delete error:', error);
     return false;
   }
-};
-
-// Get public URL for file
-export const getMediaServerUrl = async (filename: string, fileType: string): Promise<string> => {
-  const mediaServerConfig = await getActiveMediaServerConfig();
-  if (!mediaServerConfig) {
-    return '';
-  }
-  
-  return `https://${mediaServerConfig.api_url}file/${filename}.${fileType}`;
-};
-
-// Generate display URL for product image
-export const generateProductImageUrl = (filename: string, fileType: string, apiUrl: string): string => {
-  return `https://${apiUrl}file/${filename}.${fileType}`;
 };

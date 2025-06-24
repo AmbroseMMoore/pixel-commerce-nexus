@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProductById } from "@/hooks/useProducts";
 import MediaServerImageUpload from "@/components/admin/MediaServerImageUpload";
-import { deleteFromMediaServer, getActiveMediaServerConfig, generateProductImageUrl } from "@/services/mediaServerApi";
+import { deleteFromMediaServer, getActiveMediaServerConfig } from "@/services/mediaServerApi";
 
 interface ColorVariant {
   id: string;
@@ -27,8 +27,8 @@ interface ColorVariant {
   colorCode: string;
   images: Array<{
     url: string;
-    filename?: string;
-    fileType?: string;
+    filename: string;
+    fileType: string;
   }>;
 }
 
@@ -130,18 +130,27 @@ const AdminProductForm = () => {
       setSlug(existingProduct.slug);
       setSelectedAgeRanges(existingProduct.ageRanges || []);
 
-      // Set color variants from existing product - fix the image structure with proper typing
+      // Set color variants from existing product with proper media server structure
       if (existingProduct.colorVariants && existingProduct.colorVariants.length > 0) {
         setColorVariants(existingProduct.colorVariants.map(variant => ({
           id: variant.id,
           name: variant.name,
           colorCode: variant.colorCode,
           images: variant.images && Array.isArray(variant.images) 
-            ? variant.images.map((img: string | { url: string; filename?: string; fileType?: string }) => 
-                typeof img === 'string' 
-                  ? { url: img, filename: "", fileType: "jpg" }
-                  : { url: img.url || "", filename: img.filename || "", fileType: img.fileType || "jpg" }
-              )
+            ? variant.images.map((img: any) => {
+                if (typeof img === 'string') {
+                  // Legacy format - convert to new structure
+                  return { url: img, filename: "", fileType: "jpg" };
+                } else if (img && typeof img === 'object') {
+                  // New format - ensure all required properties
+                  return { 
+                    url: img.url || "", 
+                    filename: img.filename || img.media_file_name || "", 
+                    fileType: img.fileType || img.media_file_type || "jpg" 
+                  };
+                }
+                return { url: "", filename: "", fileType: "jpg" };
+              })
             : Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg" }))
         })));
       }
@@ -373,15 +382,11 @@ const AdminProductForm = () => {
   };
 
   // Handle image upload with media server
-  const handleImageUpload = (colorId: string, imageIndex: number, url: string, filename?: string, fileType?: string) => {
+  const handleImageUpload = (colorId: string, imageIndex: number, url: string, filename: string, fileType: string) => {
     setColorVariants(colorVariants.map(variant => {
       if (variant.id === colorId) {
         const updatedImages = [...variant.images];
-        updatedImages[imageIndex] = {
-          url,
-          filename: filename || '',
-          fileType: fileType || 'jpg'
-        };
+        updatedImages[imageIndex] = { url, filename, fileType };
         return { ...variant, images: updatedImages };
       }
       return variant;
@@ -403,7 +408,7 @@ const AdminProductForm = () => {
       setColorVariants(colorVariants.map(v => {
         if (v.id === colorId) {
           const updatedImages = [...v.images];
-          updatedImages[imageIndex] = { url: "", filename: "", fileType: "jpg" };
+          updatedImages[imageIndex] = { url: "", filename: "", fileType: "" };
           return { ...v, images: updatedImages };
         }
         return v;
@@ -481,7 +486,7 @@ const AdminProductForm = () => {
     );
   }
 
-  // Color Variants Tab with media server integration
+  // Color Variants Tab with unified media server integration
   const renderColorVariantsTab = () => (
     <TabsContent value="colors">
       <Card>
@@ -494,7 +499,7 @@ const AdminProductForm = () => {
                 id: `color-${Date.now()}`, 
                 name: "", 
                 colorCode: "#ffffff", 
-                images: Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg" }))
+                images: Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "" }))
               }
             ]);
           }} type="button" variant="outline">
@@ -561,29 +566,19 @@ const AdminProductForm = () => {
                 </div>
 
                 {/* Media Server Image Uploads */}
-                <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   {Array.from({ length: 6 }, (_, imgIndex) => (
-                    <div key={imgIndex} className="relative">
-                      <MediaServerImageUpload
-                        label={`Image ${imgIndex + 1} for ${variant.name || 'Color'}`}
-                        value={variant.images[imgIndex]?.url || ''}
-                        onChange={(url, filename, fileType) => {
-                          handleImageUpload(variant.id, imgIndex, url, filename, fileType);
-                        }}
-                        placeholder={`Enter URL for image ${imgIndex + 1}`}
-                      />
-                      {variant.images[imgIndex]?.url && (
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute top-2 right-2 h-6 w-6 p-0"
-                          onClick={() => removeImage(variant.id, imgIndex)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    <MediaServerImageUpload
+                      key={imgIndex}
+                      label={`Image ${imgIndex + 1}`}
+                      value={variant.images[imgIndex]?.url || ''}
+                      filename={variant.images[imgIndex]?.filename}
+                      fileType={variant.images[imgIndex]?.fileType}
+                      onChange={(url, filename, fileType) => {
+                        handleImageUpload(variant.id, imgIndex, url, filename, fileType);
+                      }}
+                      onRemove={() => removeImage(variant.id, imgIndex)}
+                    />
                   ))}
                 </div>
               </div>

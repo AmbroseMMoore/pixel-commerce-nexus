@@ -762,9 +762,7 @@ export type Database = {
       product_images: {
         Row: {
           color_id: string
-          custom_media_crud_url: string | null
           id: string
-          image_file_type: string | null
           image_name: string | null
           image_url: string
           is_primary: boolean | null
@@ -775,9 +773,7 @@ export type Database = {
         }
         Insert: {
           color_id: string
-          custom_media_crud_url?: string | null
           id?: string
-          image_file_type?: string | null
           image_name?: string | null
           image_url: string
           is_primary?: boolean | null
@@ -788,9 +784,7 @@ export type Database = {
         }
         Update: {
           color_id?: string
-          custom_media_crud_url?: string | null
           id?: string
-          image_file_type?: string | null
           image_name?: string | null
           image_url?: string
           is_primary?: boolean | null
