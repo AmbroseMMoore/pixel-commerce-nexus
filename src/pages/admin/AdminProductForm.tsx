@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -569,7 +570,7 @@ const AdminProductForm = () => {
                 <div className="grid grid-cols-2 gap-4">
                   {Array.from({ length: 6 }, (_, imgIndex) => (
                     <MediaServerImageUpload
-                      key={imgIndex}
+                      key={`${variant.id}-${imgIndex}`}
                       label={`Image ${imgIndex + 1}`}
                       value={variant.images[imgIndex]?.url || ''}
                       filename={variant.images[imgIndex]?.filename}
