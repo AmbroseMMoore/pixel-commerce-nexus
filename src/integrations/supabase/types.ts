@@ -829,18 +829,24 @@ export type Database = {
           id: string
           in_stock: boolean | null
           name: string
+          price_discounted: number | null
+          price_original: number
           product_id: string
         }
         Insert: {
           id?: string
           in_stock?: boolean | null
           name: string
+          price_discounted?: number | null
+          price_original: number
           product_id: string
         }
         Update: {
           id?: string
           in_stock?: boolean | null
           name?: string
+          price_discounted?: number | null
+          price_original?: number
           product_id?: string
         }
         Relationships: [

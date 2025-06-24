@@ -36,6 +36,8 @@ interface SizeVariant {
   id: string;
   name: string;
   inStock: boolean;
+  priceOriginal: number;
+  priceDiscounted?: number;
 }
 
 interface Specification {
@@ -113,9 +115,9 @@ const AdminProductForm = () => {
   ]);
 
   const [sizeVariants, setSizeVariants] = useState<SizeVariant[]>([
-    { id: "size-1", name: "S", inStock: true },
-    { id: "size-2", name: "M", inStock: true },
-    { id: "size-3", name: "L", inStock: true },
+    { id: "size-1", name: "S", inStock: true, priceOriginal: 0, priceDiscounted: undefined },
+    { id: "size-2", name: "M", inStock: true, priceOriginal: 0, priceDiscounted: undefined },
+    { id: "size-3", name: "L", inStock: true, priceOriginal: 0, priceDiscounted: undefined },
   ]);
 
   // Specifications
@@ -166,12 +168,14 @@ const AdminProductForm = () => {
         })));
       }
 
-      // Set size variants from existing product
+      // Set size variants from existing product with pricing
       if (existingProduct.sizeVariants && existingProduct.sizeVariants.length > 0) {
         setSizeVariants(existingProduct.sizeVariants.map(variant => ({
           id: variant.id,
           name: variant.name,
-          inStock: variant.inStock
+          inStock: variant.inStock,
+          priceOriginal: variant.priceOriginal || existingProduct.price.original,
+          priceDiscounted: variant.priceDiscounted || existingProduct.price.discounted
         })));
       }
 
@@ -200,6 +204,22 @@ const AdminProductForm = () => {
     }
   }, [title, isEditMode]);
 
+  // Auto-fill size prices when base price changes
+  useEffect(() => {
+    if (originalPrice && !isEditMode) {
+      const basePrice = parseFloat(originalPrice);
+      const baseDiscounted = discountedPrice ? parseFloat(discountedPrice) : undefined;
+      
+      setSizeVariants(prevSizes => 
+        prevSizes.map(size => ({
+          ...size,
+          priceOriginal: size.priceOriginal === 0 ? basePrice : size.priceOriginal,
+          priceDiscounted: size.priceDiscounted === undefined ? baseDiscounted : size.priceDiscounted
+        }))
+      );
+    }
+  }, [originalPrice, discountedPrice, isEditMode]);
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,6 +229,17 @@ const AdminProductForm = () => {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate size pricing
+    const invalidSizes = sizeVariants.filter(size => size.name && (!size.priceOriginal || size.priceOriginal <= 0));
+    if (invalidSizes.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "All sizes must have a valid original price greater than 0.",
         variant: "destructive"
       });
       return;
@@ -333,13 +364,15 @@ const AdminProductForm = () => {
         }
       }
 
-      // Add size variants
+      // Add size variants with individual pricing
       for (const sizeVariant of sizeVariants) {
-        if (sizeVariant.name) {
+        if (sizeVariant.name && sizeVariant.priceOriginal > 0) {
           const sizeData = {
             product_id: productId,
             name: sizeVariant.name,
-            in_stock: sizeVariant.inStock
+            in_stock: sizeVariant.inStock,
+            price_original: sizeVariant.priceOriginal,
+            price_discounted: sizeVariant.priceDiscounted || null
           };
 
           const { error: sizeError } = await supabase
@@ -437,9 +470,18 @@ const AdminProductForm = () => {
 
   // Add a size variant
   const addSizeVariant = () => {
+    const basePrice = parseFloat(originalPrice) || 0;
+    const baseDiscounted = discountedPrice ? parseFloat(discountedPrice) : undefined;
+    
     setSizeVariants([
       ...sizeVariants,
-      { id: `size-${Date.now()}`, name: "", inStock: true }
+      { 
+        id: `size-${Date.now()}`, 
+        name: "", 
+        inStock: true, 
+        priceOriginal: basePrice,
+        priceDiscounted: baseDiscounted
+      }
     ]);
   };
 
@@ -649,7 +691,7 @@ const AdminProductForm = () => {
               <TabsList className="mb-4">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
                 <TabsTrigger value="colors">Color Variants</TabsTrigger>
-                <TabsTrigger value="sizes">Size Variants</TabsTrigger>
+                <TabsTrigger value="sizes">Size Variants & Pricing</TabsTrigger>
                 <TabsTrigger value="specifications">Specifications</TabsTrigger>
               </TabsList>
 
@@ -693,7 +735,7 @@ const AdminProductForm = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="originalPrice">Original Price</Label>
+                      <Label htmlFor="originalPrice">Base Original Price</Label>
                       <Input
                         id="originalPrice"
                         type="number"
@@ -703,9 +745,10 @@ const AdminProductForm = () => {
                         onChange={(e) => setOriginalPrice(e.target.value)}
                         required
                       />
+                      <p className="text-sm text-gray-500 mt-1">This will be used as default for all sizes</p>
                     </div>
                     <div>
-                      <Label htmlFor="discountedPrice">Discounted Price</Label>
+                      <Label htmlFor="discountedPrice">Base Discounted Price</Label>
                       <Input
                         id="discountedPrice"
                         type="number"
@@ -714,6 +757,7 @@ const AdminProductForm = () => {
                         value={discountedPrice}
                         onChange={(e) => setDiscountedPrice(e.target.value)}
                       />
+                      <p className="text-sm text-gray-500 mt-1">Optional default discount for all sizes</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -758,18 +802,20 @@ const AdminProductForm = () => {
                   <div className="flex flex-wrap gap-2">
                     <Label>Age Ranges</Label>
                     {AGE_RANGES.map((ageRange) => (
-                      <Checkbox
-                        key={ageRange}
-                        id={`ageRange-${ageRange}`}
-                        checked={selectedAgeRanges.includes(ageRange)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedAgeRanges([...selectedAgeRanges, ageRange]);
-                          } else {
-                            setSelectedAgeRanges(selectedAgeRanges.filter(a => a !== ageRange));
-                          }
-                        }}
-                      />
+                      <div key={ageRange} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`ageRange-${ageRange}`}
+                          checked={selectedAgeRanges.includes(ageRange)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedAgeRanges([...selectedAgeRanges, ageRange]);
+                            } else {
+                              setSelectedAgeRanges(selectedAgeRanges.filter(a => a !== ageRange));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`ageRange-${ageRange}`}>{ageRange}</Label>
+                      </div>
                     ))}
                   </div>
                   <div className="flex gap-4">
@@ -812,11 +858,11 @@ const AdminProductForm = () => {
               {/* Enhanced Color Variants Tab */}
               {renderColorVariantsTab()}
 
-              {/* Size Variants Tab */}
+              {/* Enhanced Size Variants Tab with Pricing */}
               <TabsContent value="sizes">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Size Variants</CardTitle>
+                    <CardTitle>Size Variants & Pricing</CardTitle>
                     <Button onClick={addSizeVariant} type="button" variant="outline">
                       <Plus className="mr-2 h-4 w-4" /> Add Size
                     </Button>
@@ -824,31 +870,71 @@ const AdminProductForm = () => {
                   <CardContent>
                     <div className="space-y-4">
                       {sizeVariants.map((variant, index) => (
-                        <div key={variant.id} className="flex items-center gap-4">
-                          <Input
-                            value={variant.name}
-                            onChange={(e) => updateSizeVariant(variant.id, "name", e.target.value)}
-                            placeholder="Size name"
-                            className="flex-1"
-                          />
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={variant.inStock}
-                              onCheckedChange={(checked) => updateSizeVariant(variant.id, "inStock", checked)}
-                            />
-                            <Label>In Stock</Label>
+                        <div key={variant.id} className="border rounded-lg p-4 bg-gray-50">
+                          <div className="grid grid-cols-5 gap-4 items-end">
+                            <div>
+                              <Label htmlFor={`size-name-${variant.id}`}>Size Name</Label>
+                              <Input
+                                id={`size-name-${variant.id}`}
+                                value={variant.name}
+                                onChange={(e) => updateSizeVariant(variant.id, "name", e.target.value)}
+                                placeholder="Size name"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`size-price-${variant.id}`}>Original Price</Label>
+                              <Input
+                                id={`size-price-${variant.id}`}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={variant.priceOriginal}
+                                onChange={(e) => updateSizeVariant(variant.id, "priceOriginal", parseFloat(e.target.value) || 0)}
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`size-discount-${variant.id}`}>Discounted Price</Label>
+                              <Input
+                                id={`size-discount-${variant.id}`}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={variant.priceDiscounted || ''}
+                                onChange={(e) => updateSizeVariant(variant.id, "priceDiscounted", e.target.value ? parseFloat(e.target.value) : undefined)}
+                                placeholder="Optional"
+                              />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`size-stock-${variant.id}`}
+                                checked={variant.inStock}
+                                onCheckedChange={(checked) => updateSizeVariant(variant.id, "inStock", checked)}
+                              />
+                              <Label htmlFor={`size-stock-${variant.id}`}>In Stock</Label>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeSizeVariant(variant.id)}
+                              disabled={sizeVariants.length === 1}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeSizeVariant(variant.id)}
-                            disabled={sizeVariants.length === 1}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
                         </div>
                       ))}
+                    </div>
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-medium text-blue-800 mb-2">Pricing Tips:</h4>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li>• Each size can have its own unique pricing</li>
+                        <li>• Base prices from the Basic Info tab will auto-fill new sizes</li>
+                        <li>• Original price is required for all sizes</li>
+                        <li>• Discounted price is optional and will show as sale price</li>
+                      </ul>
                     </div>
                   </CardContent>
                 </Card>

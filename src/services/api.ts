@@ -67,7 +67,9 @@ const transformProductData = (product: any): Product => {
     sizeVariants: (product.product_sizes || []).map(size => ({
       id: size.id,
       name: size.name,
-      inStock: size.in_stock
+      inStock: size.in_stock,
+      priceOriginal: size.price_original || product.price_original,
+      priceDiscounted: size.price_discounted || product.price_discounted || undefined
     })),
     ageRanges: product.age_ranges || [],
     specifications: product.specifications || {},
@@ -93,7 +95,7 @@ export const fetchProducts = async (): Promise<Product[]> => {
           id, name, color_code,
           product_images (id, image_url, is_primary)
         ),
-        product_sizes (id, name, in_stock)
+        product_sizes (id, name, in_stock, price_original, price_discounted)
       `);
 
     if (error) throw error;
@@ -117,7 +119,7 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
           id, name, color_code,
           product_images (id, image_url, is_primary)
         ),
-        product_sizes (id, name, in_stock)
+        product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
       .eq('is_featured', true);
 
@@ -153,7 +155,7 @@ export const fetchProductsByCategory = async (categorySlug: string): Promise<Pro
           id, name, color_code,
           product_images (id, image_url, is_primary)
         ),
-        product_sizes (id, name, in_stock)
+        product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
       .eq('category_id', categoryData.id);
 
@@ -178,7 +180,7 @@ export const fetchProductBySlug = async (slug: string): Promise<Product> => {
           id, name, color_code,
           product_images (id, image_url, is_primary)
         ),
-        product_sizes (id, name, in_stock)
+        product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
       .eq('slug', slug)
       .single();
@@ -205,7 +207,7 @@ export const fetchProductById = async (id: string): Promise<Product> => {
           id, name, color_code,
           product_images (id, image_url, is_primary)
         ),
-        product_sizes (id, name, in_stock)
+        product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
       .eq('id', id)
       .single();

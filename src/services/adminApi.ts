@@ -257,12 +257,16 @@ export const updateProductColor = async (id: string, colorData: any) => {
   }
 };
 
-// Admin Functions for Product Sizes
+// Admin Functions for Product Sizes with Pricing Support
 export const createProductSize = async (sizeData: any) => {
   try {
     const { data, error } = await supabase
       .from('product_sizes')
-      .insert(sizeData)
+      .insert({
+        ...sizeData,
+        price_original: sizeData.price_original || sizeData.priceOriginal,
+        price_discounted: sizeData.price_discounted || sizeData.priceDiscounted || null
+      })
       .select()
       .single();
       
@@ -277,7 +281,11 @@ export const updateProductSize = async (id: string, sizeData: any) => {
   try {
     const { data, error } = await supabase
       .from('product_sizes')
-      .update(sizeData)
+      .update({
+        ...sizeData,
+        price_original: sizeData.price_original || sizeData.priceOriginal,
+        price_discounted: sizeData.price_discounted || sizeData.priceDiscounted || null
+      })
       .eq('id', id)
       .select()
       .single();

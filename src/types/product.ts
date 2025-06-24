@@ -25,6 +25,8 @@ export type SizeVariant = {
   id: string;
   name: string;
   inStock: boolean;
+  priceOriginal: number;
+  priceDiscounted?: number;
 };
 
 export type ProductPrice = {
