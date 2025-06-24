@@ -2,7 +2,7 @@
 import { Product } from "@/types/product";
 
 export const useProductPricing = (product: Product) => {
-  // Calculate price range from size variants
+  // Calculate price range from size variants, fallback to base product price
   const getPriceRange = () => {
     const availableSizes = product.sizeVariants.filter(size => size.inStock);
     const sizesToCheck = availableSizes.length > 0 ? availableSizes : product.sizeVariants;
@@ -16,10 +16,18 @@ export const useProductPricing = (product: Product) => {
       };
     }
     
-    const originalPrices = sizesToCheck.map(size => size.priceOriginal);
+    // Get prices from size variants, fallback to base product price if NaN or undefined
+    const originalPrices = sizesToCheck.map(size => {
+      const price = size.priceOriginal;
+      return (price && !isNaN(price)) ? price : product.price.original;
+    });
+    
     const discountedPrices = sizesToCheck
-      .map(size => size.priceDiscounted)
-      .filter(price => price !== undefined) as number[];
+      .map(size => {
+        const price = size.priceDiscounted;
+        return (price && !isNaN(price)) ? price : product.price.discounted;
+      })
+      .filter(price => price !== undefined && price !== null) as number[];
     
     return {
       minOriginal: Math.min(...originalPrices),
@@ -31,7 +39,7 @@ export const useProductPricing = (product: Product) => {
 
   const priceRange = getPriceRange();
   const hasVariedPricing = priceRange.minOriginal !== priceRange.maxOriginal;
-  const hasDiscount = priceRange.minDiscounted !== undefined;
+  const hasDiscount = priceRange.minDiscounted !== undefined && priceRange.minDiscounted !== null;
 
   const formatPriceDisplay = () => {
     if (hasDiscount) {

@@ -4,36 +4,103 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Truck, Clock, CheckCircle, Loader2, AlertCircle } from "lucide-react";
-import { useDeliveryInfoByPincode } from "@/hooks/usePincodeZones";
+import { supabase } from "@/integrations/supabase/client";
+
+interface DeliveryInfo {
+  zone_id: string;
+  zone_number: number;
+  zone_name: string;
+  delivery_days_min: number;
+  delivery_days_max: number;
+  delivery_charge: number;
+  state?: string;
+  city?: string;
+}
 
 interface PincodeCheckerProps {
-  onDeliveryInfoChange?: (deliveryInfo: any) => void;
+  onDeliveryInfoChange?: (deliveryInfo: DeliveryInfo | null) => void;
 }
 
 const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange }) => {
   const [pincode, setPincode] = useState("");
   const [checkedPincode, setCheckedPincode] = useState("");
-  const [isManualCheck, setIsManualCheck] = useState(false);
-  
-  const { data: deliveryInfo, isLoading, error, refetch } = useDeliveryInfoByPincode(
-    checkedPincode, 
-    !!checkedPincode
-  );
+  const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Check pincode using zone_regions table
+  const checkPincodeDelivery = async (pincodeToCheck: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      console.log(`Checking pincode: ${pincodeToCheck} in zone_regions table`);
+      
+      const { data, error: queryError } = await supabase
+        .from('zone_regions')
+        .select(`
+          id,
+          state_name,
+          district_name,
+          region_type,
+          pincode,
+          delivery_zone:delivery_zones(
+            id,
+            zone_number,
+            zone_name,
+            delivery_days_min,
+            delivery_days_max,
+            delivery_charge
+          )
+        `)
+        .eq('pincode', pincodeToCheck)
+        .eq('delivery_zones.is_active', true)
+        .single();
+
+      if (queryError) {
+        console.error('Query error:', queryError);
+        throw new Error('Pincode not found in our delivery zones');
+      }
+
+      if (!data || !data.delivery_zone) {
+        throw new Error('No delivery information available for this pincode');
+      }
+
+      const result: DeliveryInfo = {
+        zone_id: data.delivery_zone.id,
+        zone_number: data.delivery_zone.zone_number,
+        zone_name: data.delivery_zone.zone_name,
+        delivery_days_min: data.delivery_zone.delivery_days_min,
+        delivery_days_max: data.delivery_zone.delivery_days_max,
+        delivery_charge: data.delivery_zone.delivery_charge,
+        state: data.state_name,
+        city: data.district_name
+      };
+
+      console.log('Delivery info found:', result);
+      setDeliveryInfo(result);
+      
+      if (onDeliveryInfoChange) {
+        onDeliveryInfoChange(result);
+      }
+    } catch (err) {
+      console.error('Error checking pincode:', err);
+      setError(err instanceof Error ? err.message : 'Unable to check delivery for this pincode');
+      setDeliveryInfo(null);
+      
+      if (onDeliveryInfoChange) {
+        onDeliveryInfoChange(null);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleCheck = async () => {
     if (pincode.length === 6) {
       console.log(`Checking pincode: ${pincode}`);
-      setIsManualCheck(true);
       setCheckedPincode(pincode);
-      
-      try {
-        // Force refetch if same pincode
-        if (checkedPincode === pincode) {
-          await refetch();
-        }
-      } catch (err) {
-        console.error('Refetch error:', err);
-      }
+      await checkPincodeDelivery(pincode);
     }
   };
 
@@ -42,9 +109,10 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
     const numericValue = value.replace(/\D/g, '').slice(0, 6);
     setPincode(numericValue);
     
-    // Reset check state if pincode changes
+    // Reset state if pincode changes
     if (numericValue !== checkedPincode) {
-      setIsManualCheck(false);
+      setError(null);
+      setDeliveryInfo(null);
     }
   };
 
@@ -54,14 +122,8 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
     }
   };
 
-  useEffect(() => {
-    if (deliveryInfo && onDeliveryInfoChange) {
-      onDeliveryInfoChange(deliveryInfo);
-    }
-  }, [deliveryInfo, onDeliveryInfoChange]);
-
-  // Show results only if we've made a manual check or have data
-  const showResults = checkedPincode && (isManualCheck || deliveryInfo || error);
+  // Show results only if we've checked a pincode
+  const showResults = checkedPincode && (deliveryInfo || error);
 
   return (
     <Card className="w-full">
@@ -105,7 +167,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
                 <div className="flex-1">
                   <div className="font-medium">Delivery not available for pincode {checkedPincode}</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Please check the pincode or contact support
+                    {error}
                   </div>
                 </div>
               </div>
@@ -145,18 +207,6 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
                 
                 <div className="bg-blue-50 p-2 rounded text-xs text-blue-800">
                   <strong>{deliveryInfo.zone_name}</strong> - Zone {deliveryInfo.zone_number}
-                </div>
-              </div>
-            )}
-            
-            {!deliveryInfo && !error && !isLoading && checkedPincode && (
-              <div className="text-amber-600 text-sm flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
-                <div>
-                  <div>No delivery information found for {checkedPincode}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    This area might not be covered yet
-                  </div>
                 </div>
               </div>
             )}
