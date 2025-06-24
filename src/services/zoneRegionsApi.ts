@@ -1,6 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { fetchPincodeDetails } from "./pincodeApi";
 
 export interface ZoneRegion {
   id: string;
@@ -14,8 +13,9 @@ export interface ZoneRegion {
   office_name?: string;
   office_type?: string;
   delivery?: string;
-  latitude?: string; // Changed from number to string to match database
-  longitude?: string; // Changed from number to string to match database
+  latitude?: string;
+  longitude?: string;
+  pincode?: string;
   created_at: string;
   updated_at: string;
   delivery_zone?: {
@@ -84,8 +84,9 @@ export const addZoneRegion = async (zoneRegion: {
   office_name?: string;
   office_type?: string;
   delivery?: string;
-  latitude?: string; // Changed from number to string
-  longitude?: string; // Changed from number to string
+  latitude?: string;
+  longitude?: string;
+  pincode?: string;
 }): Promise<ZoneRegion> => {
   const { data, error } = await supabase
     .from('zone_regions')
@@ -112,120 +113,54 @@ export const removeZoneRegion = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-// Improved delivery info lookup with better error handling
+// Simplified delivery info lookup using direct pincode match
 export const getDeliveryInfoByPincodeRegion = async (pincode: string): Promise<DeliveryInfoByRegion | null> => {
   try {
-    console.log(`Getting delivery info for pincode: ${pincode}`);
+    console.log(`Getting delivery info for pincode: ${pincode} from zone_regions`);
     
-    // Get location details from the improved pincode API
-    const pincodeResponse = await fetchPincodeDetails(pincode);
-    
-    if (pincodeResponse.Status !== "Success" || !pincodeResponse.PostOffice || pincodeResponse.PostOffice.length === 0) {
+    // Direct pincode lookup in zone_regions table
+    const { data: zoneRegions, error } = await supabase
+      .from('zone_regions')
+      .select(`
+        *,
+        delivery_zone:delivery_zones(*)
+      `)
+      .eq('pincode', pincode)
+      .order('id', { ascending: true }); // Get first row consistently
+
+    if (error) {
+      console.error('Query error:', error);
+      throw new Error('Error checking pincode availability');
+    }
+
+    if (!zoneRegions || zoneRegions.length === 0) {
       console.log(`No data found for pincode: ${pincode}`);
       return null;
     }
 
-    const postOffice = pincodeResponse.PostOffice[0];
-    const state = postOffice.State;
-    const district = postOffice.District;
+    // Take the first row as specified in requirements
+    const firstRegion = zoneRegions[0];
     
-    console.log(`Found location: ${district}, ${state}`);
-
-    // Get all zone regions to match against
-    const zoneRegions = await fetchZoneRegions();
-    console.log(`Loaded ${zoneRegions.length} zone regions`);
-
-    // Find matching zone region with improved logic
-    let matchedRegion: ZoneRegion | null = null;
-
-    // Step 1: Try exact district match first
-    matchedRegion = zoneRegions.find(region => 
-      region.region_type === 'district' && 
-      region.state_name.toLowerCase().includes(state.toLowerCase()) &&
-      (region.district_name?.toLowerCase() === district.toLowerCase() ||
-       region.state_name.toLowerCase().includes(district.toLowerCase()))
-    ) || null;
-
-    if (matchedRegion) {
-      console.log(`Found exact district match: ${matchedRegion.state_name}`);
-    }
-
-    // Step 2: Try partial district matching
-    if (!matchedRegion) {
-      matchedRegion = zoneRegions.find(region => 
-        region.region_type === 'district' && 
-        (region.state_name.toLowerCase().includes(district.toLowerCase()) ||
-         district.toLowerCase().includes(region.state_name.toLowerCase().split(' - ')[1] || '') ||
-         region.district_name?.toLowerCase().includes(district.toLowerCase()))
-      ) || null;
-      
-      if (matchedRegion) {
-        console.log(`Found partial district match: ${matchedRegion.state_name}`);
-      }
-    }
-
-    // Step 3: Try exact state match
-    if (!matchedRegion) {
-      matchedRegion = zoneRegions.find(region => 
-        region.region_type === 'state' && 
-        region.state_name.toLowerCase() === state.toLowerCase()
-      ) || null;
-      
-      if (matchedRegion) {
-        console.log(`Found exact state match: ${matchedRegion.state_name}`);
-      }
-    }
-
-    // Step 4: Try partial state matching
-    if (!matchedRegion) {
-      matchedRegion = zoneRegions.find(region => 
-        region.state_name.toLowerCase().includes(state.toLowerCase()) ||
-        state.toLowerCase().includes(region.state_name.toLowerCase())
-      ) || null;
-      
-      if (matchedRegion) {
-        console.log(`Found partial state match: ${matchedRegion.state_name}`);
-      }
-    }
-
-    // Step 5: If still no match, try a default zone (if available)
-    if (!matchedRegion) {
-      matchedRegion = zoneRegions.find(region => 
-        region.delivery_zone?.zone_name?.toLowerCase().includes('default') ||
-        region.state_name.toLowerCase().includes('general')
-      ) || null;
-      
-      if (matchedRegion) {
-        console.log(`Using default zone: ${matchedRegion.state_name}`);
-      }
-    }
-
-    if (!matchedRegion || !matchedRegion.delivery_zone) {
-      console.log(`No matching region found for ${district}, ${state}`);
+    if (!firstRegion.delivery_zone) {
+      console.log(`No delivery zone found for pincode: ${pincode}`);
       return null;
     }
 
-    const result = {
-      zone_id: matchedRegion.delivery_zone.id,
-      zone_number: matchedRegion.delivery_zone.zone_number,
-      zone_name: matchedRegion.delivery_zone.zone_name,
-      delivery_days_min: matchedRegion.delivery_zone.delivery_days_min,
-      delivery_days_max: matchedRegion.delivery_zone.delivery_days_max,
-      delivery_charge: matchedRegion.delivery_zone.delivery_charge,
-      state: state,
-      city: district
+    const result: DeliveryInfoByRegion = {
+      zone_id: firstRegion.delivery_zone.id,
+      zone_number: firstRegion.delivery_zone.zone_number,
+      zone_name: firstRegion.delivery_zone.zone_name,
+      delivery_days_min: firstRegion.delivery_zone.delivery_days_min,
+      delivery_days_max: firstRegion.delivery_zone.delivery_days_max,
+      delivery_charge: firstRegion.delivery_zone.delivery_charge,
+      state: firstRegion.state_name,
+      city: firstRegion.district_name || firstRegion.state_name
     };
 
     console.log(`Delivery info found:`, result);
     return result;
   } catch (error) {
     console.error('Error getting delivery info by pincode:', error);
-    
-    // Return a more user-friendly error message
-    if (error instanceof Error) {
-      throw new Error(`Unable to check delivery for this pincode: ${error.message}`);
-    }
-    
-    throw new Error('Unable to check delivery availability. Please try again later.');
+    throw new Error(error instanceof Error ? error.message : 'Unable to check delivery availability');
   }
 };

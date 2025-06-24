@@ -1,10 +1,11 @@
+
 import React, { useState, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Upload, Trash2, AlertTriangle, Loader2 } from "lucide-react";
-import { usePincodeZones, useBulkUploadPincodes, useDeletePincodeZone } from "@/hooks/usePincodeZones";
+import { useZoneRegions, useBulkUploadZoneRegions, useDeleteZoneRegion } from "@/hooks/usePincodeZones";
 import { useDeliveryZones } from "@/hooks/useDeliveryZones";
 import { toast } from "sonner";
 import {
@@ -42,18 +43,18 @@ const PincodeZonesManager = () => {
   const { data: zonesData } = useDeliveryZones();
   const zones = zonesData || [];
   
-  const { data: pincodeData, isLoading, error } = usePincodeZones({
+  const { data: zoneRegionData, isLoading, error } = useZoneRegions({
     page,
     pageSize: 50,
     zoneId: selectedZone === ALL_ZONES_VALUE ? undefined : selectedZone,
     search: search || undefined
   });
 
-  const bulkUpload = useBulkUploadPincodes();
-  const deletePincode = useDeletePincodeZone();
+  const bulkUpload = useBulkUploadZoneRegions();
+  const deleteZoneRegion = useDeleteZoneRegion();
 
-  const pincodeZones = pincodeData?.pincodeZones || [];
-  const totalCount = pincodeData?.totalCount || 0;
+  const zoneRegions = zoneRegionData?.zoneRegions || [];
+  const totalCount = zoneRegionData?.totalCount || 0;
 
   // Validate pincode format (6 digits for Indian pincodes)
   const validatePincode = (pincode: string): boolean => {
@@ -84,21 +85,14 @@ const PincodeZonesManager = () => {
       parsed.push({
         pincode,
         delivery_zone_id: uploadZoneId,
-        state: parts[1] || undefined,
-        city: parts[2] || undefined
+        state_name: parts[1] || 'Unknown State',
+        district_name: parts[2] || undefined,
+        region_type: 'district' as const
       });
     }
 
     return { parsed, errors };
   }, [uploadZoneId]);
-
-  // Debounced search
-  const debouncedSearch = useMemo(() => {
-    const timer = setTimeout(() => {
-      // Search logic is handled by the query
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   const handleBulkUpload = async () => {
     if (!bulkPincodes.trim() || !uploadZoneId) {
@@ -135,9 +129,9 @@ const PincodeZonesManager = () => {
     }
   };
 
-  const handleDeletePincode = async (id: string, pincode: string) => {
+  const handleDeleteZoneRegion = async (id: string, pincode: string) => {
     try {
-      await deletePincode.mutateAsync(id);
+      await deleteZoneRegion.mutateAsync(id);
       toast.success(`Pincode ${pincode} deleted successfully`);
     } catch (error: any) {
       toast.error(`Failed to delete pincode: ${error.message}`);
@@ -149,7 +143,7 @@ const PincodeZonesManager = () => {
       <div className="flex items-center gap-2 p-4 border border-red-200 rounded-lg bg-red-50">
         <AlertTriangle className="h-5 w-5 text-red-500" />
         <div>
-          <p className="font-medium text-red-800">Error loading pincode data</p>
+          <p className="font-medium text-red-800">Error loading zone region data</p>
           <p className="text-sm text-red-600">{error.message}</p>
         </div>
       </div>
@@ -160,7 +154,7 @@ const PincodeZonesManager = () => {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-6 w-6 animate-spin mr-2" />
-        <span>Loading pincodes...</span>
+        <span>Loading zone regions...</span>
       </div>
     );
   }
@@ -169,7 +163,7 @@ const PincodeZonesManager = () => {
     <div className="space-y-4">
       <Tabs defaultValue="manage" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="manage">Manage Pincodes</TabsTrigger>
+          <TabsTrigger value="manage">Manage Zone Regions</TabsTrigger>
           <TabsTrigger value="api-import">API Import</TabsTrigger>
         </TabsList>
 
@@ -180,12 +174,12 @@ const PincodeZonesManager = () => {
         <TabsContent value="manage" className="space-y-4">
           <div className="flex gap-4 items-end">
             <div className="flex-1">
-              <Label htmlFor="search">Search Pincodes</Label>
+              <Label htmlFor="search">Search Zone Regions</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   id="search"
-                  placeholder="Search by pincode, city, or state"
+                  placeholder="Search by pincode, district, or state"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-10"
@@ -219,7 +213,7 @@ const PincodeZonesManager = () => {
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Manual Bulk Upload Pincodes</DialogTitle>
+                  <DialogTitle>Manual Bulk Upload Zone Regions</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
@@ -239,18 +233,18 @@ const PincodeZonesManager = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="bulk-pincodes">Pincodes (CSV Format) *</Label>
+                    <Label htmlFor="bulk-pincodes">Zone Regions (CSV Format) *</Label>
                     <textarea
                       id="bulk-pincodes"
                       className="w-full h-40 p-3 border rounded-md resize-none"
-                      placeholder="Enter pincodes in CSV format:&#10;632001,Tamil Nadu,Vellore&#10;632002,Tamil Nadu,Vellore&#10;600001,Tamil Nadu,Chennai"
+                      placeholder="Enter zone regions in CSV format:&#10;632001,Tamil Nadu,Vellore&#10;632002,Tamil Nadu,Vellore&#10;600001,Tamil Nadu,Chennai"
                       value={bulkPincodes}
                       onChange={(e) => setBulkPincodes(e.target.value)}
                     />
                     <div className="text-sm text-gray-500 mt-1 space-y-1">
-                      <p>Format: pincode,state,city (one per line)</p>
+                      <p>Format: pincode,state,district (one per line)</p>
                       <p>• Pincode must be exactly 6 digits</p>
-                      <p>• State and city are optional</p>
+                      <p>• State is required, district is optional</p>
                       <p>• Lines with errors will be skipped</p>
                     </div>
                   </div>
@@ -288,7 +282,7 @@ const PincodeZonesManager = () => {
           </div>
 
           <div className="text-sm text-gray-600">
-            Showing {pincodeZones.length} of {totalCount} pincodes
+            Showing {zoneRegions.length} of {totalCount} zone regions
             {selectedZone !== ALL_ZONES_VALUE && (
               <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
                 Filtered by {zones.find(z => z.id === selectedZone)?.zone_name}
@@ -297,11 +291,11 @@ const PincodeZonesManager = () => {
           </div>
 
           <div className="grid gap-2">
-            {pincodeZones.length === 0 ? (
+            {zoneRegions.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 {search || selectedZone !== ALL_ZONES_VALUE ? (
                   <div>
-                    <p>No pincodes found matching your criteria.</p>
+                    <p>No zone regions found matching your criteria.</p>
                     <Button 
                       variant="outline" 
                       className="mt-2"
@@ -314,20 +308,22 @@ const PincodeZonesManager = () => {
                     </Button>
                   </div>
                 ) : (
-                  <p>No pincodes have been added yet. Use the bulk upload feature to add pincodes.</p>
+                  <p>No zone regions have been added yet. Use the bulk upload feature to add zone regions.</p>
                 )}
               </div>
             ) : (
-              pincodeZones.map((pincodeZone) => (
-                <div key={pincodeZone.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+              zoneRegions.map((zoneRegion) => (
+                <div key={zoneRegion.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                   <div className="flex items-center gap-4">
-                    <div className="font-mono font-medium text-lg">{pincodeZone.pincode}</div>
+                    {zoneRegion.pincode && (
+                      <div className="font-mono font-medium text-lg">{zoneRegion.pincode}</div>
+                    )}
                     <div className="text-sm text-gray-600">
-                      {pincodeZone.city && `${pincodeZone.city}, `}{pincodeZone.state}
+                      {zoneRegion.district_name && `${zoneRegion.district_name}, `}{zoneRegion.state_name}
                     </div>
-                    {pincodeZone.delivery_zone && (
+                    {zoneRegion.delivery_zone && (
                       <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
-                        Zone {pincodeZone.delivery_zone.zone_number} - {pincodeZone.delivery_zone.zone_name}
+                        Zone {zoneRegion.delivery_zone.zone_number} - {zoneRegion.delivery_zone.zone_name}
                       </div>
                     )}
                   </div>
@@ -336,9 +332,9 @@ const PincodeZonesManager = () => {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        disabled={deletePincode.isPending}
+                        disabled={deleteZoneRegion.isPending}
                       >
-                        {deletePincode.isPending ? (
+                        {deleteZoneRegion.isPending ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Trash2 className="h-4 w-4" />
@@ -347,16 +343,16 @@ const PincodeZonesManager = () => {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Pincode</AlertDialogTitle>
+                        <AlertDialogTitle>Delete Zone Region</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete pincode "{pincodeZone.pincode}"? 
+                          Are you sure you want to delete this zone region mapping? 
                           This will remove delivery zone mapping for this area.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction 
-                          onClick={() => handleDeletePincode(pincodeZone.id, pincodeZone.pincode)}
+                          onClick={() => handleDeleteZoneRegion(zoneRegion.id, zoneRegion.pincode || 'Unknown')}
                         >
                           Delete
                         </AlertDialogAction>

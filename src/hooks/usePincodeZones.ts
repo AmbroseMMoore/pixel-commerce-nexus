@@ -1,22 +1,22 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
-  fetchPincodeZones, 
-  bulkUploadPincodes, 
-  deletePincodeZone,
+  fetchZoneRegions, 
+  bulkUploadZoneRegions, 
+  deleteZoneRegion,
   getDeliveryInfoByPincode 
 } from "@/services/deliveryApi";
 import { toast } from "sonner";
 
-export const usePincodeZones = (options: {
+// Rename to useZoneRegions to better reflect functionality
+export const useZoneRegions = (options: {
   page?: number;
   pageSize?: number;
   zoneId?: string;
   search?: string;
 } = {}) => {
   return useQuery({
-    queryKey: ["pincode-zones", options],
-    queryFn: () => fetchPincodeZones(options),
+    queryKey: ["zone-regions", options],
+    queryFn: () => fetchZoneRegions(options),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: (failureCount, error: any) => {
       // Don't retry on client errors (4xx)
@@ -27,6 +27,9 @@ export const usePincodeZones = (options: {
     },
   });
 };
+
+// Keep backward compatibility
+export const usePincodeZones = useZoneRegions;
 
 export const useDeliveryInfoByPincode = (pincode: string, enabled: boolean = true) => {
   return useQuery({
@@ -43,15 +46,15 @@ export const useDeliveryInfoByPincode = (pincode: string, enabled: boolean = tru
   });
 };
 
-export const useBulkUploadPincodes = () => {
+export const useBulkUploadZoneRegions = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: bulkUploadPincodes,
+    mutationFn: bulkUploadZoneRegions,
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["pincode-zones"] });
+      queryClient.invalidateQueries({ queryKey: ["zone-regions"] });
       const count = Array.isArray(variables) ? variables.length : 1;
-      console.log(`Successfully uploaded ${count} pincodes`);
+      console.log(`Successfully uploaded ${count} zone regions`);
     },
     onError: (error: any) => {
       console.error("Bulk upload failed:", error);
@@ -60,18 +63,24 @@ export const useBulkUploadPincodes = () => {
   });
 };
 
-export const useDeletePincodeZone = () => {
+// Keep backward compatibility
+export const useBulkUploadPincodes = useBulkUploadZoneRegions;
+
+export const useDeleteZoneRegion = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: deletePincodeZone,
+    mutationFn: deleteZoneRegion,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pincode-zones"] });
-      console.log("Pincode deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["zone-regions"] });
+      console.log("Zone region deleted successfully");
     },
     onError: (error: any) => {
-      console.error("Delete pincode failed:", error);
+      console.error("Delete zone region failed:", error);
       // Don't show toast here as it's handled in the component
     },
   });
 };
+
+// Keep backward compatibility
+export const useDeletePincodeZone = useDeleteZoneRegion;

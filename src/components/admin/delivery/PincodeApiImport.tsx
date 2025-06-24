@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useStates, useDistrictsByState, usePincodeImport } from "@/hooks/usePincodeApi";
 import { useDeliveryZones } from "@/hooks/useDeliveryZones";
-import { useBulkUploadPincodes } from "@/hooks/usePincodeZones";
+import { useBulkUploadZoneRegions } from "@/hooks/usePincodeZones";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -52,7 +52,7 @@ const PincodeApiImport = () => {
     clearImportData
   } = usePincodeImport();
 
-  const bulkUpload = useBulkUploadPincodes();
+  const bulkUpload = useBulkUploadZoneRegions();
 
   const handleFetchData = async () => {
     if (!selectedState || (importType === 'district' && !selectedDistrict)) {
@@ -88,12 +88,21 @@ const PincodeApiImport = () => {
       const formattedData = importData.map(item => ({
         pincode: item.pincode,
         delivery_zone_id: selectedZone,
-        state: item.state,
-        city: item.city
+        state_name: item.state,
+        district_name: item.city,
+        region_type: 'district' as const,
+        circle_name: item.circle_name,
+        region_name: item.region_name,
+        division_name: item.division_name,
+        office_name: item.office_name,
+        office_type: item.office_type,
+        delivery: item.delivery,
+        latitude: item.latitude,
+        longitude: item.longitude
       }));
 
       await bulkUpload.mutateAsync(formattedData);
-      toast.success(`Successfully imported ${formattedData.length} pincodes`);
+      toast.success(`Successfully imported ${formattedData.length} zone regions`);
       clearImportData();
       setShowPreview(false);
     } catch (error: any) {
@@ -114,10 +123,10 @@ const PincodeApiImport = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Globe className="h-5 w-5" />
-          Import Pincodes from PostalPincode.in API
+          Import Zone Regions from PostalPincode.in API
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Fetch comprehensive pincode data from PostalPincode.in API with detailed post office information
+          Fetch comprehensive zone region data from PostalPincode.in API with detailed post office information
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -130,7 +139,7 @@ const PincodeApiImport = () => {
                 <li>• We use sample pincodes to fetch real data from the API</li>
                 <li>• Data availability depends on the selected state/region</li>
                 <li>• Some regions may have limited data due to API constraints</li>
-                <li>• The system will fetch all available pincodes for the selected area</li>
+                <li>• The system will fetch all available zone regions for the selected area</li>
               </ul>
             </div>
           </div>
@@ -209,7 +218,7 @@ const PincodeApiImport = () => {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Fetching pincode data from PostalPincode.in API...</span>
+              <span className="text-sm">Fetching zone region data from PostalPincode.in API...</span>
             </div>
             <Progress value={importProgress} className="w-full" />
             <p className="text-xs text-gray-500">{Math.round(importProgress)}% complete</p>
@@ -222,7 +231,7 @@ const PincodeApiImport = () => {
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <span className="text-sm font-medium">
-                  {importData.length} pincodes ready for import
+                  {importData.length} zone regions ready for import
                 </span>
               </div>
               
@@ -265,7 +274,7 @@ const PincodeApiImport = () => {
                 <div className="text-sm">
                   <p className="font-medium text-green-800">Data fetched successfully!</p>
                   <p className="text-green-700 mt-1">
-                    Found {importData.length} pincodes with detailed post office information including district mapping and delivery status.
+                    Found {importData.length} zone regions with detailed post office information including district mapping and delivery status.
                   </p>
                 </div>
               </div>
@@ -277,7 +286,7 @@ const PincodeApiImport = () => {
                 <div className="text-sm">
                   <p className="font-medium text-yellow-800">Before importing:</p>
                   <ul className="text-yellow-700 mt-1 space-y-1">
-                    <li>• Existing pincodes will be updated with new zone assignment</li>
+                    <li>• Existing zone regions will be updated with new zone assignment</li>
                     <li>• This operation cannot be undone</li>
                     <li>• Large imports may take a few minutes to complete</li>
                   </ul>
@@ -323,7 +332,7 @@ const PincodeApiImport = () => {
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Import {importData.length} Pincodes
+                  Import {importData.length} Zone Regions
                 </>
               )}
             </Button>
