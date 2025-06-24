@@ -97,6 +97,11 @@ const generateSampleProducts = () => {
       const productName = `${categoryName} ${subCategory.name} ${i + 1}`;
       const randomAgeRanges = ageRangesOptions[Math.floor(Math.random() * ageRangesOptions.length)];
       
+      // Generate base price for the product
+      const basePrice = Math.floor(Math.random() * 2000) + 999;
+      const hasDiscount = Math.random() > 0.5;
+      const baseDiscountedPrice = hasDiscount ? Math.floor(Math.random() * 1000) + 699 : undefined;
+      
       productsList.push({
         id: productId.toString(),
         title: productName,
@@ -104,8 +109,8 @@ const generateSampleProducts = () => {
         shortDescription: `Quality ${subCategory.name.toLowerCase()} for ${categoryName.toLowerCase()}`,
         longDescription: `This is a high-quality item in our ${subCategory.name} collection designed specifically for ${categoryName}. Made with premium materials for comfort and durability.`,
         price: {
-          original: Math.floor(Math.random() * 2000) + 999, // Indian Rupees
-          discounted: Math.random() > 0.5 ? Math.floor(Math.random() * 1000) + 699 : undefined // Indian Rupees
+          original: basePrice,
+          discounted: baseDiscountedPrice
         },
         categoryId: subCategory.categoryId,
         subCategoryId: subCategory.id,
@@ -130,10 +135,34 @@ const generateSampleProducts = () => {
           }
         ],
         sizeVariants: [
-          { id: "s1", name: "S", inStock: true },
-          { id: "s2", name: "M", inStock: true },
-          { id: "s3", name: "L", inStock: Math.random() > 0.2 },
-          { id: "s4", name: "XL", inStock: Math.random() > 0.4 }
+          { 
+            id: "s1", 
+            name: "S", 
+            inStock: true,
+            priceOriginal: basePrice - 100, // Small size slightly cheaper
+            priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice - 100 : undefined
+          },
+          { 
+            id: "s2", 
+            name: "M", 
+            inStock: true,
+            priceOriginal: basePrice, // Medium size base price
+            priceDiscounted: baseDiscountedPrice
+          },
+          { 
+            id: "s3", 
+            name: "L", 
+            inStock: Math.random() > 0.2,
+            priceOriginal: basePrice + 100, // Large size slightly more expensive
+            priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice + 100 : undefined
+          },
+          { 
+            id: "s4", 
+            name: "XL", 
+            inStock: Math.random() > 0.4,
+            priceOriginal: basePrice + 200, // XL size most expensive
+            priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice + 200 : undefined
+          }
         ],
         ageRanges: randomAgeRanges,
         specifications: {
