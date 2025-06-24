@@ -62,7 +62,8 @@ export const generateCustomFilename = (originalFilename: string): CustomFilename
   const seconds = String(now.getSeconds()).padStart(2, '0');
   const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
   
-  const dateTimeSuffix = `${day}${month}${year}${hours}${minutes}${seconds}${milliseconds}`;
+  // const dateTimeSuffix = `${day}${month}${year}${hours}${minutes}${seconds}${milliseconds}`;
+  const dateTimeSuffix = `${year}${month}${day}T${hours}${minutes}${seconds}${milliseconds}`;
   
   return {
     customFilename: `${safeName}_${dateTimeSuffix}`,
