@@ -41,9 +41,36 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
   // Use first color variant's first image as the product thumbnail
   const thumbnailImage = product.colorVariants[0]?.images[0] || "";
   
-  // Check if there is a discount
-  const hasDiscount = product.price.discounted !== undefined && 
-                      product.price.discounted < product.price.original;
+  // Calculate price range from size variants
+  const getPriceRange = () => {
+    const availableSizes = product.sizeVariants.filter(size => size.inStock);
+    const sizesToCheck = availableSizes.length > 0 ? availableSizes : product.sizeVariants;
+    
+    if (sizesToCheck.length === 0) {
+      return {
+        minOriginal: product.price.original,
+        maxOriginal: product.price.original,
+        minDiscounted: product.price.discounted,
+        maxDiscounted: product.price.discounted
+      };
+    }
+    
+    const originalPrices = sizesToCheck.map(size => size.priceOriginal);
+    const discountedPrices = sizesToCheck
+      .map(size => size.priceDiscounted)
+      .filter(price => price !== undefined) as number[];
+    
+    return {
+      minOriginal: Math.min(...originalPrices),
+      maxOriginal: Math.max(...originalPrices),
+      minDiscounted: discountedPrices.length > 0 ? Math.min(...discountedPrices) : undefined,
+      maxDiscounted: discountedPrices.length > 0 ? Math.max(...discountedPrices) : undefined
+    };
+  };
+
+  const priceRange = getPriceRange();
+  const hasVariedPricing = priceRange.minOriginal !== priceRange.maxOriginal;
+  const hasDiscount = priceRange.minDiscounted !== undefined;
   
   // Handle adding to cart
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -89,7 +116,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
       logFormSuccess('cart', 'add_to_cart_success', {
         productId: product.id,
         productTitle: product.title,
-        price: product.price
+        price: { original: firstSize.priceOriginal, discounted: firstSize.priceDiscounted }
       });
     } catch (error) {
       logError('add_to_cart_error', { 
@@ -232,16 +259,33 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
         <div className="flex items-center gap-2">
           {hasDiscount ? (
             <>
-              <span className="font-semibold text-red-600">
-                ₹{product.price.discounted?.toFixed(2)}
-              </span>
-              <span className="text-sm text-gray-500 line-through">
-                ₹{product.price.original.toFixed(2)}
-              </span>
+              {hasVariedPricing ? (
+                <>
+                  <span className="font-semibold text-red-600">
+                    ₹{priceRange.minDiscounted?.toFixed(2)} - ₹{priceRange.maxDiscounted?.toFixed(2)}
+                  </span>
+                  <span className="text-sm text-gray-500 line-through">
+                    ₹{priceRange.minOriginal.toFixed(2)} - ₹{priceRange.maxOriginal.toFixed(2)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-red-600">
+                    ₹{priceRange.minDiscounted?.toFixed(2)}
+                  </span>
+                  <span className="text-sm text-gray-500 line-through">
+                    ₹{priceRange.minOriginal.toFixed(2)}
+                  </span>
+                </>
+              )}
             </>
           ) : (
             <span className="font-semibold">
-              ₹{product.price.original.toFixed(2)}
+              {hasVariedPricing ? (
+                `₹${priceRange.minOriginal.toFixed(2)} - ₹${priceRange.maxOriginal.toFixed(2)}`
+              ) : (
+                `₹${priceRange.minOriginal.toFixed(2)}`
+              )}
             </span>
           )}
         </div>
