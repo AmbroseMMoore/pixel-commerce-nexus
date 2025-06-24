@@ -11,6 +11,7 @@ import { useLogging } from "@/hooks/useLogging";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProductPricing } from "@/hooks/useProductPricing";
 
 interface ProductCardProps {
   product: Product;
@@ -37,40 +38,12 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
   const { addToWishlist } = useWishlist();
   const { user } = useAuth();
   const { logInfo, logError, logFormSuccess } = useLogging();
+  const { formatPriceDisplay, hasDiscount } = useProductPricing(product);
   
   // Use first color variant's first image as the product thumbnail
   const thumbnailImage = product.colorVariants[0]?.images[0] || "";
   
-  // Calculate price range from size variants
-  const getPriceRange = () => {
-    const availableSizes = product.sizeVariants.filter(size => size.inStock);
-    const sizesToCheck = availableSizes.length > 0 ? availableSizes : product.sizeVariants;
-    
-    if (sizesToCheck.length === 0) {
-      return {
-        minOriginal: product.price.original,
-        maxOriginal: product.price.original,
-        minDiscounted: product.price.discounted,
-        maxDiscounted: product.price.discounted
-      };
-    }
-    
-    const originalPrices = sizesToCheck.map(size => size.priceOriginal);
-    const discountedPrices = sizesToCheck
-      .map(size => size.priceDiscounted)
-      .filter(price => price !== undefined) as number[];
-    
-    return {
-      minOriginal: Math.min(...originalPrices),
-      maxOriginal: Math.max(...originalPrices),
-      minDiscounted: discountedPrices.length > 0 ? Math.min(...discountedPrices) : undefined,
-      maxDiscounted: discountedPrices.length > 0 ? Math.max(...discountedPrices) : undefined
-    };
-  };
-
-  const priceRange = getPriceRange();
-  const hasVariedPricing = priceRange.minOriginal !== priceRange.maxOriginal;
-  const hasDiscount = priceRange.minDiscounted !== undefined;
+  const priceDisplay = formatPriceDisplay();
   
   // Handle adding to cart
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -257,35 +230,18 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
         </Link>
         
         <div className="flex items-center gap-2">
-          {hasDiscount ? (
+          {hasDiscount && priceDisplay.original ? (
             <>
-              {hasVariedPricing ? (
-                <>
-                  <span className="font-semibold text-red-600">
-                    ₹{priceRange.minDiscounted?.toFixed(2)} - ₹{priceRange.maxDiscounted?.toFixed(2)}
-                  </span>
-                  <span className="text-sm text-gray-500 line-through">
-                    ₹{priceRange.minOriginal.toFixed(2)} - ₹{priceRange.maxOriginal.toFixed(2)}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="font-semibold text-red-600">
-                    ₹{priceRange.minDiscounted?.toFixed(2)}
-                  </span>
-                  <span className="text-sm text-gray-500 line-through">
-                    ₹{priceRange.minOriginal.toFixed(2)}
-                  </span>
-                </>
-              )}
+              <span className="font-semibold text-red-600">
+                {priceDisplay.current}
+              </span>
+              <span className="text-sm text-gray-500 line-through">
+                {priceDisplay.original}
+              </span>
             </>
           ) : (
             <span className="font-semibold">
-              {hasVariedPricing ? (
-                `₹${priceRange.minOriginal.toFixed(2)} - ₹${priceRange.maxOriginal.toFixed(2)}`
-              ) : (
-                `₹${priceRange.minOriginal.toFixed(2)}`
-              )}
+              {priceDisplay.current}
             </span>
           )}
         </div>
