@@ -1,10 +1,10 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Truck, Clock, CheckCircle, Loader2, AlertCircle } from "lucide-react";
-import { getDeliveryInfoByPincode } from "@/services/deliveryApi";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DeliveryInfo {
   zone_id: string;
@@ -36,17 +36,59 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
       
       console.log(`Checking pincode: ${pincodeToCheck} in zone_regions table`);
       
-      const result = await getDeliveryInfoByPincode(pincodeToCheck);
-      
-      if (result) {
-        console.log('Delivery info found:', result);
-        setDeliveryInfo(result);
-        
-        if (onDeliveryInfoChange) {
-          onDeliveryInfoChange(result);
-        }
-      } else {
+      // First, get all rows for this pincode
+      const { data: zoneRegions, error: queryError } = await supabase
+        .from('zone_regions')
+        .select(`
+          id,
+          state_name,
+          district_name,
+          pincode,
+          delivery_zone:delivery_zones(
+            id,
+            zone_number,
+            zone_name,
+            delivery_days_min,
+            delivery_days_max,
+            delivery_charge,
+            is_active
+          )
+        `)
+        .eq('pincode', pincodeToCheck)
+        .order('id', { ascending: true }); // Get first row consistently
+
+      if (queryError) {
+        console.error('Query error:', queryError);
+        throw new Error('Error checking pincode availability');
+      }
+
+      if (!zoneRegions || zoneRegions.length === 0) {
         throw new Error('Delivery not available for this pincode');
+      }
+
+      // Take the first row as specified
+      const firstRegion = zoneRegions[0];
+      
+      if (!firstRegion.delivery_zone || !firstRegion.delivery_zone.is_active) {
+        throw new Error('Delivery zone is not active for this pincode');
+      }
+
+      const result: DeliveryInfo = {
+        zone_id: firstRegion.delivery_zone.id,
+        zone_number: firstRegion.delivery_zone.zone_number,
+        zone_name: firstRegion.delivery_zone.zone_name,
+        delivery_days_min: firstRegion.delivery_zone.delivery_days_min,
+        delivery_days_max: firstRegion.delivery_zone.delivery_days_max,
+        delivery_charge: firstRegion.delivery_zone.delivery_charge,
+        state: firstRegion.state_name,
+        city: firstRegion.district_name
+      };
+
+      console.log('Delivery info found:', result);
+      setDeliveryInfo(result);
+      
+      if (onDeliveryInfoChange) {
+        onDeliveryInfoChange(result);
       }
     } catch (err) {
       console.error('Error checking pincode:', err);
