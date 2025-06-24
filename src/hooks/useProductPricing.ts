@@ -7,6 +7,7 @@ export const useProductPricing = (product: Product) => {
     const availableSizes = product.sizeVariants.filter(size => size.inStock);
     const sizesToCheck = availableSizes.length > 0 ? availableSizes : product.sizeVariants;
     
+    // If no size variants, use base product price
     if (sizesToCheck.length === 0) {
       return {
         minOriginal: product.price.original,
@@ -16,18 +17,18 @@ export const useProductPricing = (product: Product) => {
       };
     }
     
-    // Get prices from size variants, fallback to base product price if NaN or undefined
+    // Get prices from size variants, fallback to base product price if not set
     const originalPrices = sizesToCheck.map(size => {
       const price = size.priceOriginal;
-      return (price && !isNaN(price)) ? price : product.price.original;
+      return (price && !isNaN(price) && price > 0) ? price : product.price.original;
     });
     
     const discountedPrices = sizesToCheck
       .map(size => {
         const price = size.priceDiscounted;
-        return (price && !isNaN(price)) ? price : product.price.discounted;
+        return (price && !isNaN(price) && price > 0) ? price : product.price.discounted;
       })
-      .filter(price => price !== undefined && price !== null) as number[];
+      .filter(price => price !== undefined && price !== null && price > 0) as number[];
     
     return {
       minOriginal: Math.min(...originalPrices),
@@ -39,26 +40,30 @@ export const useProductPricing = (product: Product) => {
 
   const priceRange = getPriceRange();
   const hasVariedPricing = priceRange.minOriginal !== priceRange.maxOriginal;
-  const hasDiscount = priceRange.minDiscounted !== undefined && priceRange.minDiscounted !== null;
+  const hasDiscount = priceRange.minDiscounted !== undefined && priceRange.minDiscounted !== null && priceRange.minDiscounted > 0;
 
   const formatPriceDisplay = () => {
+    // For landing page cards, always show the lowest available price
+    const lowestPrice = hasDiscount ? priceRange.minDiscounted : priceRange.minOriginal;
+    const highestOriginalPrice = priceRange.maxOriginal;
+
     if (hasDiscount) {
       if (hasVariedPricing) {
         return {
-          current: `₹${priceRange.minDiscounted?.toFixed(2)} - ₹${priceRange.maxDiscounted?.toFixed(2)}`,
-          original: `₹${priceRange.minOriginal.toFixed(2)} - ₹${priceRange.maxOriginal.toFixed(2)}`
+          current: `From ₹${priceRange.minDiscounted?.toFixed(0)}`,
+          original: `₹${priceRange.minOriginal.toFixed(0)} - ₹${priceRange.maxOriginal.toFixed(0)}`
         };
       } else {
         return {
-          current: `₹${priceRange.minDiscounted?.toFixed(2)}`,
-          original: `₹${priceRange.minOriginal.toFixed(2)}`
+          current: `₹${priceRange.minDiscounted?.toFixed(0)}`,
+          original: `₹${priceRange.minOriginal.toFixed(0)}`
         };
       }
     } else {
       return {
         current: hasVariedPricing 
-          ? `₹${priceRange.minOriginal.toFixed(2)} - ₹${priceRange.maxOriginal.toFixed(2)}`
-          : `₹${priceRange.minOriginal.toFixed(2)}`,
+          ? `From ₹${priceRange.minOriginal.toFixed(0)}`
+          : `₹${priceRange.minOriginal.toFixed(0)}`,
         original: null
       };
     }
@@ -68,6 +73,7 @@ export const useProductPricing = (product: Product) => {
     priceRange,
     hasVariedPricing,
     hasDiscount,
-    formatPriceDisplay
+    formatPriceDisplay,
+    lowestPrice: hasDiscount ? priceRange.minDiscounted : priceRange.minOriginal
   };
 };

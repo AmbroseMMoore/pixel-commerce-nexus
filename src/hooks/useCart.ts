@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +24,8 @@ export interface CartItem {
   };
   size: {
     name: string;
+    price_original?: number;
+    price_discounted?: number;
   };
   product_images: Array<{
     image_url: string;
@@ -37,7 +38,7 @@ export const useCart = () => {
   const queryClient = useQueryClient();
   const { logInfo, logError } = useLogging();
 
-  // Fetch cart items
+  // Fetch cart items with size-specific pricing
   const { data: cartItems = [], isLoading, error } = useQuery({
     queryKey: ['cart', user?.id],
     queryFn: async () => {
@@ -53,7 +54,7 @@ export const useCart = () => {
           quantity,
           product:product_id(title, price_original, price_discounted, slug),
           color:color_id(name, color_code),
-          size:size_id(name)
+          size:size_id(name, price_original, price_discounted)
         `)
         .eq('customer_id', user.id);
 
@@ -230,10 +231,14 @@ export const useCart = () => {
     }
   });
 
-  // Calculate totals
+  // Calculate totals using size-specific pricing
   const cartTotal = cartItems.reduce((total, item) => {
-    const price = item.product.price_discounted || item.product.price_original;
-    return total + (price * item.quantity);
+    // Use size-specific price if available, otherwise fall back to product price
+    const sizePrice = item.size.price_discounted || item.size.price_original;
+    const productPrice = item.product.price_discounted || item.product.price_original;
+    const finalPrice = sizePrice || productPrice;
+    
+    return total + (finalPrice * item.quantity);
   }, 0);
 
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);

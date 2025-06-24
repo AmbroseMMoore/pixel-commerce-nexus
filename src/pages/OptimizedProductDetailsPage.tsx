@@ -121,9 +121,19 @@ const OptimizedProductDetailsPage = () => {
     setQuantity(quantity + 1);
   };
 
-  const hasDiscount =
-    product.price.discounted !== undefined &&
-    product.price.discounted < product.price.original;
+  // Get current price based on selected size or fallback to base price
+  const getCurrentPrice = () => {
+    if (selectedSize) {
+      return {
+        original: selectedSize.priceOriginal || product.price.original,
+        discounted: selectedSize.priceDiscounted || product.price.discounted
+      };
+    }
+    return product.price;
+  };
+
+  const currentPrice = getCurrentPrice();
+  const hasDiscount = currentPrice.discounted !== undefined && currentPrice.discounted < currentPrice.original;
 
   return (
     <MainLayout>
@@ -172,20 +182,25 @@ const OptimizedProductDetailsPage = () => {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold mb-2">{product.title}</h1>
 
-            {/* Price */}
+            {/* Dynamic Price based on selected size */}
             <div className="flex items-center gap-2 mb-4">
               {hasDiscount ? (
                 <>
                   <span className="text-2xl font-semibold text-red-600">
-                    ₹{product.price.discounted?.toFixed(2)}
+                    ₹{currentPrice.discounted?.toFixed(2)}
                   </span>
                   <span className="text-lg text-gray-500 line-through">
-                    ₹{product.price.original.toFixed(2)}
+                    ₹{currentPrice.original.toFixed(2)}
                   </span>
                 </>
               ) : (
                 <span className="text-2xl font-semibold">
-                  ₹{product.price.original.toFixed(2)}
+                  ₹{currentPrice.original.toFixed(2)}
+                </span>
+              )}
+              {selectedSize && (
+                <span className="text-sm text-gray-500 ml-2">
+                  for size {selectedSize.name}
                 </span>
               )}
             </div>
@@ -220,7 +235,7 @@ const OptimizedProductDetailsPage = () => {
               </div>
             </div>
 
-            {/* Size Selection */}
+            {/* Size Selection with Individual Pricing */}
             <div className="mb-6">
               <h3 className="text-sm font-medium mb-3">Size</h3>
               <RadioGroup
@@ -231,28 +246,43 @@ const OptimizedProductDetailsPage = () => {
                 }}
               >
                 <div className="flex flex-wrap gap-2">
-                  {product.sizeVariants.map((size) => (
-                    <div key={size.id} className="flex items-center">
-                      <RadioGroupItem
-                        value={size.id}
-                        id={`size-${size.id}`}
-                        disabled={!size.inStock}
-                        className="hidden"
-                      />
-                      <Label
-                        htmlFor={`size-${size.id}`}
-                        className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-md border text-sm cursor-pointer",
-                          selectedSize?.id === size.id
-                            ? "border-brand bg-brand/10 text-brand font-medium"
-                            : "border-gray-200",
-                          !size.inStock && "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        )}
-                      >
-                        {size.name}
-                      </Label>
-                    </div>
-                  ))}
+                  {product.sizeVariants.map((size) => {
+                    const sizePrice = size.priceOriginal || product.price.original;
+                    const sizeDiscountedPrice = size.priceDiscounted || product.price.discounted;
+                    
+                    return (
+                      <div key={size.id} className="flex items-center">
+                        <RadioGroupItem
+                          value={size.id}
+                          id={`size-${size.id}`}
+                          disabled={!size.inStock}
+                          className="hidden"
+                        />
+                        <Label
+                          htmlFor={`size-${size.id}`}
+                          className={cn(
+                            "flex flex-col items-center justify-center rounded-md border text-sm cursor-pointer p-3 min-w-[80px]",
+                            selectedSize?.id === size.id
+                              ? "border-brand bg-brand/10 text-brand font-medium"
+                              : "border-gray-200",
+                            !size.inStock && "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          )}
+                        >
+                          <span className="font-medium">{size.name}</span>
+                          <span className="text-xs mt-1">
+                            {sizeDiscountedPrice && sizeDiscountedPrice < sizePrice ? (
+                              <>
+                                <span className="text-red-600">₹{sizeDiscountedPrice.toFixed(0)}</span>
+                                <span className="line-through ml-1">₹{sizePrice.toFixed(0)}</span>
+                              </>
+                            ) : (
+                              <span>₹{sizePrice.toFixed(0)}</span>
+                            )}
+                          </span>
+                        </Label>
+                      </div>
+                    );
+                  })}
                 </div>
               </RadioGroup>
               {product.sizeVariants.some((s) => !s.inStock) && (
