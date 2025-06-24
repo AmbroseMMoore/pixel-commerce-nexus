@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -92,14 +91,25 @@ const AdminProductForm = () => {
   const selectedCategory = categories.find(cat => cat.id === mainCategoryId);
   const subcategories = selectedCategory?.subCategories || [];
 
-  // Variants
+  // Standardized function to create new color variant with proper image structure
+  const createNewColorVariant = (id?: string): ColorVariant => {
+    const variantId = id || `color-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log('Creating new color variant with ID:', variantId);
+    
+    return {
+      id: variantId,
+      name: "",
+      colorCode: "#ffffff",
+      images: Array(6).fill(null).map((_, index) => {
+        console.log(`Initializing image ${index} for variant ${variantId}`);
+        return { url: "", filename: "", fileType: "jpg" };
+      })
+    };
+  };
+
+  // Variants with standardized initialization
   const [colorVariants, setColorVariants] = useState<ColorVariant[]>([
-    { 
-      id: "color-1", 
-      name: "Black", 
-      colorCode: "#000000", 
-      images: Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg" }))
-    }
+    createNewColorVariant("color-1")
   ]);
 
   const [sizeVariants, setSizeVariants] = useState<SizeVariant[]>([
@@ -357,45 +367,53 @@ const AdminProductForm = () => {
     }
   };
 
-  // Add a color variant
+  // Standardized function to add a color variant
   const addColorVariant = () => {
-    setColorVariants([
-      ...colorVariants, 
-      { 
-        id: `color-${Date.now()}`, 
-        name: "", 
-        colorCode: "#ffffff", 
-        images: Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg" }))
-      }
-    ]);
+    const newVariant = createNewColorVariant();
+    console.log('Adding new color variant:', newVariant);
+    setColorVariants([...colorVariants, newVariant]);
   };
 
   // Remove a color variant
   const removeColorVariant = (id: string) => {
+    console.log('Removing color variant:', id);
     setColorVariants(colorVariants.filter(variant => variant.id !== id));
   };
 
-  // Update color variant
+  // Update color variant with debugging
   const updateColorVariant = (id: string, field: keyof ColorVariant, value: any) => {
+    console.log(`Updating color variant ${id}, field: ${field}`, value);
     setColorVariants(colorVariants.map(variant => 
       variant.id === id ? { ...variant, [field]: value } : variant
     ));
   };
 
-  // Handle image upload with media server
+  // Handle image upload with enhanced debugging
   const handleImageUpload = (colorId: string, imageIndex: number, url: string, filename: string, fileType: string) => {
+    console.log(`=== IMAGE UPLOAD DEBUG ===`);
+    console.log('Target Color ID:', colorId);
+    console.log('Image Index:', imageIndex);
+    console.log('URL:', url);
+    console.log('Filename:', filename);
+    console.log('File Type:', fileType);
+    console.log('Current Color Variants:', colorVariants.map(v => ({ id: v.id, name: v.name })));
+    
     setColorVariants(colorVariants.map(variant => {
       if (variant.id === colorId) {
+        console.log(`Updating images for variant: ${variant.id} (${variant.name || 'Unnamed'})`);
         const updatedImages = [...variant.images];
         updatedImages[imageIndex] = { url, filename, fileType };
+        console.log('Updated images array:', updatedImages);
         return { ...variant, images: updatedImages };
       }
       return variant;
     }));
+    console.log(`=== END IMAGE UPLOAD DEBUG ===`);
   };
 
   // Remove image with media server cleanup
   const removeImage = async (colorId: string, imageIndex: number) => {
+    console.log(`Removing image ${imageIndex} from color variant ${colorId}`);
     const variant = colorVariants.find(v => v.id === colorId);
     if (variant && variant.images[imageIndex]) {
       const imageData = variant.images[imageIndex];
@@ -487,54 +505,62 @@ const AdminProductForm = () => {
     );
   }
 
-  // Color Variants Tab with unified media server integration
+  // Enhanced Color Variants Tab with better visual distinction
   const renderColorVariantsTab = () => (
     <TabsContent value="colors">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Color Variants</CardTitle>
-          <Button onClick={() => {
-            setColorVariants([
-              ...colorVariants, 
-              { 
-                id: `color-${Date.now()}`, 
-                name: "", 
-                colorCode: "#ffffff", 
-                images: Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "" }))
-              }
-            ]);
-          }} type="button" variant="outline">
+          <Button onClick={addColorVariant} type="button" variant="outline">
             <Plus className="mr-2 h-4 w-4" /> Add Color
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
+          <div className="space-y-8">
             {colorVariants.map((variant, index) => (
-              <div key={variant.id} className="border rounded-md p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-medium">Color #{index + 1}</h3>
+              <div 
+                key={variant.id} 
+                className="border-2 rounded-lg p-6 bg-gradient-to-r from-gray-50 to-white"
+                style={{ 
+                  borderColor: variant.colorCode || '#e5e7eb',
+                  boxShadow: `0 2px 8px ${variant.colorCode}20`
+                }}
+              >
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center gap-4">
+                    <h3 className="text-lg font-semibold">
+                      Color Variant #{index + 1}
+                    </h3>
+                    <div 
+                      className="w-8 h-8 rounded-full border-2 border-gray-300 shadow-sm"
+                      style={{ backgroundColor: variant.colorCode }}
+                      title={`Color: ${variant.name || 'Unnamed'}`}
+                    />
+                    {variant.name && (
+                      <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                        {variant.name}
+                      </span>
+                    )}
+                  </div>
                   <Button
-                    onClick={() => setColorVariants(colorVariants.filter(v => v.id !== variant.id))}
+                    onClick={() => removeColorVariant(variant.id)}
                     type="button"
                     variant="ghost"
                     size="sm"
                     disabled={colorVariants.length === 1}
+                    className="text-red-500 hover:text-red-700"
                   >
-                    <Trash2 className="h-4 w-4 text-red-500" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="space-y-2">
                     <Label htmlFor={`color-name-${variant.id}`}>Color Name</Label>
                     <Input
                       id={`color-name-${variant.id}`}
                       value={variant.name}
-                      onChange={(e) => {
-                        setColorVariants(colorVariants.map(v => 
-                          v.id === variant.id ? { ...v, name: e.target.value } : v
-                        ));
-                      }}
+                      onChange={(e) => updateColorVariant(variant.id, "name", e.target.value)}
                       placeholder="e.g. Navy Blue"
                     />
                   </div>
@@ -545,20 +571,12 @@ const AdminProductForm = () => {
                         id={`color-code-${variant.id}`}
                         type="color"
                         value={variant.colorCode}
-                        onChange={(e) => {
-                          setColorVariants(colorVariants.map(v => 
-                            v.id === variant.id ? { ...v, colorCode: e.target.value } : v
-                          ));
-                        }}
+                        onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
                         className="w-12 h-10 p-1"
                       />
                       <Input
                         value={variant.colorCode}
-                        onChange={(e) => {
-                          setColorVariants(colorVariants.map(v => 
-                            v.id === variant.id ? { ...v, colorCode: e.target.value } : v
-                          ));
-                        }}
+                        onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
                         placeholder="#000000"
                         className="flex-1"
                       />
@@ -566,21 +584,32 @@ const AdminProductForm = () => {
                   </div>
                 </div>
 
-                {/* Media Server Image Uploads */}
-                <div className="grid grid-cols-2 gap-4">
-                  {Array.from({ length: 6 }, (_, imgIndex) => (
-                    <MediaServerImageUpload
-                      key={`${variant.id}-${imgIndex}`}
-                      label={`Image ${imgIndex + 1}`}
-                      value={variant.images[imgIndex]?.url || ''}
-                      filename={variant.images[imgIndex]?.filename}
-                      fileType={variant.images[imgIndex]?.fileType}
-                      onChange={(url, filename, fileType) => {
-                        handleImageUpload(variant.id, imgIndex, url, filename, fileType);
-                      }}
-                      onRemove={() => removeImage(variant.id, imgIndex)}
-                    />
-                  ))}
+                {/* Enhanced Image Upload Section */}
+                <div className="border-t pt-4">
+                  <h4 className="text-md font-medium mb-4 text-gray-700">
+                    Images for {variant.name || `Color #${index + 1}`}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {Array.from({ length: 6 }, (_, imgIndex) => (
+                      <div key={`${variant.id}-img-${imgIndex}`} className="relative">
+                        <MediaServerImageUpload
+                          key={`${variant.id}-${imgIndex}`}
+                          label={`${variant.name || `Color #${index + 1}`} - Image ${imgIndex + 1}`}
+                          value={variant.images[imgIndex]?.url || ''}
+                          filename={variant.images[imgIndex]?.filename}
+                          fileType={variant.images[imgIndex]?.fileType}
+                          onChange={(url, filename, fileType) => {
+                            handleImageUpload(variant.id, imgIndex, url, filename, fileType);
+                          }}
+                          onRemove={() => removeImage(variant.id, imgIndex)}
+                        />
+                        {/* Debug indicator */}
+                        <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 rounded">
+                          {variant.id.slice(-4)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             ))}
@@ -780,7 +809,7 @@ const AdminProductForm = () => {
                 </div>
               </TabsContent>
 
-              {/* Updated Color Variants Tab */}
+              {/* Enhanced Color Variants Tab */}
               {renderColorVariantsTab()}
 
               {/* Size Variants Tab */}
