@@ -130,14 +130,14 @@ const AdminProductForm = () => {
       setSlug(existingProduct.slug);
       setSelectedAgeRanges(existingProduct.ageRanges || []);
 
-      // Set color variants from existing product - fix the image structure
+      // Set color variants from existing product - fix the image structure with proper typing
       if (existingProduct.colorVariants && existingProduct.colorVariants.length > 0) {
         setColorVariants(existingProduct.colorVariants.map(variant => ({
           id: variant.id,
           name: variant.name,
           colorCode: variant.colorCode,
           images: variant.images && Array.isArray(variant.images) 
-            ? variant.images.map(img => 
+            ? variant.images.map((img: string | { url: string; filename?: string; fileType?: string }) => 
                 typeof img === 'string' 
                   ? { url: img, filename: "", fileType: "jpg" }
                   : { url: img.url || "", filename: img.filename || "", fileType: img.fileType || "jpg" }
