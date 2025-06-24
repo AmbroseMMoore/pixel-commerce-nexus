@@ -1,7 +1,7 @@
 
 import React from "react";
 import MainLayout from "@/components/layout/MainLayout";
-import HeroSection from "@/components/home/HeroSection";
+import HeroSlider from "@/components/home/HeroSlider";
 import CategorySection from "@/components/home/CategorySection";
 import OptimizedFeaturedProducts from "@/components/home/OptimizedFeaturedProducts";
 import OptimizedTrendingProducts from "@/components/home/OptimizedTrendingProducts";
@@ -14,13 +14,7 @@ const Index = () => {
 
   return (
     <MainLayout>
-      <HeroSection 
-        title="Welcome to Little Darling"
-        subtitle="Discover amazing products for your little ones"
-        ctaText="Shop Now"
-        ctaLink="/search"
-        image="/lovable-uploads/7fb03b02-a358-4e9c-988c-93ead2836ea4.png"
-      />
+      <HeroSlider />
       <CategorySection 
         categories={categories}
         isLoading={categoriesLoading}
