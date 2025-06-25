@@ -28,7 +28,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Check pincode using zone_regions table
+  // Check pincode using zone_regions table only
   const checkPincodeDelivery = async (pincodeToCheck: string) => {
     try {
       setIsLoading(true);
@@ -36,7 +36,7 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
       
       console.log(`Checking pincode: ${pincodeToCheck} in zone_regions table`);
       
-      // First, get all rows for this pincode
+      // Query zone_regions table for the pincode and get the first row
       const { data: zoneRegions, error: queryError } = await supabase
         .from('zone_regions')
         .select(`
@@ -55,7 +55,8 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
           )
         `)
         .eq('pincode', pincodeToCheck)
-        .order('id', { ascending: true }); // Get first row consistently
+        .order('id', { ascending: true })
+        .limit(1);
 
       if (queryError) {
         console.error('Query error:', queryError);
