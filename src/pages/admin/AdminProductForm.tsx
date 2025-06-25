@@ -29,7 +29,10 @@ interface ColorVariant {
     url: string;
     filename: string;
     fileType: string;
+    isNew?: boolean; // Flag to track if this is a new image
+    originalImageId?: string; // Track original image ID for updates
   }>;
+  isNew?: boolean; // Flag to track if this is a new color variant
 }
 
 interface SizeVariant {
@@ -38,6 +41,7 @@ interface SizeVariant {
   inStock: boolean;
   priceOriginal: number;
   priceDiscounted?: number;
+  isNew?: boolean; // Flag to track if this is a new size variant
 }
 
 interface Specification {
@@ -104,8 +108,9 @@ const AdminProductForm = () => {
       colorCode: "#ffffff",
       images: Array(6).fill(null).map((_, index) => {
         console.log(`Initializing image ${index} for variant ${variantId}`);
-        return { url: "", filename: "", fileType: "jpg" };
-      })
+        return { url: "", filename: "", fileType: "jpg", isNew: true };
+      }),
+      isNew: !isEditMode // New variants are marked as new only when not in edit mode
     };
   };
 
@@ -149,22 +154,25 @@ const AdminProductForm = () => {
           id: variant.id,
           name: variant.name,
           colorCode: variant.colorCode,
+          isNew: false, // Existing variants are not new
           images: variant.images && Array.isArray(variant.images) 
-            ? variant.images.map((img: any) => {
+            ? variant.images.map((img: any, index: number) => {
                 if (typeof img === 'string') {
                   // Legacy format - convert to new structure
-                  return { url: img, filename: "", fileType: "jpg" };
+                  return { url: img, filename: "", fileType: "jpg", isNew: false };
                 } else if (img && typeof img === 'object') {
                   // New format - ensure all required properties
                   return { 
                     url: img.url || "", 
                     filename: img.filename || img.media_file_name || "", 
-                    fileType: img.fileType || img.media_file_type || "jpg" 
+                    fileType: img.fileType || img.media_file_type || "jpg",
+                    isNew: false,
+                    originalImageId: img.id // Store original image ID
                   };
                 }
-                return { url: "", filename: "", fileType: "jpg" };
+                return { url: "", filename: "", fileType: "jpg", isNew: true };
               })
-            : Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg" }))
+            : Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg", isNew: true }))
         })));
       }
 
@@ -175,7 +183,8 @@ const AdminProductForm = () => {
           name: variant.name,
           inStock: variant.inStock,
           priceOriginal: variant.priceOriginal || existingProduct.price.original,
-          priceDiscounted: variant.priceDiscounted || existingProduct.price.discounted
+          priceDiscounted: variant.priceDiscounted || existingProduct.price.discounted,
+          isNew: false // Existing variants are not new
         })));
       }
 
@@ -315,71 +324,224 @@ const AdminProductForm = () => {
         });
       }
 
-      // Handle color variants and images
+      // Handle color variants and images with intelligent updates
       if (isEditMode) {
-        // For edit mode, delete existing variants and recreate them
-        await supabase.from('product_images').delete().eq('product_id', productId);
-        await supabase.from('product_colors').delete().eq('product_id', productId);
-        await supabase.from('product_sizes').delete().eq('product_id', productId);
-      }
+        // Instead of deleting everything, we'll update intelligently
+        
+        // Get existing color variants to compare
+        const { data: existingColors } = await supabase
+          .from('product_colors')
+          .select('id, name, color_code')
+          .eq('product_id', productId);
+        
+        const existingColorIds = new Set((existingColors || []).map(c => c.id));
+        
+        // Handle color variants
+        for (const colorVariant of colorVariants) {
+          if (colorVariant.name && colorVariant.colorCode) {
+            if (colorVariant.isNew) {
+              // Create new color variant
+              const colorData = {
+                product_id: productId,
+                name: colorVariant.name,
+                color_code: colorVariant.colorCode
+              };
 
-      // Add color variants
-      for (const colorVariant of colorVariants) {
-        if (colorVariant.name && colorVariant.colorCode) {
-          const colorData = {
-            product_id: productId,
-            name: colorVariant.name,
-            color_code: colorVariant.colorCode
-          };
-
-          const { data: newColor, error: colorError } = await supabase
-            .from('product_colors')
-            .insert(colorData)
-            .select()
-            .single();
-            
-          if (colorError) throw colorError;
-
-          // Handle images for this color
-          for (let i = 0; i < colorVariant.images.length; i++) {
-            const imageData = colorVariant.images[i];
-            if (imageData.url && imageData.filename && imageData.fileType) {
-              const { error: imageError } = await supabase
-                .from('product_images')
-                .insert({
-                  product_id: productId,
-                  color_id: newColor.id,
-                  image_url: imageData.url,
-                  media_server_api_url_fk: mediaServerConfig.id,
-                  media_file_name: imageData.filename,
-                  media_file_type: imageData.fileType,
-                  is_primary: i === 0
-                });
+              const { data: newColor, error: colorError } = await supabase
+                .from('product_colors')
+                .insert(colorData)
+                .select()
+                .single();
                 
-              if (imageError) {
-                console.error('Error saving image:', imageError);
+              if (colorError) throw colorError;
+
+              // Handle images for new color
+              for (let i = 0; i < colorVariant.images.length; i++) {
+                const imageData = colorVariant.images[i];
+                if (imageData.url && imageData.filename && imageData.fileType) {
+                  const { error: imageError } = await supabase
+                    .from('product_images')
+                    .insert({
+                      product_id: productId,
+                      color_id: newColor.id,
+                      image_url: imageData.url,
+                      media_server_api_url_fk: mediaServerConfig.id,
+                      media_file_name: imageData.filename,
+                      media_file_type: imageData.fileType,
+                      is_primary: i === 0
+                    });
+                    
+                  if (imageError) {
+                    console.error('Error saving image:', imageError);
+                  }
+                }
+              }
+            } else {
+              // Update existing color variant
+              const { error: colorUpdateError } = await supabase
+                .from('product_colors')
+                .update({
+                  name: colorVariant.name,
+                  color_code: colorVariant.colorCode
+                })
+                .eq('id', colorVariant.id);
+                
+              if (colorUpdateError) throw colorUpdateError;
+
+              // Handle images for existing color - only update changed images
+              for (let i = 0; i < colorVariant.images.length; i++) {
+                const imageData = colorVariant.images[i];
+                
+                if (imageData.isNew && imageData.url && imageData.filename && imageData.fileType) {
+                  // New image - insert it
+                  const { error: imageError } = await supabase
+                    .from('product_images')
+                    .insert({
+                      product_id: productId,
+                      color_id: colorVariant.id,
+                      image_url: imageData.url,
+                      media_server_api_url_fk: mediaServerConfig.id,
+                      media_file_name: imageData.filename,
+                      media_file_type: imageData.fileType,
+                      is_primary: i === 0
+                    });
+                    
+                  if (imageError) {
+                    console.error('Error saving new image:', imageError);
+                  }
+                } else if (!imageData.isNew && imageData.originalImageId && imageData.url) {
+                  // Existing image - update if changed
+                  const { error: imageUpdateError } = await supabase
+                    .from('product_images')
+                    .update({
+                      image_url: imageData.url,
+                      media_file_name: imageData.filename,
+                      media_file_type: imageData.fileType,
+                      is_primary: i === 0
+                    })
+                    .eq('id', imageData.originalImageId);
+                    
+                  if (imageUpdateError) {
+                    console.error('Error updating image:', imageUpdateError);
+                  }
+                }
+                // If imageData.isNew is false and no originalImageId, it means it's an empty slot - do nothing
+              }
+
+              // Remove this color from the existing set
+              existingColorIds.delete(colorVariant.id);
+            }
+          }
+        }
+        
+        // Delete colors that are no longer present
+        for (const colorIdToDelete of existingColorIds) {
+          // Delete associated images first
+          await supabase.from('product_images').delete().eq('color_id', colorIdToDelete);
+          // Then delete the color
+          await supabase.from('product_colors').delete().eq('id', colorIdToDelete);
+        }
+
+        // Handle size variants similarly
+        const { data: existingSizes } = await supabase
+          .from('product_sizes')
+          .select('id, name')
+          .eq('product_id', productId);
+        
+        const existingSizeIds = new Set((existingSizes || []).map(s => s.id));
+        
+        for (const sizeVariant of sizeVariants) {
+          if (sizeVariant.name && sizeVariant.priceOriginal > 0) {
+            const sizeData = {
+              product_id: productId,
+              name: sizeVariant.name,
+              in_stock: sizeVariant.inStock,
+              price_original: sizeVariant.priceOriginal,
+              price_discounted: sizeVariant.priceDiscounted || null
+            };
+
+            if (sizeVariant.isNew) {
+              const { error: sizeError } = await supabase
+                .from('product_sizes')
+                .insert(sizeData);
+                
+              if (sizeError) throw sizeError;
+            } else {
+              const { error: sizeUpdateError } = await supabase
+                .from('product_sizes')
+                .update(sizeData)
+                .eq('id', sizeVariant.id);
+                
+              if (sizeUpdateError) throw sizeUpdateError;
+              
+              existingSizeIds.delete(sizeVariant.id);
+            }
+          }
+        }
+        
+        // Delete sizes that are no longer present
+        for (const sizeIdToDelete of existingSizeIds) {
+          await supabase.from('product_sizes').delete().eq('id', sizeIdToDelete);
+        }
+      } else {
+        // Create mode - original logic for new products
+        for (const colorVariant of colorVariants) {
+          if (colorVariant.name && colorVariant.colorCode) {
+            const colorData = {
+              product_id: productId,
+              name: colorVariant.name,
+              color_code: colorVariant.colorCode
+            };
+
+            const { data: newColor, error: colorError } = await supabase
+              .from('product_colors')
+              .insert(colorData)
+              .select()
+              .single();
+              
+            if (colorError) throw colorError;
+
+            // Handle images for this color
+            for (let i = 0; i < colorVariant.images.length; i++) {
+              const imageData = colorVariant.images[i];
+              if (imageData.url && imageData.filename && imageData.fileType) {
+                const { error: imageError } = await supabase
+                  .from('product_images')
+                  .insert({
+                    product_id: productId,
+                    color_id: newColor.id,
+                    image_url: imageData.url,
+                    media_server_api_url_fk: mediaServerConfig.id,
+                    media_file_name: imageData.filename,
+                    media_file_type: imageData.fileType,
+                    is_primary: i === 0
+                  });
+                  
+                if (imageError) {
+                  console.error('Error saving image:', imageError);
+                }
               }
             }
           }
         }
-      }
 
-      // Add size variants with individual pricing
-      for (const sizeVariant of sizeVariants) {
-        if (sizeVariant.name && sizeVariant.priceOriginal > 0) {
-          const sizeData = {
-            product_id: productId,
-            name: sizeVariant.name,
-            in_stock: sizeVariant.inStock,
-            price_original: sizeVariant.priceOriginal,
-            price_discounted: sizeVariant.priceDiscounted || null
-          };
+        // Add size variants with individual pricing
+        for (const sizeVariant of sizeVariants) {
+          if (sizeVariant.name && sizeVariant.priceOriginal > 0) {
+            const sizeData = {
+              product_id: productId,
+              name: sizeVariant.name,
+              in_stock: sizeVariant.inStock,
+              price_original: sizeVariant.priceOriginal,
+              price_discounted: sizeVariant.priceDiscounted || null
+            };
 
-          const { error: sizeError } = await supabase
-            .from('product_sizes')
-            .insert(sizeData);
-            
-          if (sizeError) throw sizeError;
+            const { error: sizeError } = await supabase
+              .from('product_sizes')
+              .insert(sizeData);
+              
+            if (sizeError) throw sizeError;
+          }
         }
       }
 
@@ -403,6 +565,7 @@ const AdminProductForm = () => {
   // Standardized function to add a color variant
   const addColorVariant = () => {
     const newVariant = createNewColorVariant();
+    newVariant.isNew = true; // Mark as new variant
     console.log('Adding new color variant:', newVariant);
     setColorVariants([...colorVariants, newVariant]);
   };
@@ -421,7 +584,7 @@ const AdminProductForm = () => {
     ));
   };
 
-  // Handle image upload with enhanced debugging
+  // Handle image upload with enhanced debugging and proper tracking
   const handleImageUpload = (colorId: string, imageIndex: number, url: string, filename: string, fileType: string) => {
     console.log(`=== IMAGE UPLOAD DEBUG ===`);
     console.log('Target Color ID:', colorId);
@@ -429,13 +592,17 @@ const AdminProductForm = () => {
     console.log('URL:', url);
     console.log('Filename:', filename);
     console.log('File Type:', fileType);
-    console.log('Current Color Variants:', colorVariants.map(v => ({ id: v.id, name: v.name })));
     
     setColorVariants(colorVariants.map(variant => {
       if (variant.id === colorId) {
         console.log(`Updating images for variant: ${variant.id} (${variant.name || 'Unnamed'})`);
         const updatedImages = [...variant.images];
-        updatedImages[imageIndex] = { url, filename, fileType };
+        updatedImages[imageIndex] = { 
+          url, 
+          filename, 
+          fileType, 
+          isNew: true // Mark as new image
+        };
         console.log('Updated images array:', updatedImages);
         return { ...variant, images: updatedImages };
       }
@@ -444,7 +611,7 @@ const AdminProductForm = () => {
     console.log(`=== END IMAGE UPLOAD DEBUG ===`);
   };
 
-  // Remove image with media server cleanup
+  // Remove image with media server cleanup and proper tracking
   const removeImage = async (colorId: string, imageIndex: number) => {
     console.log(`Removing image ${imageIndex} from color variant ${colorId}`);
     const variant = colorVariants.find(v => v.id === colorId);
@@ -456,11 +623,11 @@ const AdminProductForm = () => {
         await deleteFromMediaServer(imageData.filename, imageData.fileType);
       }
 
-      // Update state
+      // Update state - mark as removed/empty
       setColorVariants(colorVariants.map(v => {
         if (v.id === colorId) {
           const updatedImages = [...v.images];
-          updatedImages[imageIndex] = { url: "", filename: "", fileType: "" };
+          updatedImages[imageIndex] = { url: "", filename: "", fileType: "", isNew: true };
           return { ...v, images: updatedImages };
         }
         return v;
@@ -480,7 +647,8 @@ const AdminProductForm = () => {
         name: "", 
         inStock: true, 
         priceOriginal: basePrice,
-        priceDiscounted: baseDiscounted
+        priceDiscounted: baseDiscounted,
+        isNew: true // Mark as new variant
       }
     ]);
   };
