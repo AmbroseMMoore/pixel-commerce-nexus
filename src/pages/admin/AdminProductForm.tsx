@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -134,10 +133,10 @@ const AdminProductForm = () => {
     { key: "Care Instructions", value: "" },
   ]);
 
-  // Simplified data population with proper error handling
+  // Enhanced data population with better error handling and debugging
   useEffect(() => {
     if (isEditMode && existingProduct) {
-      console.log('Loading existing product data:', existingProduct);
+      console.log('Loading existing product data for edit mode:', existingProduct);
       
       try {
         // Basic product info
@@ -155,45 +154,65 @@ const AdminProductForm = () => {
         setSlug(existingProduct.slug || "");
         setSelectedAgeRanges(existingProduct.ageRanges || []);
 
-        // Load color variants with proper structure
+        // Handle color variants with enhanced error handling and fallbacks
         if (existingProduct.colorVariants && Array.isArray(existingProduct.colorVariants) && existingProduct.colorVariants.length > 0) {
-          const loadedColorVariants = existingProduct.colorVariants.map((variant: any) => ({
-            id: variant.id, // Use existing UUID from database
-            name: variant.name || "",
-            colorCode: variant.colorCode || "#ffffff",
-            isExisting: true, // Mark as existing
-            images: Array(6).fill(null).map((_, index) => {
+          console.log('Processing existing color variants:', existingProduct.colorVariants);
+          
+          const loadedColorVariants = existingProduct.colorVariants.map((variant: any) => {
+            console.log('Processing variant:', variant);
+            
+            // Ensure we have proper image structure with fallbacks
+            const images = Array(6).fill(null).map((_, index) => {
               const existingImage = variant.images && variant.images[index];
               if (existingImage) {
                 return {
                   id: existingImage.id || undefined,
-                  url: existingImage.url || existingImage.image_url || "",
-                  filename: existingImage.filename || existingImage.media_file_name || "",
-                  fileType: existingImage.fileType || existingImage.media_file_type || "jpg"
+                  url: existingImage.url || '',
+                  filename: existingImage.filename || '',
+                  fileType: existingImage.fileType || 'jpg'
                 };
               }
               return { url: "", filename: "", fileType: "jpg" };
-            })
-          }));
-          setColorVariants(loadedColorVariants);
+            });
+
+            return {
+              id: variant.id || generateUUID(), // Fallback to new UUID if missing
+              name: variant.name || "",
+              colorCode: variant.colorCode || "#ffffff",
+              isExisting: true,
+              images: images
+            };
+          });
+          
           console.log('Loaded color variants:', loadedColorVariants);
+          setColorVariants(loadedColorVariants);
+        } else {
+          console.log('No existing color variants found, creating default variant');
+          // If no color variants exist, create a default one
+          setColorVariants([createNewColorVariant()]);
         }
 
-        // Load size variants with proper structure
+        // Handle size variants with enhanced error handling
         if (existingProduct.sizeVariants && Array.isArray(existingProduct.sizeVariants) && existingProduct.sizeVariants.length > 0) {
+          console.log('Processing existing size variants:', existingProduct.sizeVariants);
+          
           const loadedSizeVariants = existingProduct.sizeVariants.map((variant: any) => ({
-            id: variant.id, // Use existing UUID from database
+            id: variant.id || generateUUID(), // Fallback to new UUID if missing
             name: variant.name || "",
             inStock: variant.inStock !== false,
             priceOriginal: variant.priceOriginal || existingProduct.price?.original || 0,
             priceDiscounted: variant.priceDiscounted || existingProduct.price?.discounted || undefined,
-            isExisting: true // Mark as existing
+            isExisting: true
           }));
-          setSizeVariants(loadedSizeVariants);
+          
           console.log('Loaded size variants:', loadedSizeVariants);
+          setSizeVariants(loadedSizeVariants);
+        } else {
+          console.log('No existing size variants found, using defaults');
+          // Keep default size variants if none exist
         }
 
-        // Load specifications
+        // Load specifications with better handling
         if (existingProduct.specifications) {
           let loadedSpecs: Specification[] = [];
           if (Array.isArray(existingProduct.specifications)) {
@@ -211,6 +230,8 @@ const AdminProductForm = () => {
             setSpecifications(loadedSpecs);
           }
         }
+
+        console.log('Successfully loaded all product data for editing');
 
       } catch (error) {
         console.error('Error loading existing product data:', error);

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Product, Category, SubCategory } from "@/types/product";
 import { supabaseManager } from "@/lib/supabaseManager";
@@ -44,9 +43,47 @@ export const fetchSubCategories = async (): Promise<SubCategory[]> => {
   }));
 };
 
-// Helper function to transform product data
+// Helper function to transform product data with improved color variant handling
 const transformProductData = (product: any): Product => {
-  return {
+  console.log('Transforming product data:', product);
+  console.log('Raw color variants:', product.product_colors);
+
+  // Transform color variants with proper image handling
+  const colorVariants = (product.product_colors || []).map((color: any) => {
+    console.log('Processing color variant:', color);
+    console.log('Raw images for color:', color.product_images);
+
+    // Transform images with complete data mapping
+    const images = (color.product_images || []).map((img: any) => {
+      console.log('Processing image:', img);
+      return {
+        id: img.id,
+        url: img.image_url || '',
+        filename: img.media_file_name || img.filename || '',
+        fileType: img.media_file_type || img.file_type || 'jpg'
+      };
+    });
+
+    return {
+      id: color.id,
+      name: color.name || '',
+      colorCode: color.color_code || '#ffffff',
+      images: images
+    };
+  });
+
+  console.log('Transformed color variants:', colorVariants);
+
+  // Transform size variants
+  const sizeVariants = (product.product_sizes || []).map((size: any) => ({
+    id: size.id,
+    name: size.name,
+    inStock: size.in_stock !== false,
+    priceOriginal: size.price_original || product.price_original,
+    priceDiscounted: size.price_discounted || product.price_discounted || undefined
+  }));
+
+  const transformedProduct = {
     id: product.id,
     title: product.title,
     slug: product.slug,
@@ -58,19 +95,8 @@ const transformProductData = (product: any): Product => {
     },
     categoryId: product.category_id,
     subCategoryId: product.subcategory_id,
-    colorVariants: (product.product_colors || []).map(color => ({
-      id: color.id,
-      name: color.name,
-      colorCode: color.color_code,
-      images: (color.product_images || []).map(img => img.image_url)
-    })),
-    sizeVariants: (product.product_sizes || []).map(size => ({
-      id: size.id,
-      name: size.name,
-      inStock: size.in_stock,
-      priceOriginal: size.price_original || product.price_original,
-      priceDiscounted: size.price_discounted || product.price_discounted || undefined
-    })),
+    colorVariants: colorVariants,
+    sizeVariants: sizeVariants,
     ageRanges: product.age_ranges || [],
     specifications: product.specifications || {},
     isLowStock: product.stock_quantity <= 10,
@@ -80,6 +106,9 @@ const transformProductData = (product: any): Product => {
     createdAt: new Date(product.created_at),
     updatedAt: new Date(product.updated_at)
   };
+
+  console.log('Final transformed product:', transformedProduct);
+  return transformedProduct;
 };
 
 // Updated Products API with connection tracking
@@ -93,7 +122,7 @@ export const fetchProducts = async (): Promise<Product[]> => {
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary)
+          product_images (id, image_url, is_primary, media_file_name, media_file_type)
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `);
@@ -117,7 +146,7 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary)
+          product_images (id, image_url, is_primary, media_file_name, media_file_type)
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
@@ -153,7 +182,7 @@ export const fetchProductsByCategory = async (categorySlug: string): Promise<Pro
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary)
+          product_images (id, image_url, is_primary, media_file_name, media_file_type)
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
@@ -178,7 +207,7 @@ export const fetchProductBySlug = async (slug: string): Promise<Product> => {
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary)
+          product_images (id, image_url, is_primary, media_file_name, media_file_type)
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
@@ -194,26 +223,36 @@ export const fetchProductBySlug = async (slug: string): Promise<Product> => {
   }
 };
 
-// Updated Single Product by ID with connection tracking
+// Updated Single Product by ID with connection tracking and enhanced logging
 export const fetchProductById = async (id: string): Promise<Product> => {
   const cleanup = trackApiCall(`product-id-${id}`);
   
   try {
+    console.log('Fetching product by ID:', id);
+    
     const { data, error } = await supabase
       .from('products')
       .select(`
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary)
+          product_images (id, image_url, is_primary, media_file_name, media_file_type)
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
       .eq('id', id)
       .single();
 
-    if (error) throw error;
-    if (!data) throw new Error("Product not found");
+    if (error) {
+      console.error('Error fetching product:', error);
+      throw error;
+    }
+    if (!data) {
+      console.error('No product data found for ID:', id);
+      throw new Error("Product not found");
+    }
+
+    console.log('Raw product data from database:', data);
     
     return transformProductData(data);
   } finally {
