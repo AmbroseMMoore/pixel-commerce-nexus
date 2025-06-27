@@ -1,12 +1,13 @@
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Edit, Trash2, Eye, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Search, Edit, Trash2, Eye, Loader2, Filter, ArrowUpDown } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useProducts } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
@@ -16,13 +17,42 @@ import { toast } from "@/hooks/use-toast";
 
 const AdminProducts = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("newest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const { data: products, isLoading, error, refetch } = useProducts();
   const { categories } = useCategories();
   
-  const filteredProducts = products?.filter(product => 
-    product.title.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  // Filter and sort products
+  const filteredAndSortedProducts = useMemo(() => {
+    if (!products) return [];
+
+    let filtered = products.filter(product => {
+      const matchesSearch = product.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === "all" || product.categoryId === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+
+    // Sort products
+    switch (sortBy) {
+      case "name-asc":
+        filtered.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case "name-desc":
+        filtered.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      case "newest":
+        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        break;
+      case "oldest":
+        filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        break;
+      default:
+        break;
+    }
+
+    return filtered;
+  }, [products, searchTerm, selectedCategory, sortBy]);
 
   const getCategoryName = (categoryId: string) => {
     const category = categories.find(cat => cat.id === categoryId);
@@ -71,8 +101,10 @@ const AdminProducts = () => {
                 <CardTitle>Product Management</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="mb-4">
+                <div className="mb-4 flex flex-col sm:flex-row gap-4">
                   <Skeleton className="h-10 w-full max-w-md" />
+                  <Skeleton className="h-10 w-48" />
+                  <Skeleton className="h-10 w-48" />
                 </div>
                 <div className="space-y-2">
                   {[1, 2, 3, 4, 5].map((n) => (
@@ -132,8 +164,10 @@ const AdminProducts = () => {
               <CardTitle>Product Management</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="mb-4">
-                <div className="relative max-w-md">
+              {/* Search, Filter, and Sort Controls */}
+              <div className="mb-6 flex flex-col sm:flex-row gap-4">
+                {/* Search */}
+                <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     placeholder="Search products..."
@@ -142,6 +176,47 @@ const AdminProducts = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
+
+                {/* Category Filter */}
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4 text-gray-500" />
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Filter by category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Sort */}
+                <div className="flex items-center gap-2">
+                  <ArrowUpDown className="h-4 w-4 text-gray-500" />
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Newest First</SelectItem>
+                      <SelectItem value="oldest">Oldest First</SelectItem>
+                      <SelectItem value="name-asc">Name A-Z</SelectItem>
+                      <SelectItem value="name-desc">Name Z-A</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Results Summary */}
+              <div className="mb-4 text-sm text-gray-600">
+                Showing {filteredAndSortedProducts.length} of {products?.length || 0} products
+                {searchTerm && ` for "${searchTerm}"`}
+                {selectedCategory !== "all" && ` in ${getCategoryName(selectedCategory)}`}
               </div>
 
               <div className="overflow-x-auto">
@@ -156,14 +231,31 @@ const AdminProducts = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProducts.length === 0 ? (
+                    {filteredAndSortedProducts.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center">
-                          {searchTerm ? "No products found matching your search." : "No products found. Add your first product!"}
+                        <TableCell colSpan={5} className="text-center py-8">
+                          {searchTerm || selectedCategory !== "all" ? (
+                            <div className="text-gray-500">
+                              <p>No products found matching your criteria.</p>
+                              <Button 
+                                variant="outline" 
+                                className="mt-2" 
+                                onClick={() => {
+                                  setSearchTerm("");
+                                  setSelectedCategory("all");
+                                  setSortBy("newest");
+                                }}
+                              >
+                                Clear Filters
+                              </Button>
+                            </div>
+                          ) : (
+                            "No products found. Add your first product!"
+                          )}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredProducts.map((product) => (
+                      filteredAndSortedProducts.map((product) => (
                         <TableRow key={product.id}>
                           <TableCell>{product.title}</TableCell>
                           <TableCell>{getCategoryName(product.categoryId)}</TableCell>
