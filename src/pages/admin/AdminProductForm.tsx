@@ -154,29 +154,42 @@ const AdminProductForm = () => {
         setSlug(existingProduct.slug || "");
         setSelectedAgeRanges(existingProduct.ageRanges || []);
 
-        // Handle color variants with enhanced error handling and fallbacks
+        // Handle color variants with enhanced error handling and proper image structure
         if (existingProduct.colorVariants && Array.isArray(existingProduct.colorVariants) && existingProduct.colorVariants.length > 0) {
           console.log('Processing existing color variants:', existingProduct.colorVariants);
           
           const loadedColorVariants = existingProduct.colorVariants.map((variant: any) => {
             console.log('Processing variant:', variant);
             
-            // Ensure we have proper image structure with fallbacks
+            // Handle images based on their structure
             const images = Array(6).fill(null).map((_, index) => {
               const existingImage = variant.images && variant.images[index];
+              
               if (existingImage) {
-                return {
-                  id: existingImage.id || undefined,
-                  url: existingImage.url || '',
-                  filename: existingImage.filename || '',
-                  fileType: existingImage.fileType || 'jpg'
-                };
+                // Check if it's already in the correct format (admin context)
+                if (typeof existingImage === 'object' && existingImage.url) {
+                  return {
+                    id: existingImage.id || undefined,
+                    url: existingImage.url,
+                    filename: existingImage.filename || '',
+                    fileType: existingImage.fileType || 'jpg'
+                  };
+                }
+                // Handle legacy format or string URLs
+                else if (typeof existingImage === 'string') {
+                  return {
+                    url: existingImage,
+                    filename: '',
+                    fileType: 'jpg'
+                  };
+                }
               }
+              
               return { url: "", filename: "", fileType: "jpg" };
             });
 
             return {
-              id: variant.id || generateUUID(), // Fallback to new UUID if missing
+              id: variant.id || generateUUID(),
               name: variant.name || "",
               colorCode: variant.colorCode || "#ffffff",
               isExisting: true,
@@ -184,7 +197,7 @@ const AdminProductForm = () => {
             };
           });
           
-          console.log('Loaded color variants:', loadedColorVariants);
+          console.log('Loaded color variants with proper image structure:', loadedColorVariants);
           setColorVariants(loadedColorVariants);
         } else {
           console.log('No existing color variants found, creating default variant');
@@ -197,7 +210,7 @@ const AdminProductForm = () => {
           console.log('Processing existing size variants:', existingProduct.sizeVariants);
           
           const loadedSizeVariants = existingProduct.sizeVariants.map((variant: any) => ({
-            id: variant.id || generateUUID(), // Fallback to new UUID if missing
+            id: variant.id || generateUUID(),
             name: variant.name || "",
             inStock: variant.inStock !== false,
             priceOriginal: variant.priceOriginal || existingProduct.price?.original || 0,

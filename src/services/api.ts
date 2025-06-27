@@ -44,21 +44,33 @@ export const fetchSubCategories = async (): Promise<SubCategory[]> => {
   }));
 };
 
-// Helper function to transform product data with improved color variant handling
-const transformProductData = (product: any): Product => {
+// Helper function to transform product data with context-aware image handling
+const transformProductData = (product: any, isAdminContext: boolean = false): Product => {
   console.log('Transforming product data:', product);
   console.log('Raw color variants:', product.product_colors);
+  console.log('Admin context:', isAdminContext);
 
-  // Transform color variants with proper image handling
+  // Transform color variants with context-aware image handling
   const colorVariants = (product.product_colors || []).map((color: any) => {
     console.log('Processing color variant:', color);
     console.log('Raw images for color:', color.product_images);
 
-    // Transform images with complete data mapping - use image_url directly for customer pages
+    // Transform images based on context
     const images = (color.product_images || []).map((img: any) => {
       console.log('Processing image:', img);
-      // Use image_url directly for customer-facing pages
-      return img.image_url || '/placeholder.svg';
+      
+      if (isAdminContext) {
+        // For admin context, return full metadata for editing
+        return {
+          id: img.id,
+          url: img.image_url || '/placeholder.svg',
+          filename: img.media_file_name || '',
+          fileType: img.media_file_type || 'jpg'
+        };
+      } else {
+        // For customer context, return simple URL string
+        return img.image_url || '/placeholder.svg';
+      }
     });
 
     return {
@@ -126,7 +138,7 @@ export const fetchProducts = async (): Promise<Product[]> => {
 
     if (error) throw error;
     
-    return (data || []).map(transformProductData);
+    return (data || []).map(product => transformProductData(product, false));
   } finally {
     cleanup();
   }
@@ -151,7 +163,7 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
 
     if (error) throw error;
     
-    return (data || []).map(transformProductData);
+    return (data || []).map(product => transformProductData(product, false));
   } finally {
     cleanup();
   }
@@ -187,7 +199,7 @@ export const fetchProductsByCategory = async (categorySlug: string): Promise<Pro
 
     if (error) throw error;
     
-    return (data || []).map(transformProductData);
+    return (data || []).map(product => transformProductData(product, false));
   } finally {
     cleanup();
   }
@@ -214,18 +226,18 @@ export const fetchProductBySlug = async (slug: string): Promise<Product> => {
     if (error) throw error;
     if (!data) throw new Error("Product not found");
     
-    return transformProductData(data);
+    return transformProductData(data, false);
   } finally {
     cleanup();
   }
 };
 
-// Updated Single Product by ID with connection tracking and enhanced logging
+// Updated Single Product by ID with connection tracking and admin context
 export const fetchProductById = async (id: string): Promise<Product> => {
   const cleanup = trackApiCall(`product-id-${id}`);
   
   try {
-    console.log('Fetching product by ID:', id);
+    console.log('Fetching product by ID for admin context:', id);
     
     const { data, error } = await supabase
       .from('products')
@@ -251,7 +263,8 @@ export const fetchProductById = async (id: string): Promise<Product> => {
 
     console.log('Raw product data from database:', data);
     
-    return transformProductData(data);
+    // Use admin context for proper image metadata
+    return transformProductData(data, true);
   } finally {
     cleanup();
   }
