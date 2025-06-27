@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Product, Category, SubCategory } from "@/types/product";
 import { supabaseManager } from "@/lib/supabaseManager";
@@ -112,7 +111,7 @@ export const fetchProductsOptimized = async (options: {
   }
 };
 
-// Optimized product colors fetching
+// Optimized product colors fetching with proper image URL handling
 const fetchProductColors = async (productId: string) => {
   const cacheKey = `colors-${productId}`;
   
@@ -131,30 +130,35 @@ const fetchProductColors = async (productId: string) => {
       id: color.id,
       name: color.name,
       colorCode: color.color_code,
+      // Use image_url directly for customer pages
       images: (color.product_images || [])
         .sort((a: any, b: any) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0))
-        .map((img: any) => img.image_url)
+        .map((img: any) => img.image_url || '/placeholder.svg')
     }));
   });
 };
 
-// Optimized product sizes fetching
+// Optimized product sizes fetching with sorting
 const fetchProductSizes = async (productId: string) => {
   const cacheKey = `sizes-${productId}`;
   
   return getCachedOrFetch(cacheKey, async () => {
     const { data: sizesData, error: sizesError } = await supabase
       .from('product_sizes')
-      .select('id, name, in_stock')
+      .select('id, name, in_stock, price_original, price_discounted')
       .eq('product_id', productId);
 
     if (sizesError) throw sizesError;
 
-    return (sizesData || []).map(size => ({
-      id: size.id,
-      name: size.name,
-      inStock: size.in_stock
-    }));
+    return (sizesData || [])
+      .map(size => ({
+        id: size.id,
+        name: size.name,
+        inStock: size.in_stock,
+        priceOriginal: size.price_original,
+        priceDiscounted: size.price_discounted
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name)); // Sort by name ascending
   });
 };
 

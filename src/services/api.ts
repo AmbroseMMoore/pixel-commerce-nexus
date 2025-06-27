@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Product, Category, SubCategory } from "@/types/product";
 import { supabaseManager } from "@/lib/supabaseManager";
@@ -53,15 +54,11 @@ const transformProductData = (product: any): Product => {
     console.log('Processing color variant:', color);
     console.log('Raw images for color:', color.product_images);
 
-    // Transform images with complete data mapping
+    // Transform images with complete data mapping - use image_url directly for customer pages
     const images = (color.product_images || []).map((img: any) => {
       console.log('Processing image:', img);
-      return {
-        id: img.id,
-        url: img.image_url || '',
-        filename: img.media_file_name || img.filename || '',
-        fileType: img.media_file_type || img.file_type || 'jpg'
-      };
+      // Use image_url directly for customer-facing pages
+      return img.image_url || '/placeholder.svg';
     });
 
     return {
@@ -74,14 +71,14 @@ const transformProductData = (product: any): Product => {
 
   console.log('Transformed color variants:', colorVariants);
 
-  // Transform size variants
+  // Transform size variants and sort by name
   const sizeVariants = (product.product_sizes || []).map((size: any) => ({
     id: size.id,
     name: size.name,
     inStock: size.in_stock !== false,
     priceOriginal: size.price_original || product.price_original,
     priceDiscounted: size.price_discounted || product.price_discounted || undefined
-  }));
+  })).sort((a: any, b: any) => a.name.localeCompare(b.name));
 
   const transformedProduct = {
     id: product.id,
