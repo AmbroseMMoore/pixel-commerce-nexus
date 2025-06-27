@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
@@ -21,18 +22,22 @@ import { useProductById } from "@/hooks/useProducts";
 import MediaServerImageUpload from "@/components/admin/MediaServerImageUpload";
 import { deleteFromMediaServer, getActiveMediaServerConfig } from "@/services/mediaServerApi";
 
+// Utility function to generate proper UUID
+const generateUUID = () => {
+  return crypto.randomUUID();
+};
+
 interface ColorVariant {
   id: string;
   name: string;
   colorCode: string;
   images: Array<{
+    id?: string; // Database ID for existing images
     url: string;
     filename: string;
     fileType: string;
-    isNew?: boolean; // Flag to track if this is a new image
-    originalImageId?: string; // Track original image ID for updates
   }>;
-  isNew?: boolean; // Flag to track if this is a new color variant
+  isExisting?: boolean; // Track if this is an existing variant from DB
 }
 
 interface SizeVariant {
@@ -41,7 +46,7 @@ interface SizeVariant {
   inStock: boolean;
   priceOriginal: number;
   priceDiscounted?: number;
-  isNew?: boolean; // Flag to track if this is a new size variant
+  isExisting?: boolean; // Track if this is an existing variant from DB
 }
 
 interface Specification {
@@ -78,7 +83,7 @@ const AdminProductForm = () => {
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Basic product info
+  // Basic product info with proper defaults
   const [title, setTitle] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [longDescription, setLongDescription] = useState("");
@@ -97,32 +102,30 @@ const AdminProductForm = () => {
   const selectedCategory = categories.find(cat => cat.id === mainCategoryId);
   const subcategories = selectedCategory?.subCategories || [];
 
-  // Standardized function to create new color variant with proper image structure
-  const createNewColorVariant = (id?: string): ColorVariant => {
-    const variantId = id || `color-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    console.log('Creating new color variant with ID:', variantId);
+  // Function to create new color variant with proper UUID
+  const createNewColorVariant = (): ColorVariant => {
+    const variantId = generateUUID();
+    console.log('Creating new color variant with UUID:', variantId);
     
     return {
       id: variantId,
       name: "",
       colorCode: "#ffffff",
-      images: Array(6).fill(null).map((_, index) => {
-        console.log(`Initializing image ${index} for variant ${variantId}`);
-        return { url: "", filename: "", fileType: "jpg", isNew: true };
-      }),
-      isNew: !isEditMode // New variants are marked as new only when not in edit mode
+      images: Array(6).fill(null).map(() => ({
+        url: "",
+        filename: "",
+        fileType: "jpg"
+      })),
+      isExisting: false
     };
   };
 
-  // Variants with standardized initialization
-  const [colorVariants, setColorVariants] = useState<ColorVariant[]>([
-    createNewColorVariant("color-1")
-  ]);
-
+  // Initialize variants with proper structure
+  const [colorVariants, setColorVariants] = useState<ColorVariant[]>([createNewColorVariant()]);
   const [sizeVariants, setSizeVariants] = useState<SizeVariant[]>([
-    { id: "size-1", name: "S", inStock: true, priceOriginal: 0, priceDiscounted: undefined },
-    { id: "size-2", name: "M", inStock: true, priceOriginal: 0, priceDiscounted: undefined },
-    { id: "size-3", name: "L", inStock: true, priceOriginal: 0, priceDiscounted: undefined },
+    { id: generateUUID(), name: "S", inStock: true, priceOriginal: 0, priceDiscounted: undefined, isExisting: false },
+    { id: generateUUID(), name: "M", inStock: true, priceOriginal: 0, priceDiscounted: undefined, isExisting: false },
+    { id: generateUUID(), name: "L", inStock: true, priceOriginal: 0, priceDiscounted: undefined, isExisting: false },
   ]);
 
   // Specifications
@@ -131,81 +134,96 @@ const AdminProductForm = () => {
     { key: "Care Instructions", value: "" },
   ]);
 
-  // Populate form with existing product data if in edit mode
+  // Simplified data population with proper error handling
   useEffect(() => {
     if (isEditMode && existingProduct) {
-      setTitle(existingProduct.title);
-      setShortDescription(existingProduct.shortDescription);
-      setLongDescription(existingProduct.longDescription || "");
-      setOriginalPrice(existingProduct.price.original.toString());
-      setDiscountedPrice(existingProduct.price.discounted?.toString() || "");
-      setMainCategoryId(existingProduct.categoryId);
-      setSubCategoryId(existingProduct.subCategoryId);
-      setIsLowStock(existingProduct.isLowStock);
-      setIsOutOfStock(existingProduct.isOutOfStock);
-      setIsFeatured(existingProduct.isFeatured || false);
-      setIsTrending(existingProduct.isTrending || false);
-      setSlug(existingProduct.slug);
-      setSelectedAgeRanges(existingProduct.ageRanges || []);
+      console.log('Loading existing product data:', existingProduct);
+      
+      try {
+        // Basic product info
+        setTitle(existingProduct.title || "");
+        setShortDescription(existingProduct.shortDescription || "");
+        setLongDescription(existingProduct.longDescription || "");
+        setOriginalPrice(existingProduct.price?.original?.toString() || "");
+        setDiscountedPrice(existingProduct.price?.discounted?.toString() || "");
+        setMainCategoryId(existingProduct.categoryId || "");
+        setSubCategoryId(existingProduct.subCategoryId || "");
+        setIsLowStock(existingProduct.isLowStock || false);
+        setIsOutOfStock(existingProduct.isOutOfStock || false);
+        setIsFeatured(existingProduct.isFeatured || false);
+        setIsTrending(existingProduct.isTrending || false);
+        setSlug(existingProduct.slug || "");
+        setSelectedAgeRanges(existingProduct.ageRanges || []);
 
-      // Set color variants from existing product with proper media server structure
-      if (existingProduct.colorVariants && existingProduct.colorVariants.length > 0) {
-        setColorVariants(existingProduct.colorVariants.map(variant => ({
-          id: variant.id,
-          name: variant.name,
-          colorCode: variant.colorCode,
-          isNew: false, // Existing variants are not new
-          images: variant.images && Array.isArray(variant.images) 
-            ? variant.images.map((img: any, index: number) => {
-                if (typeof img === 'string') {
-                  // Legacy format - convert to new structure
-                  return { url: img, filename: "", fileType: "jpg", isNew: false };
-                } else if (img && typeof img === 'object') {
-                  // New format - ensure all required properties
-                  return { 
-                    url: img.url || "", 
-                    filename: img.filename || img.media_file_name || "", 
-                    fileType: img.fileType || img.media_file_type || "jpg",
-                    isNew: false,
-                    originalImageId: img.id // Store original image ID
-                  };
-                }
-                return { url: "", filename: "", fileType: "jpg", isNew: true };
-              })
-            : Array(6).fill(null).map(() => ({ url: "", filename: "", fileType: "jpg", isNew: true }))
-        })));
-      }
-
-      // Set size variants from existing product with pricing
-      if (existingProduct.sizeVariants && existingProduct.sizeVariants.length > 0) {
-        setSizeVariants(existingProduct.sizeVariants.map(variant => ({
-          id: variant.id,
-          name: variant.name,
-          inStock: variant.inStock,
-          priceOriginal: variant.priceOriginal || existingProduct.price.original,
-          priceDiscounted: variant.priceDiscounted || existingProduct.price.discounted,
-          isNew: false // Existing variants are not new
-        })));
-      }
-
-      // Set specifications from existing product
-      if (existingProduct.specifications) {
-        if (Array.isArray(existingProduct.specifications)) {
-          setSpecifications(existingProduct.specifications.map((spec, index) => ({
-            key: `Specification ${index + 1}`,
-            value: spec
-          })));
-        } else if (typeof existingProduct.specifications === 'object') {
-          setSpecifications(Object.entries(existingProduct.specifications).map(([key, value]) => ({
-            key,
-            value: value as string
-          })));
+        // Load color variants with proper structure
+        if (existingProduct.colorVariants && Array.isArray(existingProduct.colorVariants) && existingProduct.colorVariants.length > 0) {
+          const loadedColorVariants = existingProduct.colorVariants.map((variant: any) => ({
+            id: variant.id, // Use existing UUID from database
+            name: variant.name || "",
+            colorCode: variant.colorCode || "#ffffff",
+            isExisting: true, // Mark as existing
+            images: Array(6).fill(null).map((_, index) => {
+              const existingImage = variant.images && variant.images[index];
+              if (existingImage) {
+                return {
+                  id: existingImage.id || undefined,
+                  url: existingImage.url || existingImage.image_url || "",
+                  filename: existingImage.filename || existingImage.media_file_name || "",
+                  fileType: existingImage.fileType || existingImage.media_file_type || "jpg"
+                };
+              }
+              return { url: "", filename: "", fileType: "jpg" };
+            })
+          }));
+          setColorVariants(loadedColorVariants);
+          console.log('Loaded color variants:', loadedColorVariants);
         }
+
+        // Load size variants with proper structure
+        if (existingProduct.sizeVariants && Array.isArray(existingProduct.sizeVariants) && existingProduct.sizeVariants.length > 0) {
+          const loadedSizeVariants = existingProduct.sizeVariants.map((variant: any) => ({
+            id: variant.id, // Use existing UUID from database
+            name: variant.name || "",
+            inStock: variant.inStock !== false,
+            priceOriginal: variant.priceOriginal || existingProduct.price?.original || 0,
+            priceDiscounted: variant.priceDiscounted || existingProduct.price?.discounted || undefined,
+            isExisting: true // Mark as existing
+          }));
+          setSizeVariants(loadedSizeVariants);
+          console.log('Loaded size variants:', loadedSizeVariants);
+        }
+
+        // Load specifications
+        if (existingProduct.specifications) {
+          let loadedSpecs: Specification[] = [];
+          if (Array.isArray(existingProduct.specifications)) {
+            loadedSpecs = existingProduct.specifications.map((spec: any, index: number) => ({
+              key: `Specification ${index + 1}`,
+              value: typeof spec === 'string' ? spec : spec.value || ""
+            }));
+          } else if (typeof existingProduct.specifications === 'object') {
+            loadedSpecs = Object.entries(existingProduct.specifications).map(([key, value]) => ({
+              key,
+              value: value as string
+            }));
+          }
+          if (loadedSpecs.length > 0) {
+            setSpecifications(loadedSpecs);
+          }
+        }
+
+      } catch (error) {
+        console.error('Error loading existing product data:', error);
+        toast({
+          title: "Warning",
+          description: "Some product data could not be loaded properly. Please verify all fields.",
+          variant: "destructive"
+        });
       }
     }
   }, [isEditMode, existingProduct]);
 
-  // Generate slug when title changes
+  // Generate slug when title changes (only for new products)
   useEffect(() => {
     if (!isEditMode && title) {
       const newSlug = title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
@@ -213,7 +231,7 @@ const AdminProductForm = () => {
     }
   }, [title, isEditMode]);
 
-  // Auto-fill size prices when base price changes
+  // Auto-fill size prices when base price changes (only for new products)
   useEffect(() => {
     if (originalPrice && !isEditMode) {
       const basePrice = parseFloat(originalPrice);
@@ -229,41 +247,61 @@ const AdminProductForm = () => {
     }
   }, [originalPrice, discountedPrice, isEditMode]);
 
-  // Handle form submission
+  // Comprehensive form validation
+  const validateForm = (): boolean => {
+    const errors: string[] = [];
+
+    if (!title.trim()) errors.push("Title is required");
+    if (!shortDescription.trim()) errors.push("Short description is required");
+    if (!originalPrice || parseFloat(originalPrice) <= 0) errors.push("Valid original price is required");
+    if (!mainCategoryId) errors.push("Main category is required");
+    if (!subCategoryId) errors.push("Subcategory is required");
+    if (!slug.trim()) errors.push("Slug is required");
+
+    // Validate color variants
+    const validColorVariants = colorVariants.filter(v => v.name.trim() && v.colorCode);
+    if (validColorVariants.length === 0) {
+      errors.push("At least one color variant with name and color code is required");
+    }
+
+    // Validate size variants
+    const validSizeVariants = sizeVariants.filter(v => v.name.trim() && v.priceOriginal > 0);
+    if (validSizeVariants.length === 0) {
+      errors.push("At least one size variant with name and valid price is required");
+    }
+
+    if (errors.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: errors.join(", "),
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  // Simplified form submission with proper error handling
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form
-    if (!title || !shortDescription || !originalPrice || !mainCategoryId || !subCategoryId) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Validate size pricing
-    const invalidSizes = sizeVariants.filter(size => size.name && (!size.priceOriginal || size.priceOriginal <= 0));
-    if (invalidSizes.length > 0) {
-      toast({
-        title: "Validation Error",
-        description: "All sizes must have a valid original price greater than 0.",
-        variant: "destructive"
-      });
+    if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
     
     try {
+      console.log('Starting form submission...');
+      
       // Get media server config
       const mediaServerConfig = await getActiveMediaServerConfig();
       if (!mediaServerConfig) {
         throw new Error('No active media server configuration found');
       }
 
-      // Create specifications object from array
+      // Create specifications object
       const specsObj: Record<string, string> = {};
       specifications.forEach(spec => {
         if (spec.key && spec.value) {
@@ -273,10 +311,10 @@ const AdminProductForm = () => {
 
       // Prepare product data
       const productData = {
-        title,
-        slug,
-        short_description: shortDescription,
-        long_description: longDescription,
+        title: title.trim(),
+        slug: slug.trim(),
+        short_description: shortDescription.trim(),
+        long_description: longDescription.trim() || null,
         price_original: parseFloat(originalPrice),
         price_discounted: discountedPrice ? parseFloat(discountedPrice) : null,
         category_id: mainCategoryId,
@@ -294,6 +332,7 @@ const AdminProductForm = () => {
       let productId = id;
       
       if (isEditMode) {
+        console.log('Updating existing product...');
         // Update existing product
         const { error: productError } = await supabase
           .from('products')
@@ -302,12 +341,8 @@ const AdminProductForm = () => {
           
         if (productError) throw productError;
         productId = id;
-        
-        toast({
-          title: "Product Updated",
-          description: `${title} has been successfully updated.`
-        });
       } else {
+        console.log('Creating new product...');
         // Create new product
         const { data: newProduct, error: productError } = await supabase
           .from('products')
@@ -317,244 +352,111 @@ const AdminProductForm = () => {
           
         if (productError) throw productError;
         productId = newProduct.id;
-        
-        toast({
-          title: "Product Created",
-          description: `${title} has been successfully created.`
-        });
       }
 
-      // Handle color variants and images with intelligent updates
+      // Handle color variants with simplified logic
+      console.log('Processing color variants...');
+      
       if (isEditMode) {
-        // Instead of deleting everything, we'll update intelligently
+        // For edit mode: Clear existing variants and recreate
+        await supabase.from('product_images').delete().eq('product_id', productId);
+        await supabase.from('product_colors').delete().eq('product_id', productId);
+      }
+
+      // Process valid color variants
+      const validColorVariants = colorVariants.filter(v => v.name.trim() && v.colorCode);
+      for (const colorVariant of validColorVariants) {
+        console.log('Processing color variant:', colorVariant.name);
         
-        // Get existing color variants to compare
-        const { data: existingColors } = await supabase
+        const colorData = {
+          product_id: productId,
+          name: colorVariant.name.trim(),
+          color_code: colorVariant.colorCode
+        };
+
+        const { data: newColor, error: colorError } = await supabase
           .from('product_colors')
-          .select('id, name, color_code')
-          .eq('product_id', productId);
-        
-        const existingColorIds = new Set((existingColors || []).map(c => c.id));
-        
-        // Handle color variants
-        for (const colorVariant of colorVariants) {
-          if (colorVariant.name && colorVariant.colorCode) {
-            if (colorVariant.isNew) {
-              // Create new color variant
-              const colorData = {
+          .insert(colorData)
+          .select()
+          .single();
+          
+        if (colorError) {
+          console.error('Error creating color variant:', colorError);
+          throw colorError;
+        }
+
+        // Handle images for this color
+        for (let i = 0; i < colorVariant.images.length; i++) {
+          const imageData = colorVariant.images[i];
+          if (imageData.url && imageData.filename && imageData.fileType) {
+            console.log(`Saving image ${i + 1} for color ${colorVariant.name}`);
+            
+            const { error: imageError } = await supabase
+              .from('product_images')
+              .insert({
                 product_id: productId,
-                name: colorVariant.name,
-                color_code: colorVariant.colorCode
-              };
-
-              const { data: newColor, error: colorError } = await supabase
-                .from('product_colors')
-                .insert(colorData)
-                .select()
-                .single();
-                
-              if (colorError) throw colorError;
-
-              // Handle images for new color
-              for (let i = 0; i < colorVariant.images.length; i++) {
-                const imageData = colorVariant.images[i];
-                if (imageData.url && imageData.filename && imageData.fileType) {
-                  const { error: imageError } = await supabase
-                    .from('product_images')
-                    .insert({
-                      product_id: productId,
-                      color_id: newColor.id,
-                      image_url: imageData.url,
-                      media_server_api_url_fk: mediaServerConfig.id,
-                      media_file_name: imageData.filename,
-                      media_file_type: imageData.fileType,
-                      is_primary: i === 0
-                    });
-                    
-                  if (imageError) {
-                    console.error('Error saving image:', imageError);
-                  }
-                }
-              }
-            } else {
-              // Update existing color variant
-              const { error: colorUpdateError } = await supabase
-                .from('product_colors')
-                .update({
-                  name: colorVariant.name,
-                  color_code: colorVariant.colorCode
-                })
-                .eq('id', colorVariant.id);
-                
-              if (colorUpdateError) throw colorUpdateError;
-
-              // Handle images for existing color - only update changed images
-              for (let i = 0; i < colorVariant.images.length; i++) {
-                const imageData = colorVariant.images[i];
-                
-                if (imageData.isNew && imageData.url && imageData.filename && imageData.fileType) {
-                  // New image - insert it
-                  const { error: imageError } = await supabase
-                    .from('product_images')
-                    .insert({
-                      product_id: productId,
-                      color_id: colorVariant.id,
-                      image_url: imageData.url,
-                      media_server_api_url_fk: mediaServerConfig.id,
-                      media_file_name: imageData.filename,
-                      media_file_type: imageData.fileType,
-                      is_primary: i === 0
-                    });
-                    
-                  if (imageError) {
-                    console.error('Error saving new image:', imageError);
-                  }
-                } else if (!imageData.isNew && imageData.originalImageId && imageData.url) {
-                  // Existing image - update if changed
-                  const { error: imageUpdateError } = await supabase
-                    .from('product_images')
-                    .update({
-                      image_url: imageData.url,
-                      media_file_name: imageData.filename,
-                      media_file_type: imageData.fileType,
-                      is_primary: i === 0
-                    })
-                    .eq('id', imageData.originalImageId);
-                    
-                  if (imageUpdateError) {
-                    console.error('Error updating image:', imageUpdateError);
-                  }
-                }
-                // If imageData.isNew is false and no originalImageId, it means it's an empty slot - do nothing
-              }
-
-              // Remove this color from the existing set
-              existingColorIds.delete(colorVariant.id);
+                color_id: newColor.id,
+                image_url: imageData.url,
+                media_server_api_url_fk: mediaServerConfig.id,
+                media_file_name: imageData.filename,
+                media_file_type: imageData.fileType,
+                is_primary: i === 0
+              });
+              
+            if (imageError) {
+              console.error('Error saving image:', imageError);
             }
           }
         }
-        
-        // Delete colors that are no longer present
-        for (const colorIdToDelete of existingColorIds) {
-          // Delete associated images first
-          await supabase.from('product_images').delete().eq('color_id', colorIdToDelete);
-          // Then delete the color
-          await supabase.from('product_colors').delete().eq('id', colorIdToDelete);
-        }
+      }
 
-        // Handle size variants similarly
-        const { data: existingSizes } = await supabase
+      // Handle size variants with simplified logic
+      console.log('Processing size variants...');
+      
+      if (isEditMode) {
+        // For edit mode: Clear existing size variants
+        await supabase.from('product_sizes').delete().eq('product_id', productId);
+      }
+
+      // Process valid size variants
+      const validSizeVariants = sizeVariants.filter(v => v.name.trim() && v.priceOriginal > 0);
+      for (const sizeVariant of validSizeVariants) {
+        console.log('Processing size variant:', sizeVariant.name);
+        
+        const sizeData = {
+          product_id: productId,
+          name: sizeVariant.name.trim(),
+          in_stock: sizeVariant.inStock,
+          price_original: sizeVariant.priceOriginal,
+          price_discounted: sizeVariant.priceDiscounted || null
+        };
+
+        const { error: sizeError } = await supabase
           .from('product_sizes')
-          .select('id, name')
-          .eq('product_id', productId);
-        
-        const existingSizeIds = new Set((existingSizes || []).map(s => s.id));
-        
-        for (const sizeVariant of sizeVariants) {
-          if (sizeVariant.name && sizeVariant.priceOriginal > 0) {
-            const sizeData = {
-              product_id: productId,
-              name: sizeVariant.name,
-              in_stock: sizeVariant.inStock,
-              price_original: sizeVariant.priceOriginal,
-              price_discounted: sizeVariant.priceDiscounted || null
-            };
-
-            if (sizeVariant.isNew) {
-              const { error: sizeError } = await supabase
-                .from('product_sizes')
-                .insert(sizeData);
-                
-              if (sizeError) throw sizeError;
-            } else {
-              const { error: sizeUpdateError } = await supabase
-                .from('product_sizes')
-                .update(sizeData)
-                .eq('id', sizeVariant.id);
-                
-              if (sizeUpdateError) throw sizeUpdateError;
-              
-              existingSizeIds.delete(sizeVariant.id);
-            }
-          }
-        }
-        
-        // Delete sizes that are no longer present
-        for (const sizeIdToDelete of existingSizeIds) {
-          await supabase.from('product_sizes').delete().eq('id', sizeIdToDelete);
-        }
-      } else {
-        // Create mode - original logic for new products
-        for (const colorVariant of colorVariants) {
-          if (colorVariant.name && colorVariant.colorCode) {
-            const colorData = {
-              product_id: productId,
-              name: colorVariant.name,
-              color_code: colorVariant.colorCode
-            };
-
-            const { data: newColor, error: colorError } = await supabase
-              .from('product_colors')
-              .insert(colorData)
-              .select()
-              .single();
-              
-            if (colorError) throw colorError;
-
-            // Handle images for this color
-            for (let i = 0; i < colorVariant.images.length; i++) {
-              const imageData = colorVariant.images[i];
-              if (imageData.url && imageData.filename && imageData.fileType) {
-                const { error: imageError } = await supabase
-                  .from('product_images')
-                  .insert({
-                    product_id: productId,
-                    color_id: newColor.id,
-                    image_url: imageData.url,
-                    media_server_api_url_fk: mediaServerConfig.id,
-                    media_file_name: imageData.filename,
-                    media_file_type: imageData.fileType,
-                    is_primary: i === 0
-                  });
-                  
-                if (imageError) {
-                  console.error('Error saving image:', imageError);
-                }
-              }
-            }
-          }
-        }
-
-        // Add size variants with individual pricing
-        for (const sizeVariant of sizeVariants) {
-          if (sizeVariant.name && sizeVariant.priceOriginal > 0) {
-            const sizeData = {
-              product_id: productId,
-              name: sizeVariant.name,
-              in_stock: sizeVariant.inStock,
-              price_original: sizeVariant.priceOriginal,
-              price_discounted: sizeVariant.priceDiscounted || null
-            };
-
-            const { error: sizeError } = await supabase
-              .from('product_sizes')
-              .insert(sizeData);
-              
-            if (sizeError) throw sizeError;
-          }
+          .insert(sizeData);
+          
+        if (sizeError) {
+          console.error('Error creating size variant:', sizeError);
+          throw sizeError;
         }
       }
 
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["products"] });
       
+      toast({
+        title: isEditMode ? "Product Updated" : "Product Created",
+        description: `${title} has been successfully ${isEditMode ? 'updated' : 'created'}.`
+      });
+      
       // Redirect back to products page
       navigate("/admin/products");
-    } catch (error) {
+      
+    } catch (error: any) {
       console.error("Error saving product:", error);
       toast({
         title: "Error",
-        description: "There was an error saving the product. Please try again.",
+        description: error.message || "There was an error saving the product. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -562,10 +464,9 @@ const AdminProductForm = () => {
     }
   };
 
-  // Standardized function to add a color variant
+  // Add a color variant
   const addColorVariant = () => {
     const newVariant = createNewColorVariant();
-    newVariant.isNew = true; // Mark as new variant
     console.log('Adding new color variant:', newVariant);
     setColorVariants([...colorVariants, newVariant]);
   };
@@ -576,7 +477,7 @@ const AdminProductForm = () => {
     setColorVariants(colorVariants.filter(variant => variant.id !== id));
   };
 
-  // Update color variant with debugging
+  // Update color variant
   const updateColorVariant = (id: string, field: keyof ColorVariant, value: any) => {
     console.log(`Updating color variant ${id}, field: ${field}`, value);
     setColorVariants(colorVariants.map(variant => 
@@ -584,34 +485,21 @@ const AdminProductForm = () => {
     ));
   };
 
-  // Handle image upload with enhanced debugging and proper tracking
+  // Handle image upload
   const handleImageUpload = (colorId: string, imageIndex: number, url: string, filename: string, fileType: string) => {
-    console.log(`=== IMAGE UPLOAD DEBUG ===`);
-    console.log('Target Color ID:', colorId);
-    console.log('Image Index:', imageIndex);
-    console.log('URL:', url);
-    console.log('Filename:', filename);
-    console.log('File Type:', fileType);
+    console.log(`Uploading image for color ${colorId}, index ${imageIndex}`);
     
     setColorVariants(colorVariants.map(variant => {
       if (variant.id === colorId) {
-        console.log(`Updating images for variant: ${variant.id} (${variant.name || 'Unnamed'})`);
         const updatedImages = [...variant.images];
-        updatedImages[imageIndex] = { 
-          url, 
-          filename, 
-          fileType, 
-          isNew: true // Mark as new image
-        };
-        console.log('Updated images array:', updatedImages);
+        updatedImages[imageIndex] = { url, filename, fileType };
         return { ...variant, images: updatedImages };
       }
       return variant;
     }));
-    console.log(`=== END IMAGE UPLOAD DEBUG ===`);
   };
 
-  // Remove image with media server cleanup and proper tracking
+  // Remove image
   const removeImage = async (colorId: string, imageIndex: number) => {
     console.log(`Removing image ${imageIndex} from color variant ${colorId}`);
     const variant = colorVariants.find(v => v.id === colorId);
@@ -623,11 +511,11 @@ const AdminProductForm = () => {
         await deleteFromMediaServer(imageData.filename, imageData.fileType);
       }
 
-      // Update state - mark as removed/empty
+      // Update state
       setColorVariants(colorVariants.map(v => {
         if (v.id === colorId) {
           const updatedImages = [...v.images];
-          updatedImages[imageIndex] = { url: "", filename: "", fileType: "", isNew: true };
+          updatedImages[imageIndex] = { url: "", filename: "", fileType: "" };
           return { ...v, images: updatedImages };
         }
         return v;
@@ -635,7 +523,7 @@ const AdminProductForm = () => {
     }
   };
 
-  // Add a size variant
+  // Size variant functions
   const addSizeVariant = () => {
     const basePrice = parseFloat(originalPrice) || 0;
     const baseDiscounted = discountedPrice ? parseFloat(discountedPrice) : undefined;
@@ -643,29 +531,27 @@ const AdminProductForm = () => {
     setSizeVariants([
       ...sizeVariants,
       { 
-        id: `size-${Date.now()}`, 
+        id: generateUUID(), 
         name: "", 
         inStock: true, 
         priceOriginal: basePrice,
         priceDiscounted: baseDiscounted,
-        isNew: true // Mark as new variant
+        isExisting: false
       }
     ]);
   };
 
-  // Remove a size variant
   const removeSizeVariant = (id: string) => {
     setSizeVariants(sizeVariants.filter(variant => variant.id !== id));
   };
 
-  // Update size variant
   const updateSizeVariant = (id: string, field: keyof SizeVariant, value: any) => {
     setSizeVariants(sizeVariants.map(variant => 
       variant.id === id ? { ...variant, [field]: value } : variant
     ));
   };
 
-  // Add a specification
+  // Specification functions
   const addSpecification = () => {
     setSpecifications([
       ...specifications,
@@ -673,14 +559,12 @@ const AdminProductForm = () => {
     ]);
   };
 
-  // Remove a specification
   const removeSpecification = (index: number) => {
     const newSpecifications = [...specifications];
     newSpecifications.splice(index, 1);
     setSpecifications(newSpecifications);
   };
 
-  // Update specification
   const updateSpecification = (index: number, field: keyof Specification, value: string) => {
     const newSpecifications = [...specifications];
     newSpecifications[index] = {
@@ -714,120 +598,6 @@ const AdminProductForm = () => {
       </AdminProtectedRoute>
     );
   }
-
-  // Enhanced Color Variants Tab with better visual distinction
-  const renderColorVariantsTab = () => (
-    <TabsContent value="colors">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Color Variants</CardTitle>
-          <Button onClick={addColorVariant} type="button" variant="outline">
-            <Plus className="mr-2 h-4 w-4" /> Add Color
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-8">
-            {colorVariants.map((variant, index) => (
-              <div 
-                key={variant.id} 
-                className="border-2 rounded-lg p-6 bg-gradient-to-r from-gray-50 to-white"
-                style={{ 
-                  borderColor: variant.colorCode || '#e5e7eb',
-                  boxShadow: `0 2px 8px ${variant.colorCode}20`
-                }}
-              >
-                <div className="flex justify-between items-center mb-6">
-                  <div className="flex items-center gap-4">
-                    <h3 className="text-lg font-semibold">
-                      Color Variant #{index + 1}
-                    </h3>
-                    <div 
-                      className="w-8 h-8 rounded-full border-2 border-gray-300 shadow-sm"
-                      style={{ backgroundColor: variant.colorCode }}
-                      title={`Color: ${variant.name || 'Unnamed'}`}
-                    />
-                    {variant.name && (
-                      <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                        {variant.name}
-                      </span>
-                    )}
-                  </div>
-                  <Button
-                    onClick={() => removeColorVariant(variant.id)}
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={colorVariants.length === 1}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="space-y-2">
-                    <Label htmlFor={`color-name-${variant.id}`}>Color Name</Label>
-                    <Input
-                      id={`color-name-${variant.id}`}
-                      value={variant.name}
-                      onChange={(e) => updateColorVariant(variant.id, "name", e.target.value)}
-                      placeholder="e.g. Navy Blue"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`color-code-${variant.id}`}>Color Code</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id={`color-code-${variant.id}`}
-                        type="color"
-                        value={variant.colorCode}
-                        onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
-                        className="w-12 h-10 p-1"
-                      />
-                      <Input
-                        value={variant.colorCode}
-                        onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
-                        placeholder="#000000"
-                        className="flex-1"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Enhanced Image Upload Section */}
-                <div className="border-t pt-4">
-                  <h4 className="text-md font-medium mb-4 text-gray-700">
-                    Images for {variant.name || `Color #${index + 1}`}
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    {Array.from({ length: 6 }, (_, imgIndex) => (
-                      <div key={`${variant.id}-img-${imgIndex}`} className="relative">
-                        <MediaServerImageUpload
-                          key={`${variant.id}-${imgIndex}`}
-                          label={`${variant.name || `Color #${index + 1}`} - Image ${imgIndex + 1}`}
-                          value={variant.images[imgIndex]?.url || ''}
-                          filename={variant.images[imgIndex]?.filename}
-                          fileType={variant.images[imgIndex]?.fileType}
-                          onChange={(url, filename, fileType) => {
-                            handleImageUpload(variant.id, imgIndex, url, filename, fileType);
-                          }}
-                          onRemove={() => removeImage(variant.id, imgIndex)}
-                        />
-                        {/* Debug indicator */}
-                        <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-1 rounded">
-                          {variant.id.slice(-4)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </TabsContent>
-  );
 
   return (
     <AdminProtectedRoute>
@@ -867,7 +637,7 @@ const AdminProductForm = () => {
               <TabsContent value="basic">
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="title">Title</Label>
+                    <Label htmlFor="title">Title *</Label>
                     <Input
                       id="title"
                       value={title}
@@ -876,7 +646,7 @@ const AdminProductForm = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="slug">Slug</Label>
+                    <Label htmlFor="slug">Slug *</Label>
                     <Input
                       id="slug"
                       value={slug}
@@ -885,7 +655,7 @@ const AdminProductForm = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="shortDescription">Short Description</Label>
+                    <Label htmlFor="shortDescription">Short Description *</Label>
                     <Textarea
                       id="shortDescription"
                       value={shortDescription}
@@ -903,7 +673,7 @@ const AdminProductForm = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="originalPrice">Base Original Price</Label>
+                      <Label htmlFor="originalPrice">Base Original Price *</Label>
                       <Input
                         id="originalPrice"
                         type="number"
@@ -913,7 +683,6 @@ const AdminProductForm = () => {
                         onChange={(e) => setOriginalPrice(e.target.value)}
                         required
                       />
-                      <p className="text-sm text-gray-500 mt-1">This will be used as default for all sizes</p>
                     </div>
                     <div>
                       <Label htmlFor="discountedPrice">Base Discounted Price</Label>
@@ -925,12 +694,11 @@ const AdminProductForm = () => {
                         value={discountedPrice}
                         onChange={(e) => setDiscountedPrice(e.target.value)}
                       />
-                      <p className="text-sm text-gray-500 mt-1">Optional default discount for all sizes</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="mainCategory">Main Category</Label>
+                      <Label htmlFor="mainCategory">Main Category *</Label>
                       <Select
                         value={mainCategoryId}
                         onValueChange={(value) => setMainCategoryId(value)}
@@ -948,7 +716,7 @@ const AdminProductForm = () => {
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="subCategory">Subcategory</Label>
+                      <Label htmlFor="subCategory">Subcategory *</Label>
                       <Select
                         value={subCategoryId}
                         onValueChange={(value) => setSubCategoryId(value)}
@@ -967,24 +735,26 @@ const AdminProductForm = () => {
                       </Select>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="space-y-2">
                     <Label>Age Ranges</Label>
-                    {AGE_RANGES.map((ageRange) => (
-                      <div key={ageRange} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`ageRange-${ageRange}`}
-                          checked={selectedAgeRanges.includes(ageRange)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedAgeRanges([...selectedAgeRanges, ageRange]);
-                            } else {
-                              setSelectedAgeRanges(selectedAgeRanges.filter(a => a !== ageRange));
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`ageRange-${ageRange}`}>{ageRange}</Label>
-                      </div>
-                    ))}
+                    <div className="flex flex-wrap gap-2">
+                      {AGE_RANGES.map((ageRange) => (
+                        <div key={ageRange} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`ageRange-${ageRange}`}
+                            checked={selectedAgeRanges.includes(ageRange)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedAgeRanges([...selectedAgeRanges, ageRange]);
+                              } else {
+                                setSelectedAgeRanges(selectedAgeRanges.filter(a => a !== ageRange));
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`ageRange-${ageRange}`}>{ageRange}</Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex gap-4">
                     <div className="flex items-center space-x-2">
@@ -1023,10 +793,114 @@ const AdminProductForm = () => {
                 </div>
               </TabsContent>
 
-              {/* Enhanced Color Variants Tab */}
-              {renderColorVariantsTab()}
+              {/* Color Variants Tab */}
+              <TabsContent value="colors">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Color Variants</CardTitle>
+                    <Button onClick={addColorVariant} type="button" variant="outline">
+                      <Plus className="mr-2 h-4 w-4" /> Add Color
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-8">
+                      {colorVariants.map((variant, index) => (
+                        <div 
+                          key={variant.id} 
+                          className="border-2 rounded-lg p-6 bg-gradient-to-r from-gray-50 to-white"
+                          style={{ 
+                            borderColor: variant.colorCode || '#e5e7eb',
+                            boxShadow: `0 2px 8px ${variant.colorCode}20`
+                          }}
+                        >
+                          <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center gap-4">
+                              <h3 className="text-lg font-semibold">
+                                Color Variant #{index + 1}
+                              </h3>
+                              <div 
+                                className="w-8 h-8 rounded-full border-2 border-gray-300 shadow-sm"
+                                style={{ backgroundColor: variant.colorCode }}
+                                title={`Color: ${variant.name || 'Unnamed'}`}
+                              />
+                              {variant.name && (
+                                <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                                  {variant.name}
+                                </span>
+                              )}
+                            </div>
+                            <Button
+                              onClick={() => removeColorVariant(variant.id)}
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={colorVariants.length === 1}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
 
-              {/* Enhanced Size Variants Tab with Pricing */}
+                          <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="space-y-2">
+                              <Label htmlFor={`color-name-${variant.id}`}>Color Name</Label>
+                              <Input
+                                id={`color-name-${variant.id}`}
+                                value={variant.name}
+                                onChange={(e) => updateColorVariant(variant.id, "name", e.target.value)}
+                                placeholder="e.g. Navy Blue"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`color-code-${variant.id}`}>Color Code</Label>
+                              <div className="flex gap-2 items-center">
+                                <Input
+                                  id={`color-code-${variant.id}`}
+                                  type="color"
+                                  value={variant.colorCode}
+                                  onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
+                                  className="w-12 h-10 p-1"
+                                />
+                                <Input
+                                  value={variant.colorCode}
+                                  onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
+                                  placeholder="#000000"
+                                  className="flex-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="border-t pt-4">
+                            <h4 className="text-md font-medium mb-4 text-gray-700">
+                              Images for {variant.name || `Color #${index + 1}`}
+                            </h4>
+                            <div className="grid grid-cols-2 gap-4">
+                              {Array.from({ length: 6 }, (_, imgIndex) => (
+                                <div key={`${variant.id}-img-${imgIndex}`} className="relative">
+                                  <MediaServerImageUpload
+                                    key={`${variant.id}-${imgIndex}`}
+                                    label={`${variant.name || `Color #${index + 1}`} - Image ${imgIndex + 1}`}
+                                    value={variant.images[imgIndex]?.url || ''}
+                                    filename={variant.images[imgIndex]?.filename}
+                                    fileType={variant.images[imgIndex]?.fileType}
+                                    onChange={(url, filename, fileType) => {
+                                      handleImageUpload(variant.id, imgIndex, url, filename, fileType);
+                                    }}
+                                    onRemove={() => removeImage(variant.id, imgIndex)}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Size Variants Tab */}
               <TabsContent value="sizes">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
@@ -1094,15 +968,6 @@ const AdminProductForm = () => {
                           </div>
                         </div>
                       ))}
-                    </div>
-                    <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                      <h4 className="font-medium text-blue-800 mb-2">Pricing Tips:</h4>
-                      <ul className="text-sm text-blue-700 space-y-1">
-                        <li>• Each size can have its own unique pricing</li>
-                        <li>• Base prices from the Basic Info tab will auto-fill new sizes</li>
-                        <li>• Original price is required for all sizes</li>
-                        <li>• Discounted price is optional and will show as sale price</li>
-                      </ul>
                     </div>
                   </CardContent>
                 </Card>
