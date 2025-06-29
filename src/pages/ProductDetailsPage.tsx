@@ -127,8 +127,23 @@ const ProductDetailsPage = () => {
   const currentPrice = getCurrentPrice();
   const hasDiscount = currentPrice.discounted !== undefined && currentPrice.discounted < currentPrice.original;
 
+  // Generate SEO data for product
+  const productSEOTitle = `${product.title} - Buy Online at Best Price | Cutebae`;
+  const productSEODescription = `${product.shortDescription} Shop ${product.title} online at Cutebae.in. ₹${currentPrice.discounted || currentPrice.original} with fast delivery across India.`;
+  const productKeywords = `${product.title}, kids wear, buy ${product.title} online, children clothes, cutebae`;
+
   return (
-    <MainLayout>
+    <MainLayout
+      seoTitle={productSEOTitle}
+      seoDescription={productSEODescription}
+      seoKeywords={productKeywords}
+      canonicalUrl={`https://cutebae.in/product/${product.slug}`}
+      ogImage={selectedColor.images[0] || "/placeholder.svg"}
+      structuredData={{
+        type: 'product',
+        data: product
+      }}
+    >
       <div className="container-custom py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Product Images */}

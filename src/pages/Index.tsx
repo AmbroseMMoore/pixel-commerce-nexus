@@ -13,7 +13,16 @@ const Index = () => {
   const { categories, isLoading: categoriesLoading } = useCategories();
 
   return (
-    <MainLayout>
+    <MainLayout
+      seoTitle="Cutebae – Trendy & Cute Kids Wear Online in India | Best Baby Clothes"
+      seoDescription="Shop adorable, comfy, and affordable kidswear online at Cutebae.in. Discover stylish outfits for boys & girls aged 0-12 years with fast delivery & easy exchanges across India."
+      seoKeywords="kids wear online India, baby clothes online, cute dresses for girls, boys t-shirts, toddler clothing, infant outfits, kids fashion, children clothes, cutebae kidswear, trendy kids clothes"
+      canonicalUrl="https://cutebae.in/"
+      structuredData={{
+        type: 'website',
+        data: {}
+      }}
+    >
       <HeroSlider />
       <CategorySection 
         categories={categories}
