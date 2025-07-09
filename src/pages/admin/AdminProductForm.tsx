@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProductById } from "@/hooks/useProducts";
-import MediaServerImageUpload from "@/components/admin/MediaServerImageUpload";
+import ReorderableImageGrid from "@/components/admin/ReorderableImageGrid";
 import { deleteFromMediaServer, getActiveMediaServerConfig } from "@/services/mediaServerApi";
 
 // Utility function to generate proper UUID
@@ -533,8 +533,8 @@ const AdminProductForm = () => {
     }));
   };
 
-  // Remove image
-  const removeImage = async (colorId: string, imageIndex: number) => {
+  // Handle image removal
+  const handleImageRemove = async (colorId: string, imageIndex: number) => {
     console.log(`Removing image ${imageIndex} from color variant ${colorId}`);
     const variant = colorVariants.find(v => v.id === colorId);
     if (variant && variant.images[imageIndex]) {
@@ -549,12 +549,33 @@ const AdminProductForm = () => {
       setColorVariants(colorVariants.map(v => {
         if (v.id === colorId) {
           const updatedImages = [...v.images];
-          updatedImages[imageIndex] = { url: "", filename: "", fileType: "" };
+          updatedImages[imageIndex] = { url: "", filename: "", fileType: "jpg" };
           return { ...v, images: updatedImages };
         }
         return v;
       }));
     }
+  };
+
+  // Handle image reordering
+  const handleImageReorder = (colorId: string, oldIndex: number, newIndex: number) => {
+    console.log(`Reordering images for color ${colorId}: ${oldIndex} -> ${newIndex}`);
+    setColorVariants(prevVariants =>
+      prevVariants.map(variant => {
+        if (variant.id === colorId) {
+          const updatedImages = [...variant.images];
+          const [movedImage] = updatedImages.splice(oldIndex, 1);
+          updatedImages.splice(newIndex, 0, movedImage);
+          return { ...variant, images: updatedImages };
+        }
+        return variant;
+      })
+    );
+  };
+
+  // Legacy remove image function for backward compatibility
+  const removeImage = (colorId: string, imageIndex: number) => {
+    handleImageRemove(colorId, imageIndex);
   };
 
   // Size variant functions
@@ -906,26 +927,21 @@ const AdminProductForm = () => {
                           </div>
 
                           <div className="border-t pt-4">
-                            <h4 className="text-md font-medium mb-4 text-gray-700">
-                              Images for {variant.name || `Color #${index + 1}`}
-                            </h4>
-                            <div className="grid grid-cols-2 gap-4">
-                              {Array.from({ length: 6 }, (_, imgIndex) => (
-                                <div key={`${variant.id}-img-${imgIndex}`} className="relative">
-                                  <MediaServerImageUpload
-                                    key={`${variant.id}-${imgIndex}`}
-                                    label={`${variant.name || `Color #${index + 1}`} - Image ${imgIndex + 1}`}
-                                    value={variant.images[imgIndex]?.url || ''}
-                                    filename={variant.images[imgIndex]?.filename}
-                                    fileType={variant.images[imgIndex]?.fileType}
-                                    onChange={(url, filename, fileType) => {
-                                      handleImageUpload(variant.id, imgIndex, url, filename, fileType);
-                                    }}
-                                    onRemove={() => removeImage(variant.id, imgIndex)}
-                                  />
-                                </div>
-                              ))}
-                            </div>
+                            <ReorderableImageGrid
+                              colorVariantId={variant.id}
+                              colorVariantName={variant.name || `Color #${index + 1}`}
+                              images={variant.images}
+                              onImageChange={(imageIndex, url, filename, fileType) =>
+                                handleImageUpload(variant.id, imageIndex, url, filename, fileType)
+                              }
+                              onImageRemove={(imageIndex) =>
+                                handleImageRemove(variant.id, imageIndex)
+                              }
+                              onReorder={(oldIndex, newIndex) =>
+                                handleImageReorder(variant.id, oldIndex, newIndex)
+                              }
+                              maxImages={6}
+                            />
                           </div>
                         </div>
                       ))}
