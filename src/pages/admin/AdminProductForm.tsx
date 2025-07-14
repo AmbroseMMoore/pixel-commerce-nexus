@@ -55,7 +55,7 @@ const AdminProductForm = () => {
   const { id } = useParams();
   const isEditing = Boolean(id);
   
-  const { data: categories, isLoading: categoriesLoading } = useCategories();
+  const { categories, isLoading: categoriesLoading } = useCategories();
   const [subcategories, setSubcategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [colorVariants, setColorVariants] = useState<ColorVariant[]>([]);
@@ -127,6 +127,20 @@ const AdminProductForm = () => {
 
         if (productError) throw productError;
 
+        // Parse specifications safely
+        let productSpecs: Record<string, string> = {};
+        if (product.specifications && typeof product.specifications === 'object') {
+          try {
+            // Convert Json type to Record<string, string>
+            productSpecs = Object.entries(product.specifications).reduce((acc, [key, value]) => {
+              acc[key] = String(value);
+              return acc;
+            }, {} as Record<string, string>);
+          } catch (e) {
+            console.error("Error parsing specifications:", e);
+          }
+        }
+
         // Populate form with product data
         form.reset({
           title: product.title,
@@ -140,11 +154,11 @@ const AdminProductForm = () => {
           subcategoryId: product.subcategory_id,
           isFeatured: product.is_featured || false,
           isTrending: product.is_trending || false,
-          specifications: product.specifications || {},
+          specifications: productSpecs,
         });
 
         // Set specifications
-        setSpecifications(product.specifications || {});
+        setSpecifications(productSpecs);
 
         // Set age ranges
         setAgeRanges(product.age_ranges || []);
@@ -251,6 +265,33 @@ const AdminProductForm = () => {
   const updateColorVariant = (index: number, field: string, value: any) => {
     const updated = [...colorVariants];
     updated[index] = { ...updated[index], [field]: value };
+    setColorVariants(updated);
+  };
+
+  const updateColorImage = (colorIndex: number, imageIndex: number, url: string, filename: string, fileType: string) => {
+    const updated = [...colorVariants];
+    if (!updated[colorIndex].images) {
+      updated[colorIndex].images = [];
+    }
+    
+    // Ensure we have enough slots
+    while (updated[colorIndex].images.length <= imageIndex) {
+      updated[colorIndex].images.push({ url: '', displayOrder: updated[colorIndex].images.length });
+    }
+    
+    updated[colorIndex].images[imageIndex] = {
+      url,
+      displayOrder: imageIndex
+    };
+    
+    setColorVariants(updated);
+  };
+
+  const removeColorImage = (colorIndex: number, imageIndex: number) => {
+    const updated = [...colorVariants];
+    if (updated[colorIndex].images && updated[colorIndex].images[imageIndex]) {
+      updated[colorIndex].images[imageIndex] = { url: '', displayOrder: imageIndex };
+    }
     setColorVariants(updated);
   };
 
@@ -377,13 +418,15 @@ const AdminProductForm = () => {
         // Insert images for this color with display_order
         for (let i = 0; i < color.images.length; i++) {
           const image = color.images[i];
-          await supabase.from("product_images").insert({
-            product_id: productId,
-            color_id: colorData.id,
-            image_url: image.url,
-            display_order: i, // Use index as display order
-            is_primary: i === 0,
-          });
+          if (image.url) {
+            await supabase.from("product_images").insert({
+              product_id: productId,
+              color_id: colorData.id,
+              image_url: image.url,
+              display_order: i,
+              is_primary: i === 0,
+            });
+          }
         }
       }
 
@@ -650,13 +693,22 @@ const AdminProductForm = () => {
                   </div>
 
                   <div>
-                    <Label>Images</Label>
-                    <OrderedImageUpload
-                      images={color.images}
-                      onImagesChange={(images) =>
-                        updateColorVariant(index, "images", images)
-                      }
-                    />
+                    <Label>Images (up to 6)</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                      {Array.from({ length: 6 }, (_, imageIndex) => (
+                        <OrderedImageUpload
+                          key={`${index}-${imageIndex}`}
+                          label={`Image ${imageIndex + 1}`}
+                          value={color.images[imageIndex]?.url || ''}
+                          imageIndex={imageIndex}
+                          colorId={`color-${index}`}
+                          onChange={(url, filename, fileType) =>
+                            updateColorImage(index, imageIndex, url, filename, fileType)
+                          }
+                          onRemove={() => removeColorImage(index, imageIndex)}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}
