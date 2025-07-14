@@ -120,7 +120,7 @@ const fetchProductColors = async (productId: string) => {
       .from('product_colors')
       .select(`
         id, name, color_code,
-        product_images (id, image_url, is_primary)
+        product_images (id, image_url, is_primary, display_order)
       `)
       .eq('product_id', productId);
 
@@ -130,9 +130,14 @@ const fetchProductColors = async (productId: string) => {
       id: color.id,
       name: color.name,
       colorCode: color.color_code,
-      // Use image_url directly for customer pages
+      // Sort by display_order for customer pages, then by is_primary as fallback
       images: (color.product_images || [])
-        .sort((a: any, b: any) => (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0))
+        .sort((a: any, b: any) => {
+          const orderA = a.display_order ?? 999;
+          const orderB = b.display_order ?? 999;
+          if (orderA !== orderB) return orderA - orderB;
+          return (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0);
+        })
         .map((img: any) => img.image_url || '/placeholder.svg')
     }));
   });

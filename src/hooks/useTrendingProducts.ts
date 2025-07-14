@@ -17,11 +17,18 @@ const transformProductData = (product: any): Product => {
     },
     categoryId: product.category_id,
     subCategoryId: product.subcategory_id,
-    colorVariants: (product.product_colors || []).map(color => ({
+    colorVariants: (product.product_colors || []).map((color: any) => ({
       id: color.id,
       name: color.name,
       colorCode: color.color_code,
-      images: (color.product_images || []).map(img => img.image_url)
+      images: (color.product_images || [])
+        .sort((a: any, b: any) => {
+          const orderA = a.display_order ?? 999;
+          const orderB = b.display_order ?? 999;
+          if (orderA !== orderB) return orderA - orderB;
+          return (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0);
+        })
+        .map((img: any) => img.image_url)
     })),
     sizeVariants: (product.product_sizes || []).map(size => ({
       id: size.id,
@@ -49,7 +56,7 @@ export const useTrendingProducts = () => {
           *,
           product_colors (
             id, name, color_code,
-            product_images (id, image_url, is_primary)
+            product_images (id, image_url, is_primary, display_order)
           ),
           product_sizes (id, name, in_stock)
         `)

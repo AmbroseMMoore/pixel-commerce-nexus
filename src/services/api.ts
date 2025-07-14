@@ -55,8 +55,17 @@ const transformProductData = (product: any, isAdminContext: boolean = false): Pr
     console.log('Processing color variant:', color);
     console.log('Raw images for color:', color.product_images);
 
-    // Transform images based on context
-    const images = (color.product_images || []).map((img: any) => {
+    // Sort images by display_order first, then transform based on context
+    const sortedImages = (color.product_images || [])
+      .sort((a: any, b: any) => {
+        // Sort by display_order first (ascending), then by is_primary for fallback
+        const orderA = a.display_order ?? 999;
+        const orderB = b.display_order ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0);
+      });
+
+    const images = sortedImages.map((img: any) => {
       console.log('Processing image:', img);
       
       if (isAdminContext) {
@@ -131,7 +140,7 @@ export const fetchProducts = async (): Promise<Product[]> => {
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary, media_file_name, media_file_type)
+          product_images (id, image_url, is_primary, media_file_name, media_file_type, display_order)
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `);
@@ -155,7 +164,7 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary, media_file_name, media_file_type)
+          product_images (id, image_url, is_primary, media_file_name, media_file_type, display_order)
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
@@ -191,7 +200,7 @@ export const fetchProductsByCategory = async (categorySlug: string): Promise<Pro
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary, media_file_name, media_file_type)
+          product_images (id, image_url, is_primary, media_file_name, media_file_type, display_order)
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
@@ -216,7 +225,7 @@ export const fetchProductBySlug = async (slug: string): Promise<Product> => {
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary, media_file_name, media_file_type)
+          product_images (id, image_url, is_primary, media_file_name, media_file_type, display_order)
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
@@ -245,7 +254,7 @@ export const fetchProductById = async (id: string): Promise<Product> => {
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary, media_file_name, media_file_type)
+          product_images (id, image_url, is_primary, media_file_name, media_file_type, display_order)
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
