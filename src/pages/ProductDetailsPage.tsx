@@ -14,6 +14,7 @@ import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
 import PincodeChecker from "@/components/products/PincodeChecker";
 import { useDeliveryInfo } from "@/hooks/useDeliveryInfo";
+import ProductNavigation from "@/components/products/ProductNavigation";
 
 const ProductDetailsPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -390,6 +391,13 @@ const ProductDetailsPage = () => {
             <p>{product.longDescription}</p>
           </div>
         </div>
+
+        {/* Product Navigation */}
+        <ProductNavigation 
+          currentSlug={product.slug}
+          categoryId={product.categoryId}
+          subCategoryId={product.subCategoryId}
+        />
       </div>
     </MainLayout>
   );

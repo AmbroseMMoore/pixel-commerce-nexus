@@ -419,11 +419,11 @@ const AdminProductForm = () => {
           throw colorError;
         }
 
-        // Handle images for this color
+        // Handle images for this color with display_order
         for (let i = 0; i < colorVariant.images.length; i++) {
           const imageData = colorVariant.images[i];
           if (imageData.url && imageData.filename && imageData.fileType) {
-            console.log(`Saving image ${i + 1} for color ${colorVariant.name}`);
+            console.log(`Saving image ${i + 1} for color ${colorVariant.name} with display_order ${i}`);
             
             const { error: imageError } = await supabase
               .from('product_images')
@@ -434,6 +434,7 @@ const AdminProductForm = () => {
                 media_server_api_url_fk: mediaServerConfig.id,
                 media_file_name: imageData.filename,
                 media_file_type: imageData.fileType,
+                display_order: i, // Use the index as display order
                 is_primary: i === 0
               });
               

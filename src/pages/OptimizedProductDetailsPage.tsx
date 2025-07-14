@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -16,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import PincodeChecker from "@/components/products/PincodeChecker";
 import { useDeliveryInfo } from "@/hooks/useDeliveryInfo";
+import ProductNavigation from "@/components/products/ProductNavigation";
 
 const OptimizedProductDetailsPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -385,6 +387,13 @@ const OptimizedProductDetailsPage = () => {
             </div>
           </div>
         )}
+
+        {/* Product Navigation */}
+        <ProductNavigation 
+          currentSlug={product.slug}
+          categoryId={product.categoryId}
+          subCategoryId={product.subCategoryId}
+        />
       </div>
     </MainLayout>
   );
