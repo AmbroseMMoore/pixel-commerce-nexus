@@ -1,1074 +1,868 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import AdminLayout from "@/components/layout/AdminLayout";
+import { useNavigate, useParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Plus, Loader2 } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
+import { Badge } from "@/components/ui/badge";
+import { X, Plus, Minus } from "lucide-react";
+import { toast } from "sonner";
+import AdminLayout from "@/components/layout/AdminLayout";
 import { useCategories } from "@/hooks/useCategories";
-import { Skeleton } from "@/components/ui/skeleton";
+import OrderedImageUpload from "@/components/admin/OrderedImageUpload";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
-import { useProductById } from "@/hooks/useProducts";
-import ReorderableImageGrid from "@/components/admin/ReorderableImageGrid";
-import { deleteFromMediaServer, getActiveMediaServerConfig } from "@/services/mediaServerApi";
 
-// Utility function to generate proper UUID
-const generateUUID = () => {
-  return crypto.randomUUID();
-};
+const productSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  slug: z.string().min(1, "Slug is required"),
+  shortDescription: z.string().optional(),
+  longDescription: z.string().optional(),
+  priceOriginal: z.number().min(0, "Price must be positive"),
+  priceDiscounted: z.number().min(0, "Price must be positive").optional(),
+  stockQuantity: z.number().min(0, "Stock quantity must be non-negative"),
+  categoryId: z.string().min(1, "Category is required"),
+  subcategoryId: z.string().min(1, "Subcategory is required"),
+  isFeatured: z.boolean().default(false),
+  isTrending: z.boolean().default(false),
+  specifications: z.record(z.string()).optional(),
+});
+
+type ProductFormData = z.infer<typeof productSchema>;
 
 interface ColorVariant {
-  id: string;
+  id?: string;
   name: string;
   colorCode: string;
-  images: Array<{
-    id?: string; // Database ID for existing images
-    url: string;
-    filename: string;
-    fileType: string;
-  }>;
-  isExisting?: boolean; // Track if this is an existing variant from DB
+  images: Array<{ url: string; file?: File; displayOrder: number }>;
 }
 
 interface SizeVariant {
-  id: string;
+  id?: string;
   name: string;
-  inStock: boolean;
   priceOriginal: number;
   priceDiscounted?: number;
-  isExisting?: boolean; // Track if this is an existing variant from DB
+  inStock: boolean;
 }
-
-interface Specification {
-  key: string;
-  value: string;
-}
-
-// Common age ranges for kids
-const AGE_RANGES = [
-  "0-6 months",
-  "6-12 months", 
-  "1-2 years",
-  "2-3 years",
-  "3-4 years",
-  "4-5 years",
-  "5-6 years",
-  "6-7 years",
-  "7-8 years",
-  "8-9 years",
-  "9-10 years",
-  "10+ years"
-];
 
 const AdminProductForm = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const isEditMode = !!id;
-
-  // Fetch data
-  const { categories, isLoading: isCategoriesLoading } = useCategories();
-  const { data: existingProduct, isLoading: isProductLoading } = useProductById(isEditMode ? id! : "");
-
-  // Form submission state
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { id } = useParams();
+  const isEditing = Boolean(id);
   
-  // Basic product info with proper defaults
-  const [title, setTitle] = useState("");
-  const [shortDescription, setShortDescription] = useState("");
-  const [longDescription, setLongDescription] = useState("");
-  const [originalPrice, setOriginalPrice] = useState("");
-  const [discountedPrice, setDiscountedPrice] = useState("");
-  const [mainCategoryId, setMainCategoryId] = useState("");
-  const [subCategoryId, setSubCategoryId] = useState("");
-  const [isLowStock, setIsLowStock] = useState(false);
-  const [isOutOfStock, setIsOutOfStock] = useState(false);
-  const [isFeatured, setIsFeatured] = useState(false);
-  const [isTrending, setIsTrending] = useState(false);
-  const [slug, setSlug] = useState("");
-  const [selectedAgeRanges, setSelectedAgeRanges] = useState<string[]>([]);
+  const { data: categories, isLoading: categoriesLoading } = useCategories();
+  const [subcategories, setSubcategories] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [colorVariants, setColorVariants] = useState<ColorVariant[]>([]);
+  const [sizeVariants, setSizeVariants] = useState<SizeVariant[]>([]);
+  const [ageRanges, setAgeRanges] = useState<string[]>([]);
+  const [specificationKey, setSpecificationKey] = useState("");
+  const [specificationValue, setSpecificationValue] = useState("");
+  const [specifications, setSpecifications] = useState<Record<string, string>>({});
 
-  // Get subcategories for selected category
-  const selectedCategory = categories.find(cat => cat.id === mainCategoryId);
-  const subcategories = selectedCategory?.subCategories || [];
+  const form = useForm<ProductFormData>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      title: "",
+      slug: "",
+      shortDescription: "",
+      longDescription: "",
+      priceOriginal: 0,
+      priceDiscounted: 0,
+      stockQuantity: 0,
+      categoryId: "",
+      subcategoryId: "",
+      isFeatured: false,
+      isTrending: false,
+      specifications: {},
+    },
+  });
 
-  // Function to create new color variant with proper UUID
-  const createNewColorVariant = (): ColorVariant => {
-    const variantId = generateUUID();
-    console.log('Creating new color variant with UUID:', variantId);
-    
-    return {
-      id: variantId,
-      name: "",
-      colorCode: "#ffffff",
-      images: Array(6).fill(null).map(() => ({
-        url: "",
-        filename: "",
-        fileType: "jpg"
-      })),
-      isExisting: false
-    };
-  };
+  const selectedCategoryId = form.watch("categoryId");
 
-  // Initialize variants with proper structure
-  const [colorVariants, setColorVariants] = useState<ColorVariant[]>([createNewColorVariant()]);
-  const [sizeVariants, setSizeVariants] = useState<SizeVariant[]>([
-    { id: generateUUID(), name: "S", inStock: true, priceOriginal: 0, priceDiscounted: undefined, isExisting: false },
-    { id: generateUUID(), name: "M", inStock: true, priceOriginal: 0, priceDiscounted: undefined, isExisting: false },
-    { id: generateUUID(), name: "L", inStock: true, priceOriginal: 0, priceDiscounted: undefined, isExisting: false },
-  ]);
-
-  // Specifications
-  const [specifications, setSpecifications] = useState<Specification[]>([
-    { key: "Material", value: "" },
-    { key: "Care Instructions", value: "" },
-  ]);
-
-  // Enhanced data population with better error handling and debugging
+  // Load subcategories when category changes
   useEffect(() => {
-    if (isEditMode && existingProduct) {
-      console.log('Loading existing product data for edit mode:', existingProduct);
-      
+    const loadSubcategories = async () => {
+      if (!selectedCategoryId) {
+        setSubcategories([]);
+        return;
+      }
+
       try {
-        // Basic product info
-        setTitle(existingProduct.title || "");
-        setShortDescription(existingProduct.shortDescription || "");
-        setLongDescription(existingProduct.longDescription || "");
-        setOriginalPrice(existingProduct.price?.original?.toString() || "");
-        setDiscountedPrice(existingProduct.price?.discounted?.toString() || "");
-        setMainCategoryId(existingProduct.categoryId || "");
-        setSubCategoryId(existingProduct.subCategoryId || "");
-        setIsLowStock(existingProduct.isLowStock || false);
-        setIsOutOfStock(existingProduct.isOutOfStock || false);
-        setIsFeatured(existingProduct.isFeatured || false);
-        setIsTrending(existingProduct.isTrending || false);
-        setSlug(existingProduct.slug || "");
-        setSelectedAgeRanges(existingProduct.ageRanges || []);
+        const { data, error } = await supabase
+          .from("subcategories")
+          .select("*")
+          .eq("category_id", selectedCategoryId);
 
-        // Handle color variants with enhanced error handling and proper image structure
-        if (existingProduct.colorVariants && Array.isArray(existingProduct.colorVariants) && existingProduct.colorVariants.length > 0) {
-          console.log('Processing existing color variants:', existingProduct.colorVariants);
-          
-          const loadedColorVariants = existingProduct.colorVariants.map((variant: any) => {
-            console.log('Processing variant:', variant);
-            
-            // Handle images based on their structure
-            const images = Array(6).fill(null).map((_, index) => {
-              const existingImage = variant.images && variant.images[index];
-              
-              if (existingImage) {
-                // Check if it's already in the correct format (admin context)
-                if (typeof existingImage === 'object' && existingImage.url) {
-                  return {
-                    id: existingImage.id || undefined,
-                    url: existingImage.url,
-                    filename: existingImage.filename || '',
-                    fileType: existingImage.fileType || 'jpg'
-                  };
-                }
-                // Handle legacy format or string URLs
-                else if (typeof existingImage === 'string') {
-                  return {
-                    url: existingImage,
-                    filename: '',
-                    fileType: 'jpg'
-                  };
-                }
-              }
-              
-              return { url: "", filename: "", fileType: "jpg" };
-            });
-
-            return {
-              id: variant.id || generateUUID(),
-              name: variant.name || "",
-              colorCode: variant.colorCode || "#ffffff",
-              isExisting: true,
-              images: images
-            };
-          });
-          
-          console.log('Loaded color variants with proper image structure:', loadedColorVariants);
-          setColorVariants(loadedColorVariants);
-        } else {
-          console.log('No existing color variants found, creating default variant');
-          // If no color variants exist, create a default one
-          setColorVariants([createNewColorVariant()]);
-        }
-
-        // Handle size variants with enhanced error handling
-        if (existingProduct.sizeVariants && Array.isArray(existingProduct.sizeVariants) && existingProduct.sizeVariants.length > 0) {
-          console.log('Processing existing size variants:', existingProduct.sizeVariants);
-          
-          const loadedSizeVariants = existingProduct.sizeVariants.map((variant: any) => ({
-            id: variant.id || generateUUID(),
-            name: variant.name || "",
-            inStock: variant.inStock !== false,
-            priceOriginal: variant.priceOriginal || existingProduct.price?.original || 0,
-            priceDiscounted: variant.priceDiscounted || existingProduct.price?.discounted || undefined,
-            isExisting: true
-          }));
-          
-          console.log('Loaded size variants:', loadedSizeVariants);
-          setSizeVariants(loadedSizeVariants);
-        } else {
-          console.log('No existing size variants found, using defaults');
-          // Keep default size variants if none exist
-        }
-
-        // Load specifications with better handling
-        if (existingProduct.specifications) {
-          let loadedSpecs: Specification[] = [];
-          if (Array.isArray(existingProduct.specifications)) {
-            loadedSpecs = existingProduct.specifications.map((spec: any, index: number) => ({
-              key: `Specification ${index + 1}`,
-              value: typeof spec === 'string' ? spec : spec.value || ""
-            }));
-          } else if (typeof existingProduct.specifications === 'object') {
-            loadedSpecs = Object.entries(existingProduct.specifications).map(([key, value]) => ({
-              key,
-              value: value as string
-            }));
-          }
-          if (loadedSpecs.length > 0) {
-            setSpecifications(loadedSpecs);
-          }
-        }
-
-        console.log('Successfully loaded all product data for editing');
-
+        if (error) throw error;
+        setSubcategories(data || []);
       } catch (error) {
-        console.error('Error loading existing product data:', error);
-        toast({
-          title: "Warning",
-          description: "Some product data could not be loaded properly. Please verify all fields.",
-          variant: "destructive"
-        });
+        console.error("Error loading subcategories:", error);
+        toast.error("Failed to load subcategories");
       }
-    }
-  }, [isEditMode, existingProduct]);
+    };
 
-  // Generate slug when title changes (only for new products)
+    loadSubcategories();
+  }, [selectedCategoryId]);
+
+  // Load existing product data if editing
   useEffect(() => {
-    if (!isEditMode && title) {
-      const newSlug = title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-      setSlug(newSlug);
-    }
-  }, [title, isEditMode]);
+    const loadProduct = async () => {
+      if (!isEditing || !id) return;
 
-  // Auto-fill size prices when base price changes (only for new products)
-  useEffect(() => {
-    if (originalPrice && !isEditMode) {
-      const basePrice = parseFloat(originalPrice);
-      const baseDiscounted = discountedPrice ? parseFloat(discountedPrice) : undefined;
-      
-      setSizeVariants(prevSizes => 
-        prevSizes.map(size => ({
-          ...size,
-          priceOriginal: size.priceOriginal === 0 ? basePrice : size.priceOriginal,
-          priceDiscounted: size.priceDiscounted === undefined ? baseDiscounted : size.priceDiscounted
-        }))
-      );
-    }
-  }, [originalPrice, discountedPrice, isEditMode]);
+      try {
+        setIsLoading(true);
+        
+        // Load product data
+        const { data: product, error: productError } = await supabase
+          .from("products")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-  // Comprehensive form validation
-  const validateForm = (): boolean => {
-    const errors: string[] = [];
+        if (productError) throw productError;
 
-    if (!title.trim()) errors.push("Title is required");
-    if (!shortDescription.trim()) errors.push("Short description is required");
-    if (!originalPrice || parseFloat(originalPrice) <= 0) errors.push("Valid original price is required");
-    if (!mainCategoryId) errors.push("Main category is required");
-    if (!subCategoryId) errors.push("Subcategory is required");
-    if (!slug.trim()) errors.push("Slug is required");
+        // Populate form with product data
+        form.reset({
+          title: product.title,
+          slug: product.slug,
+          shortDescription: product.short_description || "",
+          longDescription: product.long_description || "",
+          priceOriginal: product.price_original,
+          priceDiscounted: product.price_discounted || 0,
+          stockQuantity: product.stock_quantity,
+          categoryId: product.category_id,
+          subcategoryId: product.subcategory_id,
+          isFeatured: product.is_featured || false,
+          isTrending: product.is_trending || false,
+          specifications: product.specifications || {},
+        });
 
-    // Validate color variants
-    const validColorVariants = colorVariants.filter(v => v.name.trim() && v.colorCode);
-    if (validColorVariants.length === 0) {
-      errors.push("At least one color variant with name and color code is required");
-    }
+        // Set specifications
+        setSpecifications(product.specifications || {});
 
-    // Validate size variants
-    const validSizeVariants = sizeVariants.filter(v => v.name.trim() && v.priceOriginal > 0);
-    if (validSizeVariants.length === 0) {
-      errors.push("At least one size variant with name and valid price is required");
-    }
+        // Set age ranges
+        setAgeRanges(product.age_ranges || []);
 
-    if (errors.length > 0) {
-      toast({
-        title: "Validation Error",
-        description: errors.join(", "),
-        variant: "destructive"
-      });
-      return false;
-    }
+        // Load subcategories first, then set the subcategory value
+        if (product.category_id) {
+          const { data: subcats, error: subcatError } = await supabase
+            .from("subcategories")
+            .select("*")
+            .eq("category_id", product.category_id);
 
-    return true;
+          if (subcatError) throw subcatError;
+          setSubcategories(subcats || []);
+          
+          // Set subcategory after subcategories are loaded
+          setTimeout(() => {
+            form.setValue("subcategoryId", product.subcategory_id);
+          }, 100);
+        }
+
+        // Load color variants and images
+        const { data: colors, error: colorsError } = await supabase
+          .from("product_colors")
+          .select("*")
+          .eq("product_id", id);
+
+        if (colorsError) throw colorsError;
+
+        const colorVariantsData: ColorVariant[] = [];
+        for (const color of colors || []) {
+          const { data: images, error: imagesError } = await supabase
+            .from("product_images")
+            .select("*")
+            .eq("color_id", color.id)
+            .order("display_order", { ascending: true });
+
+          if (imagesError) throw imagesError;
+
+          colorVariantsData.push({
+            id: color.id,
+            name: color.name,
+            colorCode: color.color_code,
+            images: (images || []).map((img, index) => ({
+              url: img.image_url,
+              displayOrder: img.display_order ?? index
+            })),
+          });
+        }
+        setColorVariants(colorVariantsData);
+
+        // Load size variants
+        const { data: sizes, error: sizesError } = await supabase
+          .from("product_sizes")
+          .select("*")
+          .eq("product_id", id);
+
+        if (sizesError) throw sizesError;
+
+        const sizeVariantsData: SizeVariant[] = (sizes || []).map((size) => ({
+          id: size.id,
+          name: size.name,
+          priceOriginal: size.price_original,
+          priceDiscounted: size.price_discounted || undefined,
+          inStock: size.in_stock ?? true,
+        }));
+        setSizeVariants(sizeVariantsData);
+      } catch (error) {
+        console.error("Error loading product:", error);
+        toast.error("Failed to load product data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProduct();
+  }, [id, isEditing, form]);
+
+  const generateSlug = (title: string) => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
   };
 
-  // Simplified form submission with proper error handling
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
+  const onTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const title = e.target.value;
+    form.setValue("title", title);
+    if (!isEditing) {
+      form.setValue("slug", generateSlug(title));
     }
+  };
 
-    setIsSubmitting(true);
-    
+  const addColorVariant = () => {
+    setColorVariants([
+      ...colorVariants,
+      { name: "", colorCode: "#000000", images: [] },
+    ]);
+  };
+
+  const removeColorVariant = (index: number) => {
+    setColorVariants(colorVariants.filter((_, i) => i !== index));
+  };
+
+  const updateColorVariant = (index: number, field: string, value: any) => {
+    const updated = [...colorVariants];
+    updated[index] = { ...updated[index], [field]: value };
+    setColorVariants(updated);
+  };
+
+  const addSizeVariant = () => {
+    setSizeVariants([
+      ...sizeVariants,
+      { name: "", priceOriginal: 0, priceDiscounted: 0, inStock: true },
+    ]);
+  };
+
+  const removeSizeVariant = (index: number) => {
+    setSizeVariants(sizeVariants.filter((_, i) => i !== index));
+  };
+
+  const updateSizeVariant = (index: number, field: string, value: any) => {
+    const updated = [...sizeVariants];
+    updated[index] = { ...updated[index], [field]: value };
+    setSizeVariants(updated);
+  };
+
+  const addAgeRange = (range: string) => {
+    if (range && !ageRanges.includes(range)) {
+      setAgeRanges([...ageRanges, range]);
+    }
+  };
+
+  const removeAgeRange = (range: string) => {
+    setAgeRanges(ageRanges.filter((r) => r !== range));
+  };
+
+  const addSpecification = () => {
+    if (specificationKey && specificationValue) {
+      setSpecifications({
+        ...specifications,
+        [specificationKey]: specificationValue,
+      });
+      setSpecificationKey("");
+      setSpecificationValue("");
+    }
+  };
+
+  const removeSpecification = (key: string) => {
+    const updated = { ...specifications };
+    delete updated[key];
+    setSpecifications(updated);
+  };
+
+  const onSubmit = async (data: ProductFormData) => {
     try {
-      console.log('Starting form submission...');
-      
-      // Get media server config
-      const mediaServerConfig = await getActiveMediaServerConfig();
-      if (!mediaServerConfig) {
-        throw new Error('No active media server configuration found');
+      setIsLoading(true);
+
+      // Validate required data
+      if (colorVariants.length === 0) {
+        toast.error("At least one color variant is required");
+        return;
       }
 
-      // Create specifications object
-      const specsObj: Record<string, string> = {};
-      specifications.forEach(spec => {
-        if (spec.key && spec.value) {
-          specsObj[spec.key] = spec.value;
-        }
-      });
+      if (sizeVariants.length === 0) {
+        toast.error("At least one size variant is required");
+        return;
+      }
 
       // Prepare product data
       const productData = {
-        title: title.trim(),
-        slug: slug.trim(),
-        short_description: shortDescription.trim(),
-        long_description: longDescription.trim() || null,
-        price_original: parseFloat(originalPrice),
-        price_discounted: discountedPrice ? parseFloat(discountedPrice) : null,
-        category_id: mainCategoryId,
-        subcategory_id: subCategoryId,
-        stock_quantity: isOutOfStock ? 0 : isLowStock ? 5 : 100,
-        is_featured: isFeatured,
-        is_trending: isTrending,
-        is_low_stock: isLowStock,
-        is_out_of_stock: isOutOfStock,
-        age_ranges: selectedAgeRanges,
-        specifications: specsObj,
-        updated_at: new Date().toISOString()
+        title: data.title,
+        slug: data.slug,
+        short_description: data.shortDescription,
+        long_description: data.longDescription,
+        price_original: data.priceOriginal,
+        price_discounted: data.priceDiscounted || null,
+        stock_quantity: data.stockQuantity,
+        category_id: data.categoryId,
+        subcategory_id: data.subcategoryId,
+        is_featured: data.isFeatured,
+        is_trending: data.isTrending,
+        specifications: specifications,
+        age_ranges: ageRanges,
+        is_out_of_stock: data.stockQuantity === 0,
+        is_low_stock: data.stockQuantity <= 10,
       };
 
-      let productId = id;
-      
-      if (isEditMode) {
-        console.log('Updating existing product...');
+      let productId: string;
+
+      if (isEditing && id) {
         // Update existing product
-        const { error: productError } = await supabase
-          .from('products')
+        const { error: updateError } = await supabase
+          .from("products")
           .update(productData)
-          .eq('id', id);
-          
-        if (productError) throw productError;
+          .eq("id", id);
+
+        if (updateError) throw updateError;
         productId = id;
+
+        // Delete existing colors, sizes, and images
+        await supabase.from("product_images").delete().eq("product_id", id);
+        await supabase.from("product_colors").delete().eq("product_id", id);
+        await supabase.from("product_sizes").delete().eq("product_id", id);
       } else {
-        console.log('Creating new product...');
         // Create new product
-        const { data: newProduct, error: productError } = await supabase
-          .from('products')
+        const { data: newProduct, error: insertError } = await supabase
+          .from("products")
           .insert(productData)
           .select()
           .single();
-          
-        if (productError) throw productError;
+
+        if (insertError) throw insertError;
         productId = newProduct.id;
       }
 
-      // Handle color variants with simplified logic
-      console.log('Processing color variants...');
-      
-      if (isEditMode) {
-        // For edit mode: Clear existing variants and recreate
-        await supabase.from('product_images').delete().eq('product_id', productId);
-        await supabase.from('product_colors').delete().eq('product_id', productId);
-      }
-
-      // Process valid color variants
-      const validColorVariants = colorVariants.filter(v => v.name.trim() && v.colorCode);
-      for (const colorVariant of validColorVariants) {
-        console.log('Processing color variant:', colorVariant.name);
-        
-        const colorData = {
-          product_id: productId,
-          name: colorVariant.name.trim(),
-          color_code: colorVariant.colorCode
-        };
-
-        const { data: newColor, error: colorError } = await supabase
-          .from('product_colors')
-          .insert(colorData)
+      // Insert color variants and images
+      for (const color of colorVariants) {
+        const { data: colorData, error: colorError } = await supabase
+          .from("product_colors")
+          .insert({
+            product_id: productId,
+            name: color.name,
+            color_code: color.colorCode,
+          })
           .select()
           .single();
-          
-        if (colorError) {
-          console.error('Error creating color variant:', colorError);
-          throw colorError;
-        }
 
-        // Handle images for this color with display_order
-        for (let i = 0; i < colorVariant.images.length; i++) {
-          const imageData = colorVariant.images[i];
-          if (imageData.url && imageData.filename && imageData.fileType) {
-            console.log(`Saving image ${i + 1} for color ${colorVariant.name} with display_order ${i}`);
-            
-            const { error: imageError } = await supabase
-              .from('product_images')
-              .insert({
-                product_id: productId,
-                color_id: newColor.id,
-                image_url: imageData.url,
-                media_server_api_url_fk: mediaServerConfig.id,
-                media_file_name: imageData.filename,
-                media_file_type: imageData.fileType,
-                display_order: i, // Use the index as display order
-                is_primary: i === 0
-              });
-              
-            if (imageError) {
-              console.error('Error saving image:', imageError);
-            }
-          }
+        if (colorError) throw colorError;
+
+        // Insert images for this color with display_order
+        for (let i = 0; i < color.images.length; i++) {
+          const image = color.images[i];
+          await supabase.from("product_images").insert({
+            product_id: productId,
+            color_id: colorData.id,
+            image_url: image.url,
+            display_order: i, // Use index as display order
+            is_primary: i === 0,
+          });
         }
       }
 
-      // Handle size variants with simplified logic
-      console.log('Processing size variants...');
-      
-      if (isEditMode) {
-        // For edit mode: Clear existing size variants
-        await supabase.from('product_sizes').delete().eq('product_id', productId);
-      }
-
-      // Process valid size variants
-      const validSizeVariants = sizeVariants.filter(v => v.name.trim() && v.priceOriginal > 0);
-      for (const sizeVariant of validSizeVariants) {
-        console.log('Processing size variant:', sizeVariant.name);
-        
-        const sizeData = {
+      // Insert size variants
+      for (const size of sizeVariants) {
+        await supabase.from("product_sizes").insert({
           product_id: productId,
-          name: sizeVariant.name.trim(),
-          in_stock: sizeVariant.inStock,
-          price_original: sizeVariant.priceOriginal,
-          price_discounted: sizeVariant.priceDiscounted || null
-        };
-
-        const { error: sizeError } = await supabase
-          .from('product_sizes')
-          .insert(sizeData);
-          
-        if (sizeError) {
-          console.error('Error creating size variant:', sizeError);
-          throw sizeError;
-        }
+          name: size.name,
+          price_original: size.priceOriginal,
+          price_discounted: size.priceDiscounted || null,
+          in_stock: size.inStock,
+        });
       }
 
-      // Invalidate queries to refetch data
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      
-      toast({
-        title: isEditMode ? "Product Updated" : "Product Created",
-        description: `${title} has been successfully ${isEditMode ? 'updated' : 'created'}.`
-      });
-      
-      // Redirect back to products page
+      toast.success(isEditing ? "Product updated successfully!" : "Product created successfully!");
       navigate("/admin/products");
-      
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error saving product:", error);
-      toast({
-        title: "Error",
-        description: error.message || "There was an error saving the product. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Failed to save product");
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  // Add a color variant
-  const addColorVariant = () => {
-    const newVariant = createNewColorVariant();
-    console.log('Adding new color variant:', newVariant);
-    setColorVariants([...colorVariants, newVariant]);
-  };
-
-  // Remove a color variant
-  const removeColorVariant = (id: string) => {
-    console.log('Removing color variant:', id);
-    setColorVariants(colorVariants.filter(variant => variant.id !== id));
-  };
-
-  // Update color variant
-  const updateColorVariant = (id: string, field: keyof ColorVariant, value: any) => {
-    console.log(`Updating color variant ${id}, field: ${field}`, value);
-    setColorVariants(colorVariants.map(variant => 
-      variant.id === id ? { ...variant, [field]: value } : variant
-    ));
-  };
-
-  // Handle image upload
-  const handleImageUpload = (colorId: string, imageIndex: number, url: string, filename: string, fileType: string) => {
-    console.log(`Uploading image for color ${colorId}, index ${imageIndex}`);
-    
-    setColorVariants(colorVariants.map(variant => {
-      if (variant.id === colorId) {
-        const updatedImages = [...variant.images];
-        updatedImages[imageIndex] = { url, filename, fileType };
-        return { ...variant, images: updatedImages };
-      }
-      return variant;
-    }));
-  };
-
-  // Handle image removal
-  const handleImageRemove = async (colorId: string, imageIndex: number) => {
-    console.log(`Removing image ${imageIndex} from color variant ${colorId}`);
-    const variant = colorVariants.find(v => v.id === colorId);
-    if (variant && variant.images[imageIndex]) {
-      const imageData = variant.images[imageIndex];
-      
-      // Delete from media server if it has filename and fileType
-      if (imageData.filename && imageData.fileType) {
-        await deleteFromMediaServer(imageData.filename, imageData.fileType);
-      }
-
-      // Update state
-      setColorVariants(colorVariants.map(v => {
-        if (v.id === colorId) {
-          const updatedImages = [...v.images];
-          updatedImages[imageIndex] = { url: "", filename: "", fileType: "jpg" };
-          return { ...v, images: updatedImages };
-        }
-        return v;
-      }));
-    }
-  };
-
-  // Handle image reordering
-  const handleImageReorder = (colorId: string, oldIndex: number, newIndex: number) => {
-    console.log(`Reordering images for color ${colorId}: ${oldIndex} -> ${newIndex}`);
-    setColorVariants(prevVariants =>
-      prevVariants.map(variant => {
-        if (variant.id === colorId) {
-          const updatedImages = [...variant.images];
-          const [movedImage] = updatedImages.splice(oldIndex, 1);
-          updatedImages.splice(newIndex, 0, movedImage);
-          return { ...variant, images: updatedImages };
-        }
-        return variant;
-      })
-    );
-  };
-
-  // Legacy remove image function for backward compatibility
-  const removeImage = (colorId: string, imageIndex: number) => {
-    handleImageRemove(colorId, imageIndex);
-  };
-
-  // Size variant functions
-  const addSizeVariant = () => {
-    const basePrice = parseFloat(originalPrice) || 0;
-    const baseDiscounted = discountedPrice ? parseFloat(discountedPrice) : undefined;
-    
-    setSizeVariants([
-      ...sizeVariants,
-      { 
-        id: generateUUID(), 
-        name: "", 
-        inStock: true, 
-        priceOriginal: basePrice,
-        priceDiscounted: baseDiscounted,
-        isExisting: false
-      }
-    ]);
-  };
-
-  const removeSizeVariant = (id: string) => {
-    setSizeVariants(sizeVariants.filter(variant => variant.id !== id));
-  };
-
-  const updateSizeVariant = (id: string, field: keyof SizeVariant, value: any) => {
-    setSizeVariants(sizeVariants.map(variant => 
-      variant.id === id ? { ...variant, [field]: value } : variant
-    ));
-  };
-
-  // Specification functions
-  const addSpecification = () => {
-    setSpecifications([
-      ...specifications,
-      { key: "", value: "" }
-    ]);
-  };
-
-  const removeSpecification = (index: number) => {
-    const newSpecifications = [...specifications];
-    newSpecifications.splice(index, 1);
-    setSpecifications(newSpecifications);
-  };
-
-  const updateSpecification = (index: number, field: keyof Specification, value: string) => {
-    const newSpecifications = [...specifications];
-    newSpecifications[index] = {
-      ...newSpecifications[index],
-      [field]: value
-    };
-    setSpecifications(newSpecifications);
-  };
-
-  // Display loading state
-  const isLoading = isCategoriesLoading || (isEditMode && isProductLoading);
-
-  if (isLoading) {
+  if (categoriesLoading || (isEditing && isLoading)) {
     return (
-      <AdminProtectedRoute>
-        <AdminLayout>
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-8 w-64" />
-              <div className="flex gap-2">
-                <Skeleton className="h-10 w-24" />
-                <Skeleton className="h-10 w-32" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-64 w-full" />
-            </div>
-          </div>
-        </AdminLayout>
-      </AdminProtectedRoute>
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Loading...</div>
+        </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <AdminProtectedRoute>
-      <AdminLayout>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">
-              {isEditMode ? "Edit Product" : "Add New Product"}
-            </h1>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => navigate("/admin/products")}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isEditMode ? "Updating..." : "Creating..."}
-                  </>
-                ) : (
-                  isEditMode ? "Update Product" : "Create Product"
-                )}
-              </Button>
-            </div>
-          </div>
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">
+            {isEditing ? "Edit Product" : "Add New Product"}
+          </h1>
+          <Button variant="outline" onClick={() => navigate("/admin/products")}>
+            Back to Products
+          </Button>
+        </div>
 
-          <form onSubmit={handleSubmit}>
-            <Tabs defaultValue="basic">
-              <TabsList className="mb-4">
-                <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                <TabsTrigger value="colors">Color Variants</TabsTrigger>
-                <TabsTrigger value="sizes">Size Variants & Pricing</TabsTrigger>
-                <TabsTrigger value="specifications">Specifications</TabsTrigger>
-              </TabsList>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="title">Product Title</Label>
+                  <Input
+                    id="title"
+                    {...form.register("title")}
+                    onChange={onTitleChange}
+                    placeholder="Enter product title"
+                  />
+                  {form.formState.errors.title && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {form.formState.errors.title.message}
+                    </p>
+                  )}
+                </div>
 
-              {/* Basic Info Tab */}
-              <TabsContent value="basic">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="title">Title *</Label>
-                    <Input
-                      id="title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="slug">Slug *</Label>
-                    <Input
-                      id="slug"
-                      value={slug}
-                      onChange={(e) => setSlug(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="shortDescription">Short Description *</Label>
-                    <Textarea
-                      id="shortDescription"
-                      value={shortDescription}
-                      onChange={(e) => setShortDescription(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="longDescription">Long Description</Label>
-                    <Textarea
-                      id="longDescription"
-                      value={longDescription}
-                      onChange={(e) => setLongDescription(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="originalPrice">Base Original Price *</Label>
-                      <Input
-                        id="originalPrice"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={originalPrice}
-                        onChange={(e) => setOriginalPrice(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="discountedPrice">Base Discounted Price</Label>
-                      <Input
-                        id="discountedPrice"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={discountedPrice}
-                        onChange={(e) => setDiscountedPrice(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="mainCategory">Main Category *</Label>
-                      <Select
-                        value={mainCategoryId}
-                        onValueChange={(value) => setMainCategoryId(value)}
-                      >
-                        <SelectTrigger id="mainCategory">
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="subCategory">Subcategory *</Label>
-                      <Select
-                        value={subCategoryId}
-                        onValueChange={(value) => setSubCategoryId(value)}
-                        disabled={!mainCategoryId}
-                      >
-                        <SelectTrigger id="subCategory">
-                          <SelectValue placeholder="Select subcategory" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {subcategories.map((sub) => (
-                            <SelectItem key={sub.id} value={sub.id}>
-                              {sub.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Age Ranges</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {AGE_RANGES.map((ageRange) => (
-                        <div key={ageRange} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`ageRange-${ageRange}`}
-                            checked={selectedAgeRanges.includes(ageRange)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedAgeRanges([...selectedAgeRanges, ageRange]);
-                              } else {
-                                setSelectedAgeRanges(selectedAgeRanges.filter(a => a !== ageRange));
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`ageRange-${ageRange}`}>{ageRange}</Label>
-                        </div>
+                <div>
+                  <Label htmlFor="slug">Product Slug</Label>
+                  <Input
+                    id="slug"
+                    {...form.register("slug")}
+                    placeholder="product-slug"
+                  />
+                  {form.formState.errors.slug && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {form.formState.errors.slug.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="category">Category</Label>
+                  <Select
+                    value={form.watch("categoryId")}
+                    onValueChange={(value) => {
+                      form.setValue("categoryId", value);
+                      form.setValue("subcategoryId", ""); // Reset subcategory when category changes
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories?.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.categoryId && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {form.formState.errors.categoryId.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="subcategory">Subcategory</Label>
+                  <Select
+                    value={form.watch("subcategoryId")}
+                    onValueChange={(value) => form.setValue("subcategoryId", value)}
+                    disabled={!selectedCategoryId || subcategories.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select subcategory" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subcategories.map((subcategory) => (
+                        <SelectItem key={subcategory.id} value={subcategory.id}>
+                          {subcategory.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.subcategoryId && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {form.formState.errors.subcategoryId.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="shortDescription">Short Description</Label>
+                <Textarea
+                  id="shortDescription"
+                  {...form.register("shortDescription")}
+                  placeholder="Brief product description"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="longDescription">Long Description</Label>
+                <Textarea
+                  id="longDescription"
+                  {...form.register("longDescription")}
+                  placeholder="Detailed product description"
+                  rows={5}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Pricing & Inventory</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="priceOriginal">Original Price (₹)</Label>
+                  <Input
+                    id="priceOriginal"
+                    type="number"
+                    step="0.01"
+                    {...form.register("priceOriginal", { valueAsNumber: true })}
+                    placeholder="0.00"
+                  />
+                  {form.formState.errors.priceOriginal && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {form.formState.errors.priceOriginal.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="priceDiscounted">Discounted Price (₹)</Label>
+                  <Input
+                    id="priceDiscounted"
+                    type="number"
+                    step="0.01"
+                    {...form.register("priceDiscounted", { valueAsNumber: true })}
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="stockQuantity">Stock Quantity</Label>
+                  <Input
+                    id="stockQuantity"
+                    type="number"
+                    {...form.register("stockQuantity", { valueAsNumber: true })}
+                    placeholder="0"
+                  />
+                  {form.formState.errors.stockQuantity && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {form.formState.errors.stockQuantity.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Color Variants</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {colorVariants.map((color, index) => (
+                <div key={index} className="border p-4 rounded-lg space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Color Variant {index + 1}</h4>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeColorVariant(index)}
+                      disabled={colorVariants.length === 1}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Color Name</Label>
+                      <Input
+                        value={color.name}
+                        onChange={(e) =>
+                          updateColorVariant(index, "name", e.target.value)
+                        }
+                        placeholder="e.g., Red, Blue, Green"
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Color Code</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={color.colorCode}
+                          onChange={(e) =>
+                            updateColorVariant(index, "colorCode", e.target.value)
+                          }
+                          className="w-16 h-10 p-1"
+                        />
+                        <Input
+                          value={color.colorCode}
+                          onChange={(e) =>
+                            updateColorVariant(index, "colorCode", e.target.value)
+                          }
+                          placeholder="#000000"
+                          className="flex-1"
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="isLowStock"
-                        checked={isLowStock}
-                        onCheckedChange={setIsLowStock}
+
+                  <div>
+                    <Label>Images</Label>
+                    <OrderedImageUpload
+                      images={color.images}
+                      onImagesChange={(images) =>
+                        updateColorVariant(index, "images", images)
+                      }
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <Button type="button" onClick={addColorVariant} variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Color Variant
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Size Variants</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {sizeVariants.map((size, index) => (
+                <div key={index} className="border p-4 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium">Size Variant {index + 1}</h4>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeSizeVariant(index)}
+                      disabled={sizeVariants.length === 1}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label>Size Name</Label>
+                      <Input
+                        value={size.name}
+                        onChange={(e) =>
+                          updateSizeVariant(index, "name", e.target.value)
+                        }
+                        placeholder="e.g., S, M, L, XL"
                       />
-                      <Label htmlFor="isLowStock">Low Stock</Label>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="isOutOfStock"
-                        checked={isOutOfStock}
-                        onCheckedChange={setIsOutOfStock}
+
+                    <div>
+                      <Label>Original Price (₹)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={size.priceOriginal}
+                        onChange={(e) =>
+                          updateSizeVariant(index, "priceOriginal", parseFloat(e.target.value) || 0)
+                        }
+                        placeholder="0.00"
                       />
-                      <Label htmlFor="isOutOfStock">Out of Stock</Label>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="isFeatured"
-                        checked={isFeatured}
-                        onCheckedChange={setIsFeatured}
+
+                    <div>
+                      <Label>Discounted Price (₹)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={size.priceDiscounted || ""}
+                        onChange={(e) =>
+                          updateSizeVariant(index, "priceDiscounted", parseFloat(e.target.value) || undefined)
+                        }
+                        placeholder="0.00"
                       />
-                      <Label htmlFor="isFeatured">Featured</Label>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="isTrending"
-                        checked={isTrending}
-                        onCheckedChange={setIsTrending}
+
+                    <div className="flex items-center space-x-2 pt-6">
+                      <Checkbox
+                        id={`inStock-${index}`}
+                        checked={size.inStock}
+                        onCheckedChange={(checked) =>
+                          updateSizeVariant(index, "inStock", checked)
+                        }
                       />
-                      <Label htmlFor="isTrending">Trending</Label>
+                      <Label htmlFor={`inStock-${index}`}>In Stock</Label>
                     </div>
                   </div>
                 </div>
-              </TabsContent>
+              ))}
 
-              {/* Color Variants Tab */}
-              <TabsContent value="colors">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Color Variants</CardTitle>
-                    <Button onClick={addColorVariant} type="button" variant="outline">
-                      <Plus className="mr-2 h-4 w-4" /> Add Color
+              <Button type="button" onClick={addSizeVariant} variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Size Variant
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Age Ranges</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {ageRanges.map((range) => (
+                  <Badge key={range} variant="secondary" className="flex items-center gap-1">
+                    {range}
+                    <button
+                      type="button"
+                      onClick={() => removeAgeRange(range)}
+                      className="ml-1 hover:bg-gray-300 rounded-full p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {["0-1 years", "1-2 years", "2-3 years", "3-5 years", "5-8 years", "8-12 years", "12+ years"].map((range) => (
+                  <Button
+                    key={range}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addAgeRange(range)}
+                    disabled={ageRanges.includes(range)}
+                  >
+                    {range}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Specifications</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                {Object.entries(specifications).map(([key, value]) => (
+                  <div key={key} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <span><strong>{key}:</strong> {value}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeSpecification(key)}
+                    >
+                      <X className="w-4 h-4" />
                     </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-8">
-                      {colorVariants.map((variant, index) => (
-                        <div 
-                          key={variant.id} 
-                          className="border-2 rounded-lg p-6 bg-gradient-to-r from-gray-50 to-white"
-                          style={{ 
-                            borderColor: variant.colorCode || '#e5e7eb',
-                            boxShadow: `0 2px 8px ${variant.colorCode}20`
-                          }}
-                        >
-                          <div className="flex justify-between items-center mb-6">
-                            <div className="flex items-center gap-4">
-                              <h3 className="text-lg font-semibold">
-                                Color Variant #{index + 1}
-                              </h3>
-                              <div 
-                                className="w-8 h-8 rounded-full border-2 border-gray-300 shadow-sm"
-                                style={{ backgroundColor: variant.colorCode }}
-                                title={`Color: ${variant.name || 'Unnamed'}`}
-                              />
-                              {variant.name && (
-                                <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                                  {variant.name}
-                                </span>
-                              )}
-                            </div>
-                            <Button
-                              onClick={() => removeColorVariant(variant.id)}
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              disabled={colorVariants.length === 1}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                  </div>
+                ))}
+              </div>
 
-                          <div className="grid grid-cols-2 gap-4 mb-6">
-                            <div className="space-y-2">
-                              <Label htmlFor={`color-name-${variant.id}`}>Color Name</Label>
-                              <Input
-                                id={`color-name-${variant.id}`}
-                                value={variant.name}
-                                onChange={(e) => updateColorVariant(variant.id, "name", e.target.value)}
-                                placeholder="e.g. Navy Blue"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor={`color-code-${variant.id}`}>Color Code</Label>
-                              <div className="flex gap-2 items-center">
-                                <Input
-                                  id={`color-code-${variant.id}`}
-                                  type="color"
-                                  value={variant.colorCode}
-                                  onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
-                                  className="w-12 h-10 p-1"
-                                />
-                                <Input
-                                  value={variant.colorCode}
-                                  onChange={(e) => updateColorVariant(variant.id, "colorCode", e.target.value)}
-                                  placeholder="#000000"
-                                  className="flex-1"
-                                />
-                              </div>
-                            </div>
-                          </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Specification key"
+                  value={specificationKey}
+                  onChange={(e) => setSpecificationKey(e.target.value)}
+                />
+                <Input
+                  placeholder="Specification value"
+                  value={specificationValue}
+                  onChange={(e) => setSpecificationValue(e.target.value)}
+                />
+                <Button type="button" onClick={addSpecification}>
+                  Add
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-                          <div className="border-t pt-4">
-                            <ReorderableImageGrid
-                              colorVariantId={variant.id}
-                              colorVariantName={variant.name || `Color #${index + 1}`}
-                              images={variant.images}
-                              onImageChange={(imageIndex, url, filename, fileType) =>
-                                handleImageUpload(variant.id, imageIndex, url, filename, fileType)
-                              }
-                              onImageRemove={(imageIndex) =>
-                                handleImageRemove(variant.id, imageIndex)
-                              }
-                              onReorder={(oldIndex, newIndex) =>
-                                handleImageReorder(variant.id, oldIndex, newIndex)
-                              }
-                              maxImages={6}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+          <Card>
+            <CardHeader>
+              <CardTitle>Features</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isFeatured"
+                  checked={form.watch("isFeatured")}
+                  onCheckedChange={(checked) => form.setValue("isFeatured", !!checked)}
+                />
+                <Label htmlFor="isFeatured">Featured Product</Label>
+              </div>
 
-              {/* Size Variants Tab */}
-              <TabsContent value="sizes">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Size Variants & Pricing</CardTitle>
-                    <Button onClick={addSizeVariant} type="button" variant="outline">
-                      <Plus className="mr-2 h-4 w-4" /> Add Size
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {sizeVariants.map((variant, index) => (
-                        <div key={variant.id} className="border rounded-lg p-4 bg-gray-50">
-                          <div className="grid grid-cols-5 gap-4 items-end">
-                            <div>
-                              <Label htmlFor={`size-name-${variant.id}`}>Size Name</Label>
-                              <Input
-                                id={`size-name-${variant.id}`}
-                                value={variant.name}
-                                onChange={(e) => updateSizeVariant(variant.id, "name", e.target.value)}
-                                placeholder="Size name"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`size-price-${variant.id}`}>Original Price</Label>
-                              <Input
-                                id={`size-price-${variant.id}`}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={variant.priceOriginal}
-                                onChange={(e) => updateSizeVariant(variant.id, "priceOriginal", parseFloat(e.target.value) || 0)}
-                                required
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`size-discount-${variant.id}`}>Discounted Price</Label>
-                              <Input
-                                id={`size-discount-${variant.id}`}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={variant.priceDiscounted || ''}
-                                onChange={(e) => updateSizeVariant(variant.id, "priceDiscounted", e.target.value ? parseFloat(e.target.value) : undefined)}
-                                placeholder="Optional"
-                              />
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`size-stock-${variant.id}`}
-                                checked={variant.inStock}
-                                onCheckedChange={(checked) => updateSizeVariant(variant.id, "inStock", checked)}
-                              />
-                              <Label htmlFor={`size-stock-${variant.id}`}>In Stock</Label>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeSizeVariant(variant.id)}
-                              disabled={sizeVariants.length === 1}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isTrending"
+                  checked={form.watch("isTrending")}
+                  onCheckedChange={(checked) => form.setValue("isTrending", !!checked)}
+                />
+                <Label htmlFor="isTrending">Trending Product</Label>
+              </div>
+            </CardContent>
+          </Card>
 
-              {/* Specifications Tab */}
-              <TabsContent value="specifications">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Specifications</CardTitle>
-                    <Button onClick={addSpecification} type="button" variant="outline">
-                      <Plus className="mr-2 h-4 w-4" /> Add Specification
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {specifications.map((spec, index) => (
-                        <div key={index} className="flex items-center gap-4">
-                          <Input
-                            value={spec.key}
-                            onChange={(e) => updateSpecification(index, "key", e.target.value)}
-                            placeholder="Key"
-                            className="flex-1"
-                          />
-                          <Input
-                            value={spec.value}
-                            onChange={(e) => updateSpecification(index, "value", e.target.value)}
-                            placeholder="Value"
-                            className="flex-1"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeSpecification(index)}
-                            disabled={specifications.length === 1}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </form>
-        </div>
-      </AdminLayout>
-    </AdminProtectedRoute>
+          <div className="flex gap-4">
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Saving..." : isEditing ? "Update Product" : "Create Product"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate("/admin/products")}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </div>
+    </AdminLayout>
   );
 };
 

@@ -1,10 +1,11 @@
+
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Minus, Plus, Heart } from "lucide-react";
+import { Minus, Plus, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { ColorVariant, SizeVariant } from "@/types/product";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -14,7 +15,6 @@ import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
 import PincodeChecker from "@/components/products/PincodeChecker";
 import { useDeliveryInfo } from "@/hooks/useDeliveryInfo";
-import ProductNavigation from "@/components/products/ProductNavigation";
 
 const ProductDetailsPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -36,6 +36,11 @@ const ProductDetailsPage = () => {
       setSelectedSize(firstAvailableSize || product.sizeVariants[0] || null);
     }
   }, [product]);
+
+  // Reset image index when color changes
+  React.useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [selectedColor]);
 
   if (isLoading) {
     return (
@@ -114,6 +119,23 @@ const ProductDetailsPage = () => {
     setQuantity(quantity + 1);
   };
 
+  // Image navigation functions
+  const goToPreviousImage = () => {
+    if (selectedColor && selectedColor.images.length > 0) {
+      setCurrentImageIndex((prev) => 
+        prev === 0 ? selectedColor.images.length - 1 : prev - 1
+      );
+    }
+  };
+
+  const goToNextImage = () => {
+    if (selectedColor && selectedColor.images.length > 0) {
+      setCurrentImageIndex((prev) => 
+        prev === selectedColor.images.length - 1 ? 0 : prev + 1
+      );
+    }
+  };
+
   // Get current price based on selected size or fallback to base price
   const getCurrentPrice = () => {
     if (selectedSize) {
@@ -159,6 +181,31 @@ const ProductDetailsPage = () => {
                 }}
               />
             </div>
+
+            {/* Image Navigation Buttons */}
+            {selectedColor && selectedColor.images.length > 1 && (
+              <div className="flex justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={goToPreviousImage}
+                  className="h-8 w-8"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex items-center px-3 py-1 bg-gray-100 rounded-md text-sm">
+                  {currentImageIndex + 1} / {selectedColor.images.length}
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={goToNextImage}
+                  className="h-8 w-8"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
 
             {/* Thumbnail Images */}
             <div className="grid grid-cols-6 gap-2">
@@ -391,13 +438,6 @@ const ProductDetailsPage = () => {
             <p>{product.longDescription}</p>
           </div>
         </div>
-
-        {/* Product Navigation */}
-        <ProductNavigation 
-          currentSlug={product.slug}
-          categoryId={product.categoryId}
-          subCategoryId={product.subCategoryId}
-        />
       </div>
     </MainLayout>
   );
