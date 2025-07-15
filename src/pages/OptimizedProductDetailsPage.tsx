@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
@@ -153,6 +152,25 @@ const OptimizedProductDetailsPage = () => {
                 }}
               />
             </div>
+
+            {/* Navigation Dots */}
+            {selectedColor.images.length > 1 && (
+              <div className="flex justify-center space-x-2 py-2">
+                {selectedColor.images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={cn(
+                      "w-3 h-3 rounded-full transition-all duration-200",
+                      currentImageIndex === index 
+                        ? "bg-brand" 
+                        : "bg-gray-300 hover:bg-gray-400"
+                    )}
+                    aria-label={`Go to image ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Thumbnail Images */}
             <div className="grid grid-cols-6 gap-2">
