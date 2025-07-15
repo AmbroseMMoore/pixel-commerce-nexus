@@ -44,9 +44,9 @@ const ProductDetailsPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
               <Skeleton className="aspect-square w-full rounded-lg" />
-              <div className="grid grid-cols-6 gap-2">
+              <div className="flex overflow-x-auto scrollbar-hide gap-2">
                 {Array(6).fill(0).map((_, i) => (
-                  <Skeleton key={i} className="aspect-square rounded-md" />
+                  <Skeleton key={i} className="aspect-square rounded-md flex-shrink-0 w-16 h-16" />
                 ))}
               </div>
             </div>
@@ -179,13 +179,13 @@ const ProductDetailsPage = () => {
               </div>
             )}
 
-            {/* Thumbnail Images */}
-            <div className="grid grid-cols-6 gap-2">
+            {/* Thumbnail Images - Horizontal Scroll */}
+            <div className="flex overflow-x-auto scroll-smooth gap-2 pb-2 scrollbar-hide snap-x snap-mandatory">
               {selectedColor.images.map((image, index) => (
                 <button
                   key={index}
                   className={cn(
-                    "aspect-square rounded-md overflow-hidden border-2",
+                    "aspect-square rounded-md overflow-hidden border-2 flex-shrink-0 snap-center",
                     currentImageIndex === index
                       ? "border-brand"
                       : "border-transparent"
