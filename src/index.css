@@ -140,13 +140,3 @@
 .bg-brand\/10 {
   background-color: rgba(113, 45, 143, 0.1);
 }
-
-/* Hide scrollbar for horizontal scroll */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
