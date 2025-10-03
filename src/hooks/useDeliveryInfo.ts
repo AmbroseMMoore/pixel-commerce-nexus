@@ -1,6 +1,8 @@
 
 import { useState, useCallback } from 'react';
 
+export const FREE_SHIPPING_THRESHOLD = 3000;
+
 interface DeliveryInfo {
   zone_id: string;
   zone_number: number;
@@ -29,6 +31,20 @@ export const useDeliveryInfo = () => {
     return deliveryInfo?.delivery_charge || 0;
   }, [deliveryInfo]);
 
+  const getEffectiveDeliveryCharge = useCallback((cartTotal: number) => {
+    if (cartTotal >= FREE_SHIPPING_THRESHOLD) {
+      return 0;
+    }
+    return deliveryInfo?.delivery_charge || 0;
+  }, [deliveryInfo]);
+
+  const getRemainingForFreeShipping = useCallback((cartTotal: number) => {
+    if (cartTotal >= FREE_SHIPPING_THRESHOLD) {
+      return 0;
+    }
+    return FREE_SHIPPING_THRESHOLD - cartTotal;
+  }, []);
+
   const getDeliveryDays = useCallback(() => {
     if (!deliveryInfo) return null;
     
@@ -42,6 +58,8 @@ export const useDeliveryInfo = () => {
     handleDeliveryInfoChange,
     clearDeliveryInfo,
     getDeliveryCharge,
+    getEffectiveDeliveryCharge,
+    getRemainingForFreeShipping,
     getDeliveryDays
   };
 };

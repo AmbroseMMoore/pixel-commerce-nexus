@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useLogging } from "@/hooks/useLogging";
 import { MapPin, Truck, Clock } from "lucide-react";
+import { FREE_SHIPPING_THRESHOLD } from "@/hooks/useDeliveryInfo";
 
 const CheckoutPage = () => {
   const { user } = useAuth();
@@ -60,8 +61,11 @@ const CheckoutPage = () => {
     deliveryAddress.postalCode.length === 6
   );
 
-  const deliveryCharge = deliveryInfo?.delivery_charge || 0;
-  const totalWithDelivery = cartTotal + deliveryCharge;
+  const baseDeliveryCharge = deliveryInfo?.delivery_charge || 0;
+  const effectiveDeliveryCharge = cartTotal >= FREE_SHIPPING_THRESHOLD ? 0 : baseDeliveryCharge;
+  const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - cartTotal);
+  const hasFreeShipping = cartTotal >= FREE_SHIPPING_THRESHOLD;
+  const totalWithDelivery = cartTotal + effectiveDeliveryCharge;
 
   if (!user) {
     navigate('/auth');
@@ -118,7 +122,7 @@ const CheckoutPage = () => {
         payment_method: paymentMethod,
         payment_status: 'pending',
         delivery_zone_id: deliveryInfo?.zone_id || null,
-        delivery_charge: deliveryCharge,
+        delivery_charge: effectiveDeliveryCharge,
         estimated_delivery_days: deliveryInfo?.delivery_days_max || null,
         delivery_pincode: deliveryAddress.postalCode
       })
@@ -182,7 +186,7 @@ const CheckoutPage = () => {
           totalAmount: totalWithDelivery,
           itemCount: cartItems.length,
           paymentMethod: 'cod',
-          deliveryCharge: deliveryCharge
+          deliveryCharge: effectiveDeliveryCharge
         });
 
         toast({
@@ -213,7 +217,7 @@ const CheckoutPage = () => {
               totalAmount: totalWithDelivery,
               itemCount: cartItems.length,
               paymentMethod: 'razorpay',
-              deliveryCharge: deliveryCharge
+              deliveryCharge: effectiveDeliveryCharge
             });
             navigate('/profile?tab=orders');
           },
@@ -358,7 +362,19 @@ const CheckoutPage = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             <Truck className="h-4 w-4 text-blue-600" />
-                            <span>₹{deliveryInfo.delivery_charge} delivery charge</span>
+                            <div className="flex flex-col">
+                              <span>
+                                ₹{effectiveDeliveryCharge} delivery charge
+                                {hasFreeShipping && (
+                                  <span className="ml-2 text-green-600 font-medium">(Free Shipping Applied!)</span>
+                                )}
+                              </span>
+                              {!hasFreeShipping && remainingForFreeShipping > 0 && (
+                                <span className="text-xs text-amber-600">
+                                  Add ₹{remainingForFreeShipping.toFixed(0)} more for free shipping
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -433,9 +449,23 @@ const CheckoutPage = () => {
                     <span>Subtotal</span>
                     <span>₹{cartTotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-start">
                     <span>Delivery Charge</span>
-                    <span>₹{deliveryCharge.toFixed(2)}</span>
+                    <div className="text-right">
+                      <div className="flex items-center gap-2">
+                        <span className={hasFreeShipping ? "line-through text-muted-foreground text-sm" : ""}>
+                          ₹{effectiveDeliveryCharge.toFixed(2)}
+                        </span>
+                        {hasFreeShipping && (
+                          <span className="text-green-600 font-medium text-sm">(Free Shipping!)</span>
+                        )}
+                      </div>
+                      {!hasFreeShipping && remainingForFreeShipping > 0 && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          (Add ₹{remainingForFreeShipping.toFixed(0)} more for free shipping)
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span>Tax</span>

@@ -8,11 +8,15 @@ import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { FREE_SHIPPING_THRESHOLD } from "@/hooks/useDeliveryInfo";
 
 const CartPage = () => {
   const { cartItems, updateQuantity, removeFromCart, isLoading, cartTotal, cartCount } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - cartTotal);
+  const hasFreeShipping = cartTotal >= FREE_SHIPPING_THRESHOLD;
 
   const handleQuantityChange = (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) {
@@ -162,9 +166,20 @@ const CartPage = () => {
                   <span>₹{cartTotal.toFixed(2)}</span>
                 </div>
                 
-                <div className="flex justify-between">
+                <div className="flex justify-between items-start">
                   <span>Shipping</span>
-                  <span className="text-green-600">Free</span>
+                  <div className="text-right">
+                    {hasFreeShipping ? (
+                      <span className="text-green-600 font-medium">₹0 (Free Shipping!)</span>
+                    ) : (
+                      <div className="space-y-1">
+                        <span className="text-muted-foreground">Calculated at checkout</span>
+                        <p className="text-xs text-amber-600">
+                          Add ₹{remainingForFreeShipping.toFixed(0)} more for free shipping!
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="border-t pt-4">
