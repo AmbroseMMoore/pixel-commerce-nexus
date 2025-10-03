@@ -346,7 +346,7 @@ const OptimizedProductDetailsPage = () => {
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <Button
                 onClick={handleAddToCart}
-                className="flex-1 bg-brand hover:bg-brand-dark"
+                className="sm:flex-1 bg-brand hover:bg-brand-dark h-11"
                 size="lg"
                 disabled={product.isOutOfStock || !selectedSize?.inStock || isAddingToCart}
               >
