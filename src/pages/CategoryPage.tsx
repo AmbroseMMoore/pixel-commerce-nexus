@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import ProductCard from "@/components/products/ProductCard";
@@ -14,6 +14,7 @@ import { useProductsByCategory } from "@/hooks/useProducts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { getAvailableColorGroups, productHasColorInGroup } from "@/services/colorGroupingService";
 
 const CategoryPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -32,16 +33,10 @@ const CategoryPage = () => {
   // Get subcategories for this category
   const categorySubCategories = category?.subCategories || [];
 
-  // Get all available colors from products
-  const availableColors = Array.from(
-    new Set(
-      categoryProducts.flatMap((product) =>
-        product.colorVariants.map((cv) => ({
-          name: cv.name,
-          colorCode: cv.colorCode,
-        }))
-      )
-    ).values()
+  // Get all available color groups from products (12 major groups)
+  const availableColorGroups = useMemo(() => 
+    getAvailableColorGroups(categoryProducts),
+    [categoryProducts]
   );
 
   // Get all available sizes from products
@@ -70,10 +65,9 @@ const CategoryPage = () => {
       return false;
     }
 
-    // Filter by color
+    // Filter by color group
     if (selectedColors.length > 0) {
-      const productColors = product.colorVariants.map((cv) => cv.name);
-      if (!selectedColors.some((color) => productColors.includes(color))) {
+      if (!selectedColors.some((groupName) => productHasColorInGroup(product, groupName))) {
         return false;
       }
     }
@@ -105,11 +99,11 @@ const CategoryPage = () => {
     );
   };
 
-  const toggleColor = (color: string) => {
+  const toggleColorGroup = (groupName: string) => {
     setSelectedColors((prev) =>
-      prev.includes(color)
-        ? prev.filter((c) => c !== color)
-        : [...prev, color]
+      prev.includes(groupName)
+        ? prev.filter((c) => c !== groupName)
+        : [...prev, groupName]
     );
   };
 
@@ -275,23 +269,27 @@ const CategoryPage = () => {
               {/* Colors Filter */}
               <div className="mb-6">
                 <h3 className="font-medium mb-3">Colors</h3>
-                <div className="flex flex-wrap gap-2">
-                  {availableColors.map((color, index) => (
+                <div className="flex flex-wrap gap-3">
+                  {availableColorGroups.map((group) => (
                     <button
-                      key={index}
-                      onClick={() => toggleColor(color.name)}
+                      key={group.name}
+                      onClick={() => toggleColorGroup(group.name)}
                       className={cn(
-                        "w-8 h-8 rounded-full border-2",
-                        selectedColors.includes(color.name)
-                          ? "border-brand"
-                          : "border-transparent"
+                        "flex flex-col items-center gap-1.5 transition-all",
+                        selectedColors.includes(group.name) && "scale-110"
                       )}
-                      title={color.name}
+                      title={group.displayName}
                     >
                       <span
-                        className="block w-full h-full rounded-full"
-                        style={{ backgroundColor: color.colorCode }}
-                      ></span>
+                        className={cn(
+                          "w-8 h-8 rounded-full border-2 transition-all",
+                          selectedColors.includes(group.name)
+                            ? "border-brand ring-2 ring-brand/20"
+                            : "border-gray-300 hover:border-gray-400"
+                        )}
+                        style={{ backgroundColor: group.colorCode }}
+                      />
+                      <span className="text-xs text-gray-600">{group.displayName}</span>
                     </button>
                   ))}
                 </div>
@@ -418,23 +416,27 @@ const CategoryPage = () => {
                 {/* Mobile Colors */}
                 <div className="mb-4">
                   <h3 className="font-medium mb-2">Colors</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {availableColors.map((color, index) => (
+                  <div className="flex flex-wrap gap-3">
+                    {availableColorGroups.map((group) => (
                       <button
-                        key={index}
-                        onClick={() => toggleColor(color.name)}
+                        key={group.name}
+                        onClick={() => toggleColorGroup(group.name)}
                         className={cn(
-                          "w-8 h-8 rounded-full border-2",
-                          selectedColors.includes(color.name)
-                            ? "border-brand"
-                            : "border-transparent"
+                          "flex flex-col items-center gap-1.5 transition-all",
+                          selectedColors.includes(group.name) && "scale-110"
                         )}
-                        title={color.name}
+                        title={group.displayName}
                       >
                         <span
-                          className="block w-full h-full rounded-full"
-                          style={{ backgroundColor: color.colorCode }}
-                        ></span>
+                          className={cn(
+                            "w-8 h-8 rounded-full border-2 transition-all",
+                            selectedColors.includes(group.name)
+                              ? "border-brand ring-2 ring-brand/20"
+                              : "border-gray-300 hover:border-gray-400"
+                          )}
+                          style={{ backgroundColor: group.colorCode }}
+                        />
+                        <span className="text-xs text-gray-600">{group.displayName}</span>
                       </button>
                     ))}
                   </div>
