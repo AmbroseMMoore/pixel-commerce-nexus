@@ -58,12 +58,27 @@ const CategoryPage = () => {
     ).values()
   );
 
-  // Get all available age ranges from products
+  // Get all available age ranges from products with proper sorting
   const availableAgeRanges = Array.from(
     new Set(
       categoryProducts.flatMap((product) => product.ageRanges || [])
     ).values()
-  ).sort();
+  ).sort((a, b) => {
+    // Helper to extract numeric value and type
+    const getOrderValue = (range: string) => {
+      if (range.includes('months')) {
+        const match = range.match(/^(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      }
+      if (range.includes('years')) {
+        const match = range.match(/^(\d+)/);
+        return match ? parseInt(match[1]) + 100 : 200; // Add 100 to put years after months
+      }
+      return 300; // Fallback
+    };
+    
+    return getOrderValue(a) - getOrderValue(b);
+  });
 
   // Apply filters to products
   const filteredProducts = categoryProducts.filter((product) => {
