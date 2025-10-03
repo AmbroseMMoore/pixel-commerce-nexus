@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Truck, Clock, CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { FREE_SHIPPING_THRESHOLD } from "@/hooks/useDeliveryInfo";
 
 interface DeliveryInfo {
   zone_id: string;
@@ -19,9 +20,10 @@ interface DeliveryInfo {
 
 interface PincodeCheckerProps {
   onDeliveryInfoChange?: (deliveryInfo: DeliveryInfo | null) => void;
+  currentItemValue?: number;
 }
 
-const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange }) => {
+const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange, currentItemValue = 0 }) => {
   const [pincode, setPincode] = useState("");
   const [checkedPincode, setCheckedPincode] = useState("");
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo | null>(null);
@@ -208,7 +210,19 @@ const PincodeChecker: React.FC<PincodeCheckerProps> = ({ onDeliveryInfoChange })
                     <Truck className="h-4 w-4 text-blue-600" />
                     <div>
                       <div className="text-sm font-medium">Delivery Charge</div>
-                      <div className="text-xs text-gray-600">₹{deliveryInfo.delivery_charge}</div>
+                      <div className="text-xs text-gray-600">
+                        ₹{deliveryInfo.delivery_charge}
+                        {currentItemValue > 0 && currentItemValue < FREE_SHIPPING_THRESHOLD && (
+                          <span className="text-amber-600 ml-1">
+                            (Add ₹{(FREE_SHIPPING_THRESHOLD - currentItemValue).toFixed(0)} more for free shipping)
+                          </span>
+                        )}
+                        {currentItemValue >= FREE_SHIPPING_THRESHOLD && (
+                          <span className="text-green-600 ml-1">
+                            (Free shipping applicable!)
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

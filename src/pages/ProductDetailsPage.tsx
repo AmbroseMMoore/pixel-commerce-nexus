@@ -346,7 +346,10 @@ const ProductDetailsPage = () => {
 
             {/* Pincode Checker */}
             <div className="mb-6">
-              <PincodeChecker onDeliveryInfoChange={handleDeliveryInfoChange} />
+              <PincodeChecker 
+                onDeliveryInfoChange={handleDeliveryInfoChange}
+                currentItemValue={(currentPrice.discounted || currentPrice.original) * quantity}
+              />
             </div>
 
             {/* Add to Cart */}
