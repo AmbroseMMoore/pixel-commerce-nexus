@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { FilterX, SlidersHorizontal } from "lucide-react";
+import { FilterX, SlidersHorizontal, AlertCircle, ChevronDown, X } from "lucide-react";
 import { Product, SubCategory } from "@/types/product";
 import { cn } from "@/lib/utils";
 import { useCategories } from "@/hooks/useCategories";
 import { useProductsByCategory } from "@/hooks/useProducts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { getAvailableColorGroups, productHasColorInGroup } from "@/services/colorGroupingService";
 import { MAJOR_COLOR_GROUPS } from "@/utils/colorGrouping";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const CategoryPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -27,6 +27,12 @@ const CategoryPage = () => {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedAgeRanges, setSelectedAgeRanges] = useState<string[]>([]);
+  const [openSections, setOpenSections] = useState({
+    subcategories: true,
+    ageRange: true,
+    colors: true,
+    sizes: true
+  });
 
   // Find the current category
   const category = categories.find((c) => c.slug === slug);
@@ -132,6 +138,13 @@ const CategoryPage = () => {
     setSelectedAgeRanges([]);
   };
 
+  const toggleSection = (section: keyof typeof openSections) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
   // Check if any filter is active
   const hasActiveFilters =
     selectedSubCategories.length > 0 ||
@@ -225,10 +238,14 @@ const CategoryPage = () => {
                 )}
               </div>
 
-              {/* Subcategories Filter */}
-              {categorySubCategories.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-medium mb-3">Subcategories</h3>
+            {/* Subcategories Filter */}
+            {categorySubCategories.length > 0 && (
+              <Collapsible open={openSections.subcategories} onOpenChange={() => toggleSection('subcategories')} className="mb-6">
+                <CollapsibleTrigger className="flex items-center justify-between w-full mb-3">
+                  <h3 className="font-medium">Subcategories</h3>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", openSections.subcategories && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
                   <div className="space-y-2">
                     {categorySubCategories.map((subCategory) => (
                       <div key={subCategory.id} className="flex items-center">
@@ -246,15 +263,20 @@ const CategoryPage = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
               <Separator className="my-4" />
 
-              {/* Age Ranges Filter */}
-              {availableAgeRanges.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-medium mb-3">Age Range</h3>
+            {/* Age Ranges Filter */}
+            {availableAgeRanges.length > 0 && (
+              <Collapsible open={openSections.ageRange} onOpenChange={() => toggleSection('ageRange')} className="mb-6">
+                <CollapsibleTrigger className="flex items-center justify-between w-full mb-3">
+                  <h3 className="font-medium">Age Range</h3>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", openSections.ageRange && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
                   <div className="space-y-2">
                     {availableAgeRanges.map((ageRange) => (
                       <div key={ageRange} className="flex items-center">
@@ -272,14 +294,19 @@ const CategoryPage = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
               <Separator className="my-4" />
 
-              {/* Colors Filter */}
-              <div className="mb-6">
-                <h3 className="font-medium mb-3">Colors</h3>
+            {/* Colors Filter */}
+            <Collapsible open={openSections.colors} onOpenChange={() => toggleSection('colors')} className="mb-6">
+              <CollapsibleTrigger className="flex items-center justify-between w-full mb-3">
+                <h3 className="font-medium">Colors</h3>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", openSections.colors && "rotate-180")} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <div className="flex flex-wrap gap-3">
                   {allColorGroups.map((group) => (
                     <button
@@ -304,13 +331,18 @@ const CategoryPage = () => {
                     </button>
                   ))}
                 </div>
-              </div>
+              </CollapsibleContent>
+            </Collapsible>
 
               <Separator className="my-4" />
 
-              {/* Sizes Filter */}
-              <div>
-                <h3 className="font-medium mb-3">Sizes</h3>
+            {/* Sizes Filter */}
+            <Collapsible open={openSections.sizes} onOpenChange={() => toggleSection('sizes')}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full mb-3">
+                <h3 className="font-medium">Sizes</h3>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", openSections.sizes && "rotate-180")} />
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <div className="flex flex-wrap gap-2">
                   {availableSizes.map((size, index) => (
                     <button
@@ -327,7 +359,8 @@ const CategoryPage = () => {
                     </button>
                   ))}
                 </div>
-              </div>
+              </CollapsibleContent>
+            </Collapsible>
             </div>
           </aside>
 
@@ -372,10 +405,14 @@ const CategoryPage = () => {
                   </Button>
                 </div>
 
-                {/* Mobile Subcategories */}
-                {categorySubCategories.length > 0 && (
-                  <div className="mb-4">
-                    <h3 className="font-medium mb-2">Subcategories</h3>
+              {/* Mobile Subcategories */}
+              {categorySubCategories.length > 0 && (
+                <Collapsible open={openSections.subcategories} onOpenChange={() => toggleSection('subcategories')} className="mb-4">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full mb-2">
+                    <h3 className="font-medium">Subcategories</h3>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", openSections.subcategories && "rotate-180")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
                     <div className="space-y-2">
                       {categorySubCategories.map((subCategory) => (
                         <div key={subCategory.id} className="flex items-center">
@@ -393,15 +430,20 @@ const CategoryPage = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
 
                 <Separator className="my-4" />
 
-                {/* Mobile Age Ranges */}
-                {availableAgeRanges.length > 0 && (
-                  <div className="mb-4">
-                    <h3 className="font-medium mb-2">Age Range</h3>
+              {/* Mobile Age Ranges */}
+              {availableAgeRanges.length > 0 && (
+                <Collapsible open={openSections.ageRange} onOpenChange={() => toggleSection('ageRange')} className="mb-4">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full mb-2">
+                    <h3 className="font-medium">Age Range</h3>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", openSections.ageRange && "rotate-180")} />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
                     <div className="space-y-2">
                       {availableAgeRanges.map((ageRange) => (
                         <div key={ageRange} className="flex items-center">
@@ -419,14 +461,19 @@ const CategoryPage = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
 
                 <Separator className="my-4" />
 
-                {/* Mobile Colors */}
-                <div className="mb-4">
-                  <h3 className="font-medium mb-2">Colors</h3>
+              {/* Mobile Colors */}
+              <Collapsible open={openSections.colors} onOpenChange={() => toggleSection('colors')} className="mb-4">
+                <CollapsibleTrigger className="flex items-center justify-between w-full mb-2">
+                  <h3 className="font-medium">Colors</h3>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", openSections.colors && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
                   <div className="flex flex-wrap gap-3">
                     {allColorGroups.map((group) => (
                       <button
@@ -451,13 +498,18 @@ const CategoryPage = () => {
                       </button>
                     ))}
                   </div>
-                </div>
+                </CollapsibleContent>
+              </Collapsible>
 
                 <Separator className="my-4" />
 
-                {/* Mobile Sizes */}
-                <div className="mb-4">
-                  <h3 className="font-medium mb-2">Sizes</h3>
+              {/* Mobile Sizes */}
+              <Collapsible open={openSections.sizes} onOpenChange={() => toggleSection('sizes')} className="mb-4">
+                <CollapsibleTrigger className="flex items-center justify-between w-full mb-2">
+                  <h3 className="font-medium">Sizes</h3>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", openSections.sizes && "rotate-180")} />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
                   <div className="flex flex-wrap gap-2">
                     {availableSizes.map((size, index) => (
                       <button
@@ -474,7 +526,8 @@ const CategoryPage = () => {
                       </button>
                     ))}
                   </div>
-                </div>
+                </CollapsibleContent>
+              </Collapsible>
 
                 <div className="flex justify-between mt-6">
                   <Button
@@ -533,26 +586,6 @@ const CategoryPage = () => {
         </div>
       </div>
     </MainLayout>
-  );
-};
-
-// X component for the mobile filter close button
-const X = ({ size }: { size: number }) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="18" y1="6" x2="6" y2="18"></line>
-      <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
   );
 };
 
