@@ -55,8 +55,10 @@ interface Specification {
 
 // Common age ranges for kids
 const AGE_RANGES = [
-  "0-6 months",
-  "6-12 months", 
+  "0-3 months",
+  "3-6 months",
+  "6-9 months",
+  "9-12 months",
   "1-2 years",
   "2-3 years",
   "3-4 years",

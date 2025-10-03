@@ -9,14 +9,20 @@ interface AgeFilterProps {
 }
 
 const ageRanges = [
-  "0-6 months",
-  "6-12 months", 
+  "0-3 months",
+  "3-6 months",
+  "6-9 months",
+  "9-12 months",
   "1-2 years",
   "2-3 years",
-  "3-5 years",
-  "5-8 years",
-  "8-12 years",
-  "12+ years"
+  "3-4 years",
+  "4-5 years",
+  "5-6 years",
+  "6-7 years",
+  "7-8 years",
+  "8-9 years",
+  "9-10 years",
+  "10+ years"
 ];
 
 const AgeFilter = ({ selectedAges, onAgeChange }: AgeFilterProps) => {
