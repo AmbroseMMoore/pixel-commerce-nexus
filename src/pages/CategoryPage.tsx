@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { getAvailableColorGroups, productHasColorInGroup } from "@/services/colorGroupingService";
+import { MAJOR_COLOR_GROUPS } from "@/utils/colorGrouping";
 
 const CategoryPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -33,9 +34,12 @@ const CategoryPage = () => {
   // Get subcategories for this category
   const categorySubCategories = category?.subCategories || [];
 
-  // Get all available color groups from products (12 major groups)
-  const availableColorGroups = useMemo(() => 
-    getAvailableColorGroups(categoryProducts),
+  // Always show all 12 major color groups
+  const allColorGroups = MAJOR_COLOR_GROUPS;
+  
+  // Track which color groups actually have products
+  const colorGroupsWithProducts = useMemo(() => 
+    getAvailableColorGroups(categoryProducts).map(g => g.name),
     [categoryProducts]
   );
 
@@ -134,6 +138,13 @@ const CategoryPage = () => {
     selectedColors.length > 0 ||
     selectedSizes.length > 0 ||
     selectedAgeRanges.length > 0;
+
+  // Check if user selected a color group with no products
+  const hasEmptyColorGroupSelected = useMemo(() => {
+    return selectedColors.some(
+      colorGroup => !colorGroupsWithProducts.includes(colorGroup)
+    );
+  }, [selectedColors, colorGroupsWithProducts]);
 
   // Loading state
   if (categoriesLoading || productsLoading) {
@@ -270,7 +281,7 @@ const CategoryPage = () => {
               <div className="mb-6">
                 <h3 className="font-medium mb-3">Colors</h3>
                 <div className="flex flex-wrap gap-3">
-                  {availableColorGroups.map((group) => (
+                  {allColorGroups.map((group) => (
                     <button
                       key={group.name}
                       onClick={() => toggleColorGroup(group.name)}
@@ -417,7 +428,7 @@ const CategoryPage = () => {
                 <div className="mb-4">
                   <h3 className="font-medium mb-2">Colors</h3>
                   <div className="flex flex-wrap gap-3">
-                    {availableColorGroups.map((group) => (
+                    {allColorGroups.map((group) => (
                       <button
                         key={group.name}
                         onClick={() => toggleColorGroup(group.name)}
@@ -496,10 +507,21 @@ const CategoryPage = () => {
               </div>
             ) : (
               <div className="bg-white p-8 rounded-lg text-center">
-                <h3 className="text-lg font-semibold mb-2">No products found</h3>
-                <p className="text-gray-500 mb-4">
-                  Try changing your filters or check back later for new products.
-                </p>
+                {hasEmptyColorGroupSelected ? (
+                  <>
+                    <h3 className="text-lg font-semibold mb-2">Coming Soon!</h3>
+                    <p className="text-gray-500 mb-4">
+                      Sorry, we will be updating products in this color shortly.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-semibold mb-2">No products found</h3>
+                    <p className="text-gray-500 mb-4">
+                      Try changing your filters or check back later for new products.
+                    </p>
+                  </>
+                )}
                 {hasActiveFilters && (
                   <Button onClick={clearFilters} className="bg-brand hover:bg-brand-dark">
                     Clear Filters
