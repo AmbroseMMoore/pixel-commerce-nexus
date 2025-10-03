@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1171,68 +1171,68 @@ export type Database = {
       get_active_flash_sale_products: {
         Args: Record<PropertyKey, never>
         Returns: {
-          product_id: string
-          product_title: string
-          product_slug: string
-          original_price: number
-          sale_price: number
           discount_percentage: number
-          flash_sale_title: string
           flash_sale_end_date: string
+          flash_sale_title: string
+          original_price: number
+          product_id: string
+          product_slug: string
+          product_title: string
+          sale_price: number
         }[]
       }
       get_delivery_info_by_pincode: {
         Args: { pincode_param: string }
         Returns: {
-          zone_id: string
-          zone_number: number
-          zone_name: string
-          delivery_days_min: number
-          delivery_days_max: number
-          delivery_charge: number
-          state: string
           city: string
+          delivery_charge: number
+          delivery_days_max: number
+          delivery_days_min: number
+          state: string
+          zone_id: string
+          zone_name: string
+          zone_number: number
         }[]
       }
       get_delivery_info_by_pincode_regions: {
         Args: { pincode_param: string }
         Returns: {
-          zone_id: string
-          zone_number: number
-          zone_name: string
-          delivery_days_min: number
-          delivery_days_max: number
-          delivery_charge: number
-          state: string
           city: string
+          delivery_charge: number
+          delivery_days_max: number
+          delivery_days_min: number
+          state: string
+          zone_id: string
+          zone_name: string
+          zone_number: number
         }[]
       }
       get_products_paginated: {
         Args: {
+          category_filter?: string
+          featured_only?: boolean
           page_num?: number
           page_size?: number
-          category_filter?: string
           subcategory_filter?: string
-          featured_only?: boolean
           trending_only?: boolean
         }
         Returns: {
-          id: string
-          title: string
-          slug: string
-          price_original: number
-          price_discounted: number
-          short_description: string
-          is_featured: boolean
-          is_trending: boolean
-          stock_quantity: number
-          is_out_of_stock: boolean
-          created_at: string
           category_name: string
           category_slug: string
+          created_at: string
+          id: string
+          is_featured: boolean
+          is_out_of_stock: boolean
+          is_trending: boolean
+          price_discounted: number
+          price_original: number
+          primary_image: string
+          short_description: string
+          slug: string
+          stock_quantity: number
           subcategory_name: string
           subcategory_slug: string
-          primary_image: string
+          title: string
           total_count: number
         }[]
       }
@@ -1242,11 +1242,11 @@ export type Database = {
       }
       update_order_status: {
         Args: {
-          order_id_param: string
+          delivery_date_param?: string
+          delivery_partner_param?: string
           new_status: string
           notes_param?: string
-          delivery_partner_param?: string
-          delivery_date_param?: string
+          order_id_param: string
           shipment_id_param?: string
         }
         Returns: undefined
