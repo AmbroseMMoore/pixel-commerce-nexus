@@ -8,6 +8,7 @@ import React, {
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types/user";
 import { toast } from "@/hooks/use-toast";
+import { getGuestCart, clearGuestCart, type GuestCartItem } from "@/utils/guestCart";
 
 interface AuthContextType {
   user: User | null;
@@ -83,7 +84,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
 
+      // Merge guest cart after successful login
+      setTimeout(async () => {
+        try {
+          const guestItems = getGuestCart();
+          if (guestItems.length > 0) {
+            console.log(`[Auth] 🛒 Merging ${guestItems.length} guest cart items...`);
+            await mergeGuestCartWithAuth(userId, guestItems);
+            clearGuestCart();
+            console.log('[Auth] ✅ Guest cart merged successfully');
+          }
+        } catch (error) {
+          console.error('[Auth] ❌ Error merging guest cart:', error);
+          // Don't block login if merge fails
+        }
+      }, 0);
+
       if (mounted) setLoading(false);
+    };
+
+    const mergeGuestCartWithAuth = async (userId: string, guestItems: GuestCartItem[]) => {
+      for (const item of guestItems) {
+        try {
+          // Check if item already exists in user's cart
+          const { data: existing } = await supabase
+            .from('cart_items')
+            .select('id, quantity')
+            .eq('customer_id', userId)
+            .eq('product_id', item.product_id)
+            .eq('color_id', item.color_id)
+            .eq('size_id', item.size_id)
+            .single();
+
+          if (existing) {
+            // Update quantity - add guest quantity to existing
+            await supabase
+              .from('cart_items')
+              .update({ quantity: existing.quantity + item.quantity })
+              .eq('id', existing.id);
+          } else {
+            // Insert new item
+            await supabase
+              .from('cart_items')
+              .insert({
+                customer_id: userId,
+                product_id: item.product_id,
+                color_id: item.color_id,
+                size_id: item.size_id,
+                quantity: item.quantity
+              });
+          }
+        } catch (error) {
+          console.error('[Auth] ❌ Error merging cart item:', error);
+          // Continue with other items even if one fails
+        }
+      }
     };
 
     const init = async () => {

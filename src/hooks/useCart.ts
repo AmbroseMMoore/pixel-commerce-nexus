@@ -4,6 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { useLogging } from '@/hooks/useLogging';
+import { 
+  getGuestCart, 
+  addGuestCartItem, 
+  updateGuestCartItem, 
+  removeGuestCartItem, 
+  clearGuestCart 
+} from '@/utils/guestCart';
 
 export interface CartItem {
   id: string;
@@ -42,8 +49,92 @@ export const useCart = () => {
   const { data: cartItems = [], isLoading, error } = useQuery({
     queryKey: ['cart', user?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
-      
+      // Guest cart - load from localStorage
+      if (!user?.id) {
+        const guestItems = getGuestCart();
+        if (guestItems.length === 0) return [];
+
+        // Fetch product details for guest cart items
+        const cartItemsWithDetails = await Promise.all(
+          guestItems.map(async (item) => {
+            try {
+              // Fetch product details
+              const { data: product, error: productError } = await supabase
+                .from('products')
+                .select('title, price_original, price_discounted, slug')
+                .eq('id', item.product_id)
+                .single();
+
+              if (productError) throw productError;
+
+              // Fetch color details
+              const { data: colorData, error: colorError } = await supabase
+                .from('product_colors')
+                .select('name, color_code')
+                .eq('id', item.color_id)
+                .maybeSingle();
+
+              if (colorError) throw colorError;
+
+              // Fetch size details
+              const { data: sizeData, error: sizeError } = await supabase
+                .from('product_sizes')
+                .select('name, price_original, price_discounted')
+                .eq('id', item.size_id)
+                .maybeSingle();
+
+              if (sizeError) throw sizeError;
+
+              if (!product || !colorData || !sizeData) {
+                return null;
+              }
+
+              const color = {
+                name: colorData.name,
+                color_code: colorData.color_code
+              };
+
+              const size = {
+                name: sizeData.name,
+                price_original: sizeData.price_original,
+                price_discounted: sizeData.price_discounted
+              };
+
+              // Fetch product images
+              const { data: images } = await supabase
+                .from('product_images')
+                .select('image_url, is_primary')
+                .eq('product_id', item.product_id)
+                .eq('color_id', item.color_id)
+                .order('is_primary', { ascending: false });
+
+              const primaryImage = images?.find(img => img.is_primary) || images?.[0];
+
+              return {
+                id: item.id,
+                product_id: item.product_id,
+                color_id: item.color_id,
+                size_id: item.size_id,
+                quantity: item.quantity,
+                product: {
+                  ...product,
+                  image_url: primaryImage?.image_url || "/placeholder.svg"
+                },
+                color,
+                size,
+                product_images: images || []
+              };
+            } catch (error) {
+              console.error('Error fetching guest cart item details:', error);
+              return null;
+            }
+          })
+        );
+
+        return cartItemsWithDetails.filter(item => item !== null) as CartItem[];
+      }
+
+      // Authenticated user - fetch from database
       const { data, error } = await supabase
         .from('cart_items')
         .select(`
@@ -97,7 +188,7 @@ export const useCart = () => {
 
       return cartItemsWithImages as CartItem[];
     },
-    enabled: !!user?.id,
+    enabled: true, // Always enabled for both guest and authenticated users
   });
 
   // Add to cart mutation
@@ -108,8 +199,13 @@ export const useCart = () => {
       sizeId: string;
       quantity?: number;
     }) => {
-      if (!user?.id) throw new Error('User not authenticated');
+      // Guest user - add to localStorage
+      if (!user?.id) {
+        addGuestCartItem(productId, colorId, sizeId, quantity);
+        return;
+      }
 
+      // Authenticated user - add to database
       // Check if item already exists in cart
       const { data: existing } = await supabase
         .from('cart_items')
@@ -145,14 +241,14 @@ export const useCart = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      logInfo('cart_item_added', { userId: user?.id });
+      logInfo('cart_item_added', { userId: user?.id || 'guest' });
       toast({
         title: "Added to cart",
         description: "Item has been added to your cart.",
       });
     },
     onError: (error) => {
-      logError('cart_add_failed', { error: error.message, userId: user?.id });
+      logError('cart_add_failed', { error: error.message, userId: user?.id || 'guest' });
       toast({
         title: "Error",
         description: "Failed to add item to cart.",
@@ -164,6 +260,13 @@ export const useCart = () => {
   // Update cart item mutation
   const updateCartMutation = useMutation({
     mutationFn: async ({ itemId, quantity }: { itemId: string; quantity: number }) => {
+      // Guest user - update in localStorage
+      if (!user?.id) {
+        updateGuestCartItem(itemId, quantity);
+        return;
+      }
+
+      // Authenticated user - update in database
       const { error } = await supabase
         .from('cart_items')
         .update({ quantity })
@@ -173,10 +276,10 @@ export const useCart = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      logInfo('cart_item_updated', { userId: user?.id });
+      logInfo('cart_item_updated', { userId: user?.id || 'guest' });
     },
     onError: (error) => {
-      logError('cart_update_failed', { error: error.message, userId: user?.id });
+      logError('cart_update_failed', { error: error.message, userId: user?.id || 'guest' });
       toast({
         title: "Error",
         description: "Failed to update cart item.",
@@ -188,6 +291,13 @@ export const useCart = () => {
   // Remove from cart mutation
   const removeFromCartMutation = useMutation({
     mutationFn: async (itemId: string) => {
+      // Guest user - remove from localStorage
+      if (!user?.id) {
+        removeGuestCartItem(itemId);
+        return;
+      }
+
+      // Authenticated user - remove from database
       const { error } = await supabase
         .from('cart_items')
         .delete()
@@ -197,14 +307,14 @@ export const useCart = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      logInfo('cart_item_removed', { userId: user?.id });
+      logInfo('cart_item_removed', { userId: user?.id || 'guest' });
       toast({
         title: "Removed from cart",
         description: "Item has been removed from your cart.",
       });
     },
     onError: (error) => {
-      logError('cart_remove_failed', { error: error.message, userId: user?.id });
+      logError('cart_remove_failed', { error: error.message, userId: user?.id || 'guest' });
       toast({
         title: "Error",
         description: "Failed to remove item from cart.",
@@ -216,8 +326,13 @@ export const useCart = () => {
   // Clear cart mutation
   const clearCartMutation = useMutation({
     mutationFn: async () => {
-      if (!user?.id) throw new Error('User not authenticated');
-      
+      // Guest user - clear localStorage
+      if (!user?.id) {
+        clearGuestCart();
+        return;
+      }
+
+      // Authenticated user - clear database
       const { error } = await supabase
         .from('cart_items')
         .delete()
@@ -227,7 +342,7 @@ export const useCart = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cart'] });
-      logInfo('cart_cleared', { userId: user?.id });
+      logInfo('cart_cleared', { userId: user?.id || 'guest' });
     }
   });
 

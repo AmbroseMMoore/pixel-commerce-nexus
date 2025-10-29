@@ -68,7 +68,7 @@ const CheckoutPage = () => {
   const totalWithDelivery = cartTotal + effectiveDeliveryCharge;
 
   if (!user) {
-    navigate('/auth');
+    navigate('/auth?redirect=/checkout');
     return null;
   }
 

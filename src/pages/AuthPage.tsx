@@ -40,19 +40,21 @@ const AuthPage = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      navigate("/");
+      const redirectPath = searchParams.get('redirect') || '/';
+      navigate(redirectPath);
     }
-  }, [user, navigate]);
+  }, [user, navigate, searchParams]);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setErrorMessage("");
     
     try {
+      const redirectPath = searchParams.get('redirect') || '/';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth?tab=login`
+          redirectTo: `${window.location.origin}${redirectPath}`
         }
       });
 
@@ -95,7 +97,9 @@ const AuthPage = () => {
         title: "Login successful",
         description: "Welcome back!",
       });
-      navigate("/");
+      
+      const redirectPath = searchParams.get('redirect') || '/';
+      navigate(redirectPath);
     } catch (error: any) {
       console.error("Login error:", error);
       setErrorMessage(error.message || "Invalid email or password");

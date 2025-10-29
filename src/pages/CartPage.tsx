@@ -33,7 +33,7 @@ const CartPage = () => {
         description: "Please log in to proceed to checkout.",
         variant: "destructive"
       });
-      navigate("/auth");
+      navigate("/auth?redirect=/checkout");
       return;
     }
 
@@ -84,6 +84,16 @@ const CartPage = () => {
     <MainLayout>
       <div className="container max-w-4xl py-8">
         <h1 className="text-2xl font-bold mb-6">Shopping Cart ({cartCount} items)</h1>
+        
+        {/* Guest Cart Notice */}
+        {!user && cartItems.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-800">
+              💡 <strong>Guest Cart:</strong> Your items are saved locally. 
+              Please log in to proceed with checkout. Your cart will be saved to your account.
+            </p>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
