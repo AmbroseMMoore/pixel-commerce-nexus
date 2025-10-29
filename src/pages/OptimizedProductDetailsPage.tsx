@@ -85,11 +85,6 @@ const OptimizedProductDetailsPage = () => {
   }
 
   const handleAddToCart = () => {
-    if (!user) {
-      toast.error("Please log in to add items to your cart");
-      return;
-    }
-
     if (!selectedSize) {
       toast.error("Please select a size");
       return;
