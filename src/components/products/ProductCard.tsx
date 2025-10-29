@@ -50,15 +50,6 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to add items to your cart.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     // Use first available color and size for quick add
     const firstColor = product.colorVariants[0];
     const firstSize = product.sizeVariants.find(s => s.inStock) || product.sizeVariants[0];
