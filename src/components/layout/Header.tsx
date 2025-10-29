@@ -1,9 +1,10 @@
 
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, ShoppingCart, User, Menu, X } from "lucide-react";
+import { Search, ShoppingCart, User, Menu, X, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
+import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/contexts/AuthContext";
 
 // Using the uploaded CuteBae logo
@@ -24,6 +25,7 @@ const Header = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
   const { cartCount } = useCart();
+  const { wishlistItems } = useWishlist();
   const { user } = useAuth();
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -106,6 +108,22 @@ const Header = () => {
               <User size={20} />
             </Button>
 
+            <Link to="/profile?tab=wishlist" className="relative">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                aria-label="Wishlist"
+                className="text-custom-purple hover:text-custom-pink"
+              >
+                <Heart size={20} />
+                {wishlistItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-custom-pink text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {wishlistItems.length}
+                  </span>
+                )}
+              </Button>
+            </Link>
+
             <Link to="/cart" className="relative">
               <Button 
                 variant="ghost" 
@@ -149,6 +167,14 @@ const Header = () => {
                 {category.name}
               </Link>
             ))}
+            <Link
+              to="/profile?tab=wishlist"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center text-gray-600 py-2 border-b border-gray-100"
+            >
+              <Heart size={18} className="mr-2" />
+              <span>Wishlist {wishlistItems.length > 0 && `(${wishlistItems.length})`}</span>
+            </Link>
             <button
               onClick={() => {
                 handleAuthClick();
