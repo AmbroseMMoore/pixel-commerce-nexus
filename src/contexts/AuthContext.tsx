@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@/types/user";
 import { toast } from "@/hooks/use-toast";
 import { getGuestCart, clearGuestCart, type GuestCartItem } from "@/utils/guestCart";
+import { getGuestWishlist, clearGuestWishlist, type GuestWishlistItem } from "@/utils/guestWishlist";
 
 interface AuthContextType {
   user: User | null;
@@ -84,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
 
-      // Merge guest cart after successful login
+      // Merge guest cart and wishlist after successful login
       setTimeout(async () => {
         try {
           const guestItems = getGuestCart();
@@ -94,8 +95,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             clearGuestCart();
             console.log('[Auth] ✅ Guest cart merged successfully');
           }
+
+          const guestWishlistItems = getGuestWishlist();
+          if (guestWishlistItems.length > 0) {
+            console.log(`[Auth] ❤️ Merging ${guestWishlistItems.length} guest wishlist items...`);
+            await mergeGuestWishlistWithAuth(userId, guestWishlistItems);
+            clearGuestWishlist();
+            console.log('[Auth] ✅ Guest wishlist merged successfully');
+          }
         } catch (error) {
-          console.error('[Auth] ❌ Error merging guest cart:', error);
+          console.error('[Auth] ❌ Error merging guest data:', error);
           // Don't block login if merge fails
         }
       }, 0);
@@ -136,6 +145,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } catch (error) {
           console.error('[Auth] ❌ Error merging cart item:', error);
+          // Continue with other items even if one fails
+        }
+      }
+    };
+
+    const mergeGuestWishlistWithAuth = async (userId: string, guestItems: GuestWishlistItem[]) => {
+      for (const item of guestItems) {
+        try {
+          // Check if item already exists in user's wishlist
+          const { data: existing } = await supabase
+            .from('wishlists')
+            .select('id')
+            .eq('customer_id', userId)
+            .eq('product_id', item.productId)
+            .eq('color_id', item.colorId)
+            .eq('size_id', item.sizeId)
+            .single();
+
+          if (!existing) {
+            // Insert new item only if it doesn't exist
+            await supabase
+              .from('wishlists')
+              .insert({
+                customer_id: userId,
+                product_id: item.productId,
+                color_id: item.colorId,
+                size_id: item.sizeId
+              });
+          }
+        } catch (error) {
+          console.error('[Auth] ❌ Error merging wishlist item:', error);
           // Continue with other items even if one fails
         }
       }

@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useOptimizedProduct } from "@/hooks/useOptimizedProducts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/hooks/useCart";
-import { useAuth } from "@/contexts/AuthContext";
+import { useWishlist } from "@/hooks/useWishlist";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import PincodeChecker from "@/components/products/PincodeChecker";
@@ -22,7 +22,7 @@ const OptimizedProductDetailsPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading, error, isError } = useOptimizedProduct(slug || "");
   const { addToCart, isAddingToCart } = useCart();
-  const { user } = useAuth();
+  const { addToWishlist } = useWishlist();
   const { deliveryInfo, handleDeliveryInfoChange } = useDeliveryInfo();
 
   const [selectedColor, setSelectedColor] = useState<ColorVariant | null>(null);
@@ -99,12 +99,12 @@ const OptimizedProductDetailsPage = () => {
   };
 
   const handleAddToWishlist = () => {
-    if (!user) {
-      toast.error("Please log in to add items to your wishlist");
+    if (!selectedSize) {
+      toast.error("Please select a size");
       return;
     }
 
-    toast.success(`Added ${product.title} to wishlist`);
+    addToWishlist(product.id, selectedColor.id, selectedSize.id);
   };
 
   const decreaseQuantity = () => {

@@ -95,15 +95,6 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in to add items to your wishlist.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     // Use first available color and size for wishlist
     const firstColor = product.colorVariants[0];
     const firstSize = product.sizeVariants[0];
