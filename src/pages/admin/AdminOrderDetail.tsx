@@ -23,7 +23,9 @@ import {
   Loader2,
   User,
   Phone,
-  Mail
+  Mail,
+  Copy,
+  Check
 } from "lucide-react";
 import { useAdminOrderDetail } from "@/hooks/useAdminOrderDetail";
 import { format } from "date-fns";
@@ -206,6 +208,29 @@ const AdminOrderDetail = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
   const { order, isLoading, refetch } = useAdminOrderDetail(orderId || '');
+  const [copiedAddress, setCopiedAddress] = useState(false);
+
+  const copyAddressToClipboard = () => {
+    if (!order?.delivery_address) return;
+    
+    const address = [
+      order.delivery_address.full_name,
+      order.delivery_address.phone_number,
+      order.delivery_address.address_line_1,
+      order.delivery_address.address_line_2,
+      `${order.delivery_address.city}, ${order.delivery_address.state}`,
+      order.delivery_address.postal_code,
+      order.delivery_address.country
+    ].filter(Boolean).join('\n');
+
+    navigator.clipboard.writeText(address);
+    setCopiedAddress(true);
+    toast({
+      title: "Address Copied",
+      description: "Delivery address copied to clipboard",
+    });
+    setTimeout(() => setCopiedAddress(false), 2000);
+  };
 
   if (isLoading) {
     return (
@@ -440,74 +465,114 @@ const AdminOrderDetail = () => {
                 </CardContent>
               </Card>
 
-              {/* Delivery Address */}
+              {/* Delivery Contact & Address */}
               {order.delivery_address && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <MapPin className="h-5 w-5 mr-2" />
-                      Delivery Address
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center">
+                        <MapPin className="h-5 w-5 mr-2" />
+                        Delivery Details
+                      </CardTitle>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={copyAddressToClipboard}
+                        className="h-8"
+                      >
+                        {copiedAddress ? (
+                          <Check className="h-4 w-4 mr-1" />
+                        ) : (
+                          <Copy className="h-4 w-4 mr-1" />
+                        )}
+                        {copiedAddress ? "Copied!" : "Copy"}
+                      </Button>
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-sm space-y-1">
-                      <div className="font-medium">{order.delivery_address.full_name}</div>
-                      <div>{order.delivery_address.address_line_1}</div>
-                      {order.delivery_address.address_line_2 && <div>{order.delivery_address.address_line_2}</div>}
-                      <div>{order.delivery_address.city}, {order.delivery_address.state}</div>
-                      <div>{order.delivery_address.postal_code}</div>
-                      <div>{order.delivery_address.country}</div>
-                      <div className="pt-2 border-t mt-2">
-                        <span className="text-muted-foreground">Phone: </span>
-                        {order.delivery_address.phone_number}
+                  <CardContent className="space-y-4">
+                    {/* Contact Person */}
+                    <div className="bg-muted/50 p-3 rounded-lg">
+                      <div className="text-xs font-medium text-muted-foreground mb-1">CONTACT PERSON</div>
+                      <div className="font-semibold text-lg">{order.delivery_address.full_name}</div>
+                      <div className="flex items-center mt-2 text-sm">
+                        <Phone className="h-4 w-4 mr-2 text-primary" />
+                        <a 
+                          href={`tel:${order.delivery_address.phone_number}`}
+                          className="text-primary hover:underline font-medium"
+                        >
+                          {order.delivery_address.phone_number}
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Delivery Address */}
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-2">DELIVERY ADDRESS</div>
+                      <div className="text-sm space-y-1 leading-relaxed">
+                        <div className="font-medium">{order.delivery_address.address_line_1}</div>
+                        {order.delivery_address.address_line_2 && (
+                          <div>{order.delivery_address.address_line_2}</div>
+                        )}
+                        <div>{order.delivery_address.city}, {order.delivery_address.state}</div>
+                        <div className="font-medium">{order.delivery_address.postal_code}</div>
+                        <div className="text-muted-foreground">{order.delivery_address.country}</div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Delivery Information */}
+              {/* Delivery Tracking Information */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Truck className="h-5 w-5 mr-2" />
-                    Delivery Information
+                    Tracking Information
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {order.delivery_zone && (
                     <div>
-                      <div className="text-sm font-medium text-muted-foreground">Delivery Zone</div>
-                      <div className="text-sm">
+                      <div className="text-xs font-medium text-muted-foreground mb-1">DELIVERY ZONE</div>
+                      <div className="text-sm font-medium">
                         {order.delivery_zone.zone_name} (Zone {order.delivery_zone.zone_number})
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        Estimated: {order.delivery_zone.delivery_days_min}-{order.delivery_zone.delivery_days_max} days
+                      <div className="text-xs text-muted-foreground mt-1">
+                        ⏱️ Estimated: {order.delivery_zone.delivery_days_min}-{order.delivery_zone.delivery_days_max} days
                       </div>
                     </div>
                   )}
                   {order.delivery_pincode && (
                     <div>
-                      <div className="text-sm font-medium text-muted-foreground">Pincode</div>
-                      <div className="text-sm">{order.delivery_pincode}</div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">PINCODE</div>
+                      <div className="text-sm font-medium">{order.delivery_pincode}</div>
                     </div>
                   )}
                   {order.delivery_partner_name && (
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground">Delivery Partner</div>
-                      <div className="text-sm">{order.delivery_partner_name}</div>
+                    <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-900">
+                      <div className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1">DELIVERY PARTNER</div>
+                      <div className="text-sm font-semibold text-blue-900 dark:text-blue-200">{order.delivery_partner_name}</div>
                     </div>
                   )}
                   {order.shipment_id && (
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground">Shipment ID</div>
-                      <div className="text-sm font-mono">{order.shipment_id}</div>
+                    <div className="bg-purple-50 dark:bg-purple-950/20 p-3 rounded-lg border border-purple-200 dark:border-purple-900">
+                      <div className="text-xs font-medium text-purple-700 dark:text-purple-400 mb-1">SHIPMENT ID</div>
+                      <div className="text-sm font-mono font-semibold text-purple-900 dark:text-purple-200 break-all">
+                        {order.shipment_id}
+                      </div>
                     </div>
                   )}
                   {order.delivery_date && (
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground">Expected Delivery</div>
-                      <div className="text-sm">{format(new Date(order.delivery_date), 'PPP')}</div>
+                    <div className="bg-green-50 dark:bg-green-950/20 p-3 rounded-lg border border-green-200 dark:border-green-900">
+                      <div className="text-xs font-medium text-green-700 dark:text-green-400 mb-1">EXPECTED DELIVERY</div>
+                      <div className="text-sm font-semibold text-green-900 dark:text-green-200">
+                        {format(new Date(order.delivery_date), 'PPP')}
+                      </div>
+                    </div>
+                  )}
+                  {!order.delivery_partner_name && !order.shipment_id && !order.delivery_date && (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      No tracking information available yet
                     </div>
                   )}
                 </CardContent>
