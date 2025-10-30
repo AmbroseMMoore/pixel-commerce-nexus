@@ -27,6 +27,7 @@ import AdminProducts from "./pages/admin/AdminProducts";
 import AdminSubCategories from "./pages/admin/AdminSubCategories";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminOrders from "./pages/admin/AdminOrders";
+import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
 import AdminCMS from "./pages/admin/AdminCMS";
 import AdminProductForm from "./pages/admin/AdminProductForm";
 import AdminSettings from "./pages/admin/AdminSettings";
@@ -113,6 +114,11 @@ const App = () => (
             <Route path="/admin/orders" element={
               <AdminProtectedRoute>
                 <AdminOrders />
+              </AdminProtectedRoute>
+            } />
+            <Route path="/admin/orders/:orderId" element={
+              <AdminProtectedRoute>
+                <AdminOrderDetail />
               </AdminProtectedRoute>
             } />
             <Route path="/admin/cms" element={

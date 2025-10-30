@@ -1,5 +1,6 @@
 
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -362,13 +363,14 @@ const AdminOrders = () => {
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <OrderStatusDialog order={order} onStatusUpdate={handleRefresh} />
-                              <Button 
-                                size="sm" 
-                                variant="ghost"
-                                onClick={() => handleViewOrderDetails(order)}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
+                              <Link to={`/admin/orders/${order.id}`}>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </Link>
                             </div>
                           </TableCell>
                         </TableRow>
