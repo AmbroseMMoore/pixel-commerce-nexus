@@ -46,15 +46,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (profile) {
-        // Check admin status from user_roles table (secure role system)
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId)
-          .eq('role', 'admin')
-          .maybeSingle();
+        // Check admin status using RPC (bypasses RLS)
+        console.log('[Auth] Checking admin status via RPC...');
+        const { data: isAdminFlag, error: isAdminErr } = await supabase.rpc('is_admin');
 
-        const adminRole = roleData?.role === 'admin';
+        if (isAdminErr) {
+          console.error('[Auth] RPC is_admin error:', isAdminErr);
+          // Don't break auth on RPC error, default to non-admin
+        }
+
+        console.log('[Auth] Admin status check result:', isAdminFlag);
+        const adminRole = isAdminFlag === true;
 
         const userData: User = {
           id: profile.id,

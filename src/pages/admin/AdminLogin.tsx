@@ -54,15 +54,25 @@ const AdminLogin = () => {
           throw new Error("Error loading user profile");
         }
 
-        // Check admin status from user_roles table (secure role system)
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', data.user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
+        // Check admin status using RPC (bypasses RLS)
+        console.log('Checking admin status via RPC for user:', data.user.id);
+        const { data: isAdminFlag, error: isAdminErr } = await supabase.rpc('is_admin');
 
-        if (profile && roleData?.role === 'admin') {
+        if (isAdminErr) {
+          console.error('RPC is_admin error:', isAdminErr);
+          setErrorMessage("Could not verify privileges. Please try again.");
+          toast({
+            title: "Verification Error",
+            description: "Could not verify admin privileges. Please try again.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Admin status check result:', isAdminFlag);
+
+        if (profile && isAdminFlag === true) {
           const user = {
             id: data.user.id,
             name: profile.name || profile.email,
