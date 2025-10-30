@@ -43,7 +43,7 @@ const AdminLogin = () => {
       }
 
       if (data.user) {
-        // Get user profile to check role
+        // Get user profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -54,7 +54,15 @@ const AdminLogin = () => {
           throw new Error("Error loading user profile");
         }
 
-        if (profile && profile.role === 'admin') {
+        // Check admin status from user_roles table (secure role system)
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+
+        if (profile && roleData?.role === 'admin') {
           const user = {
             id: data.user.id,
             name: profile.name || profile.email,

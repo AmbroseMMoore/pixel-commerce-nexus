@@ -958,7 +958,6 @@ export type Database = {
           email: string
           id: string
           name: string | null
-          role: string | null
           updated_at: string | null
         }
         Insert: {
@@ -966,7 +965,6 @@ export type Database = {
           email: string
           id: string
           name?: string | null
-          role?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -974,7 +972,6 @@ export type Database = {
           email?: string
           id?: string
           name?: string | null
-          role?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -1046,6 +1043,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
       }
       wishlists: {
         Row: {
@@ -1164,12 +1182,9 @@ export type Database = {
       }
     }
     Functions: {
-      cleanup_orphaned_records: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_orphaned_records: { Args: never; Returns: undefined }
       get_active_flash_sale_products: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           discount_percentage: number
           flash_sale_end_date: string
@@ -1236,10 +1251,14 @@ export type Database = {
           total_count: number
         }[]
       }
-      is_admin: {
-        Args: Record<PropertyKey, never>
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
         Returns: boolean
       }
+      is_admin: { Args: never; Returns: boolean }
       update_order_status: {
         Args: {
           delivery_date_param?: string
@@ -1253,7 +1272,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1380,6 +1399,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

@@ -46,11 +46,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (profile) {
+        // Check admin status from user_roles table (secure role system)
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+
+        const adminRole = roleData?.role === 'admin';
+
         const userData: User = {
           id: profile.id,
           name: profile.name || profile.email,
           email: profile.email,
-          isAdmin: profile.role === "admin",
+          isAdmin: adminRole,
         };
 
         console.log("[Auth] ✅ Profile loaded:", userData);
