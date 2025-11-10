@@ -326,3 +326,133 @@ export const deleteProductImage = async (id: string) => {
     return handleSupabaseError(error);
   }
 };
+
+// Inventory Management Functions
+export interface InventoryItem {
+  size_id: string;
+  product_id: string;
+  product_title: string;
+  product_slug: string;
+  color_id: string;
+  color_name: string;
+  color_code: string;
+  size_name: string;
+  stock_quantity: number;
+  price_original: number;
+  price_discounted: number | null;
+  image_url: string | null;
+}
+
+export const fetchInventoryData = async (
+  searchQuery: string = "",
+  stockFilter: "all" | "in-stock" | "low-stock" | "out-of-stock" = "all"
+): Promise<InventoryItem[]> => {
+  try {
+    let query = supabase
+      .from('product_sizes')
+      .select(`
+        id,
+        name,
+        stock_quantity,
+        price_original,
+        price_discounted,
+        product_id,
+        color_id,
+        products!inner(
+          id,
+          title,
+          slug
+        ),
+        product_colors!inner(
+          id,
+          name,
+          color_code,
+          product_images(
+            image_url,
+            is_primary,
+            display_order
+          )
+        )
+      `)
+      .order('stock_quantity', { ascending: true });
+
+    const { data, error } = await query;
+
+    if (error) throw handleSupabaseError(error);
+
+    if (!data) return [];
+
+    // Transform and filter data
+    let inventoryItems: InventoryItem[] = data.map((item: any) => {
+      const product = item.products;
+      const color = item.product_colors;
+      
+      // Get primary image or first image
+      const images = color.product_images || [];
+      const primaryImage = images.find((img: any) => img.is_primary) || images[0];
+
+      return {
+        size_id: item.id,
+        product_id: product.id,
+        product_title: product.title,
+        product_slug: product.slug,
+        color_id: color.id,
+        color_name: color.name,
+        color_code: color.color_code,
+        size_name: item.name,
+        stock_quantity: item.stock_quantity,
+        price_original: item.price_original,
+        price_discounted: item.price_discounted,
+        image_url: primaryImage?.image_url || null,
+      };
+    });
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      inventoryItems = inventoryItems.filter(
+        (item) =>
+          item.product_title.toLowerCase().includes(query) ||
+          item.color_name.toLowerCase().includes(query) ||
+          item.size_name.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply stock filter
+    if (stockFilter !== "all") {
+      inventoryItems = inventoryItems.filter((item) => {
+        if (stockFilter === "out-of-stock") return item.stock_quantity === 0;
+        if (stockFilter === "low-stock") return item.stock_quantity > 0 && item.stock_quantity <= 10;
+        if (stockFilter === "in-stock") return item.stock_quantity > 10;
+        return true;
+      });
+    }
+
+    return inventoryItems;
+  } catch (error) {
+    console.error('Error fetching inventory data:', error);
+    throw error;
+  }
+};
+
+export const updateStockQuantity = async (sizeId: string, newQuantity: number) => {
+  try {
+    const { data, error } = await supabase
+      .from('product_sizes')
+      .update({ 
+        stock_quantity: newQuantity,
+        in_stock: newQuantity > 0,
+        is_low_stock: newQuantity > 0 && newQuantity <= 10
+      })
+      .eq('id', sizeId)
+      .select()
+      .single();
+
+    if (error) throw handleSupabaseError(error);
+
+    return data;
+  } catch (error) {
+    console.error('Error updating stock quantity:', error);
+    throw error;
+  }
+};

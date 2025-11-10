@@ -4,7 +4,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Minus, Plus, Heart } from "lucide-react";
+import { Minus, Plus, Heart, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { ColorVariant, SizeVariant } from "@/types/product";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -83,6 +83,16 @@ const ProductDetailsPage = () => {
       return;
     }
 
+    if (selectedSize.stockQuantity === 0) {
+      toast.error("This size is currently out of stock");
+      return;
+    }
+
+    if (quantity > selectedSize.stockQuantity) {
+      toast.error(`Only ${selectedSize.stockQuantity} items available`);
+      return;
+    }
+
     addToCart({
       productId: product.id,
       colorId: selectedColor.id,
@@ -107,7 +117,9 @@ const ProductDetailsPage = () => {
   };
 
   const increaseQuantity = () => {
-    setQuantity(quantity + 1);
+    if (selectedSize && quantity < selectedSize.stockQuantity) {
+      setQuantity(quantity + 1);
+    }
   };
 
   // Get current price based on selected size or fallback to base price
@@ -318,13 +330,42 @@ const ProductDetailsPage = () => {
             {/* Quantity */}
             <div className="mb-6">
               <h3 className="text-sm font-medium mb-3">Quantity</h3>
+              
+              {/* Stock Display */}
+              {selectedSize && (
+                <div className="mb-3">
+                  {selectedSize.stockQuantity > 0 ? (
+                    selectedSize.stockQuantity <= 10 ? (
+                      <div className="flex items-center gap-2 text-amber-600">
+                        <AlertCircle className="h-4 w-4" />
+                        <span className="text-sm font-medium">
+                          Only {selectedSize.stockQuantity} left in stock!
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-green-600">
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="text-sm font-medium">
+                          In Stock ({selectedSize.stockQuantity} available)
+                        </span>
+                      </div>
+                    )
+                  ) : (
+                    <div className="flex items-center gap-2 text-red-600">
+                      <XCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">Out of Stock</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <div className="flex items-center">
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
                   onClick={decreaseQuantity}
-                  disabled={quantity <= 1}
+                  disabled={quantity <= 1 || !selectedSize || selectedSize.stockQuantity === 0}
                 >
                   <Minus size={16} />
                 </Button>
@@ -334,10 +375,14 @@ const ProductDetailsPage = () => {
                   variant="outline"
                   size="icon"
                   onClick={increaseQuantity}
+                  disabled={!selectedSize || quantity >= selectedSize.stockQuantity}
                 >
                   <Plus size={16} />
                 </Button>
               </div>
+              {selectedSize && quantity >= selectedSize.stockQuantity && selectedSize.stockQuantity > 0 && (
+                <p className="text-sm text-amber-600 mt-2">Maximum quantity reached</p>
+              )}
             </div>
 
             {/* Pincode Checker */}
@@ -354,9 +399,9 @@ const ProductDetailsPage = () => {
                 onClick={handleAddToCart}
                 className="sm:flex-1 bg-brand hover:bg-brand-dark h-11"
                 size="lg"
-                disabled={product.isOutOfStock || !selectedSize?.inStock || isAddingToCart}
+                disabled={product.isOutOfStock || !selectedSize?.inStock || selectedSize?.stockQuantity === 0 || isAddingToCart}
               >
-                {isAddingToCart ? "Adding to Cart..." : product.isOutOfStock ? "Out of Stock" : "Add to Cart"}
+                {isAddingToCart ? "Adding to Cart..." : selectedSize?.stockQuantity === 0 ? "Out of Stock" : product.isOutOfStock ? "Out of Stock" : "Add to Cart"}
               </Button>
               <Button
                 onClick={handleAddToWishlist}

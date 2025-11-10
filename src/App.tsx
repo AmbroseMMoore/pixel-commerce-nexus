@@ -25,6 +25,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminSubCategories from "./pages/admin/AdminSubCategories";
+import AdminInventory from "./pages/admin/AdminInventory";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
@@ -104,6 +105,11 @@ const App = () => (
             <Route path="/admin/subcategories" element={
               <AdminProtectedRoute>
                 <AdminSubCategories />
+              </AdminProtectedRoute>
+            } />
+            <Route path="/admin/inventory" element={
+              <AdminProtectedRoute>
+                <AdminInventory />
               </AdminProtectedRoute>
             } />
             <Route path="/admin/customers" element={

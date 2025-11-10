@@ -11,7 +11,8 @@ import {
   ChevronRight,
   LogOut,
   Tag,
-  Truck
+  Truck,
+  Boxes
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,11 @@ const AdminSidebar = () => {
       icon: <Tag size={20} />,
       label: "Sub-Categories",
       href: "/admin/subcategories"
+    },
+    {
+      icon: <Boxes size={20} />,
+      label: "Inventory",
+      href: "/admin/inventory"
     },
     {
       icon: <Package size={20} />,
