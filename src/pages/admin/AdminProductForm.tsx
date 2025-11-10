@@ -36,6 +36,7 @@ interface ColorVariant {
     filename: string;
     fileType: string;
   }>;
+  sizes: SizeVariant[]; // Each color has its own sizes
   isExisting?: boolean; // Track if this is an existing variant from DB
 }
 
@@ -103,10 +104,13 @@ const AdminProductForm = () => {
   const selectedCategory = categories.find(cat => cat.id === mainCategoryId);
   const subcategories = selectedCategory?.subCategories || [];
 
-  // Function to create new color variant with proper UUID
+  // Function to create new color variant with proper UUID and default sizes
   const createNewColorVariant = (): ColorVariant => {
     const variantId = generateUUID();
     console.log('Creating new color variant with UUID:', variantId);
+    
+    const basePrice = parseFloat(originalPrice) || 0;
+    const baseDiscounted = discountedPrice ? parseFloat(discountedPrice) : undefined;
     
     return {
       id: variantId,
@@ -117,17 +121,17 @@ const AdminProductForm = () => {
         filename: "",
         fileType: "jpg"
       })),
+      sizes: [
+        { id: generateUUID(), name: "S", inStock: true, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
+        { id: generateUUID(), name: "M", inStock: true, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
+        { id: generateUUID(), name: "L", inStock: true, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
+      ],
       isExisting: false
     };
   };
 
-  // Initialize variants with proper structure
+  // Initialize variants with proper structure (sizes now managed per color)
   const [colorVariants, setColorVariants] = useState<ColorVariant[]>([createNewColorVariant()]);
-  const [sizeVariants, setSizeVariants] = useState<SizeVariant[]>([
-    { id: generateUUID(), name: "S", inStock: true, priceOriginal: 0, priceDiscounted: undefined, isExisting: false },
-    { id: generateUUID(), name: "M", inStock: true, priceOriginal: 0, priceDiscounted: undefined, isExisting: false },
-    { id: generateUUID(), name: "L", inStock: true, priceOriginal: 0, priceDiscounted: undefined, isExisting: false },
-  ]);
 
   // Specifications
   const [specifications, setSpecifications] = useState<Specification[]>([
@@ -190,54 +194,41 @@ const AdminProductForm = () => {
               return { url: "", filename: "", fileType: "jpg" };
             });
 
+            // Handle sizes - group by this specific color
+            const colorSizes: SizeVariant[] = [];
+            if (variant.sizes && Array.isArray(variant.sizes)) {
+              variant.sizes.forEach((size: any) => {
+                colorSizes.push({
+                  id: size.id || generateUUID(),
+                  name: size.name || "",
+                  inStock: size.inStock !== false,
+                  priceOriginal: size.priceOriginal || existingProduct.price?.original || 0,
+                  priceDiscounted: size.priceDiscounted || existingProduct.price?.discounted || undefined,
+                  isExisting: true
+                });
+              });
+            }
+
             return {
               id: variant.id || generateUUID(),
               name: variant.name || "",
               colorCode: variant.colorCode || "#ffffff",
               isExisting: true,
-              images: images
+              images: images,
+              sizes: colorSizes.length > 0 ? colorSizes : [
+                { id: generateUUID(), name: "S", inStock: true, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
+                { id: generateUUID(), name: "M", inStock: true, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
+                { id: generateUUID(), name: "L", inStock: true, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
+              ]
             };
           });
           
-          console.log('Loaded color variants with proper image structure:', loadedColorVariants);
+          console.log('Loaded color variants with sizes:', loadedColorVariants);
           setColorVariants(loadedColorVariants);
         } else {
           console.log('No existing color variants found, creating default variant');
           // If no color variants exist, create a default one
           setColorVariants([createNewColorVariant()]);
-        }
-
-        // Handle size variants - extract from all color variants
-        const allSizes: SizeVariant[] = [];
-        if (existingProduct.colorVariants && Array.isArray(existingProduct.colorVariants)) {
-          console.log('Extracting sizes from color variants:', existingProduct.colorVariants);
-          
-          // Collect unique sizes from all colors
-          const seenSizes = new Map<string, SizeVariant>();
-          
-          existingProduct.colorVariants.forEach((colorVariant: any) => {
-            if (colorVariant.sizes && Array.isArray(colorVariant.sizes)) {
-              colorVariant.sizes.forEach((size: any) => {
-                if (!seenSizes.has(size.name)) {
-                  seenSizes.set(size.name, {
-                    id: size.id || generateUUID(),
-                    name: size.name || "",
-                    inStock: size.inStock !== false,
-                    priceOriginal: size.priceOriginal || existingProduct.price?.original || 0,
-                    priceDiscounted: size.priceDiscounted || existingProduct.price?.discounted || undefined,
-                    isExisting: true
-                  });
-                }
-              });
-            }
-          });
-          
-          const loadedSizeVariants = Array.from(seenSizes.values());
-          console.log('Loaded size variants:', loadedSizeVariants);
-          setSizeVariants(loadedSizeVariants);
-        } else {
-          console.log('No existing color variants or sizes found, using defaults');
-          // Keep default size variants if none exist
         }
 
         // Load specifications with better handling
@@ -286,11 +277,14 @@ const AdminProductForm = () => {
       const basePrice = parseFloat(originalPrice);
       const baseDiscounted = discountedPrice ? parseFloat(discountedPrice) : undefined;
       
-      setSizeVariants(prevSizes => 
-        prevSizes.map(size => ({
-          ...size,
-          priceOriginal: size.priceOriginal === 0 ? basePrice : size.priceOriginal,
-          priceDiscounted: size.priceDiscounted === undefined ? baseDiscounted : size.priceDiscounted
+      setColorVariants(prevColors =>
+        prevColors.map(color => ({
+          ...color,
+          sizes: color.sizes.map(size => ({
+            ...size,
+            priceOriginal: size.priceOriginal === 0 ? basePrice : size.priceOriginal,
+            priceDiscounted: size.priceDiscounted === undefined ? baseDiscounted : size.priceDiscounted
+          }))
         }))
       );
     }
@@ -307,17 +301,19 @@ const AdminProductForm = () => {
     if (!subCategoryId) errors.push("Subcategory is required");
     if (!slug.trim()) errors.push("Slug is required");
 
-    // Validate color variants
+    // Validate color variants and their sizes
     const validColorVariants = colorVariants.filter(v => v.name.trim() && v.colorCode);
     if (validColorVariants.length === 0) {
       errors.push("At least one color variant with name and color code is required");
     }
 
-    // Validate size variants
-    const validSizeVariants = sizeVariants.filter(v => v.name.trim() && v.priceOriginal > 0);
-    if (validSizeVariants.length === 0) {
-      errors.push("At least one size variant with name and valid price is required");
-    }
+    // Validate that each color has at least one valid size
+    validColorVariants.forEach((color, index) => {
+      const validSizes = color.sizes.filter(s => s.name.trim() && s.priceOriginal > 0);
+      if (validSizes.length === 0) {
+        errors.push(`Color variant "${color.name || `#${index + 1}`}" must have at least one size with name and valid price`);
+      }
+    });
 
     if (errors.length > 0) {
       toast({
@@ -460,20 +456,19 @@ const AdminProductForm = () => {
         }
       }
 
-      // Handle size variants - create for each color
-      console.log('Processing size variants...');
+      // Handle size variants - create only the sizes each color has
+      console.log('Processing size variants per color...');
       
       if (isEditMode) {
         // For edit mode: Clear existing size variants
         await supabase.from('product_sizes').delete().eq('product_id', productId);
       }
 
-      // Process valid size variants and create for each color
-      const validSizeVariants = sizeVariants.filter(v => v.name.trim() && v.priceOriginal > 0);
-      const sizeColorVariants = colorVariants.filter(c => c.name.trim() && c.colorCode);
-      
-      for (const colorVariant of sizeColorVariants) {
-        for (const sizeVariant of validSizeVariants) {
+      // Process each color's sizes independently
+      for (const colorVariant of validColorVariants) {
+        const validSizes = colorVariant.sizes.filter(s => s.name.trim() && s.priceOriginal > 0);
+        
+        for (const sizeVariant of validSizes) {
           console.log(`Creating size ${sizeVariant.name} for color ${colorVariant.name}`);
           
           const sizeData = {
@@ -600,32 +595,56 @@ const AdminProductForm = () => {
     handleImageRemove(colorId, imageIndex);
   };
 
-  // Size variant functions
-  const addSizeVariant = () => {
+  // Size variant functions per color
+  const addSizeToColor = (colorId: string) => {
     const basePrice = parseFloat(originalPrice) || 0;
     const baseDiscounted = discountedPrice ? parseFloat(discountedPrice) : undefined;
     
-    setSizeVariants([
-      ...sizeVariants,
-      { 
-        id: generateUUID(), 
-        name: "", 
-        inStock: true, 
-        priceOriginal: basePrice,
-        priceDiscounted: baseDiscounted,
-        isExisting: false
+    setColorVariants(colorVariants.map(color => {
+      if (color.id === colorId) {
+        return {
+          ...color,
+          sizes: [
+            ...color.sizes,
+            { 
+              id: generateUUID(), 
+              name: "", 
+              inStock: true, 
+              priceOriginal: basePrice,
+              priceDiscounted: baseDiscounted,
+              isExisting: false
+            }
+          ]
+        };
       }
-    ]);
+      return color;
+    }));
   };
 
-  const removeSizeVariant = (id: string) => {
-    setSizeVariants(sizeVariants.filter(variant => variant.id !== id));
+  const removeSizeFromColor = (colorId: string, sizeId: string) => {
+    setColorVariants(colorVariants.map(color => {
+      if (color.id === colorId) {
+        return {
+          ...color,
+          sizes: color.sizes.filter(size => size.id !== sizeId)
+        };
+      }
+      return color;
+    }));
   };
 
-  const updateSizeVariant = (id: string, field: keyof SizeVariant, value: any) => {
-    setSizeVariants(sizeVariants.map(variant => 
-      variant.id === id ? { ...variant, [field]: value } : variant
-    ));
+  const updateSizeInColor = (colorId: string, sizeId: string, field: keyof SizeVariant, value: any) => {
+    setColorVariants(colorVariants.map(color => {
+      if (color.id === colorId) {
+        return {
+          ...color,
+          sizes: color.sizes.map(size => 
+            size.id === sizeId ? { ...size, [field]: value } : size
+          )
+        };
+      }
+      return color;
+    }));
   };
 
   // Specification functions
@@ -705,8 +724,7 @@ const AdminProductForm = () => {
             <Tabs defaultValue="basic">
               <TabsList className="mb-4">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                <TabsTrigger value="colors">Color Variants</TabsTrigger>
-                <TabsTrigger value="sizes">Size Variants & Pricing</TabsTrigger>
+                <TabsTrigger value="colors">Color Variants & Sizes</TabsTrigger>
                 <TabsTrigger value="specifications">Specifications</TabsTrigger>
               </TabsList>
 
@@ -870,11 +888,11 @@ const AdminProductForm = () => {
                 </div>
               </TabsContent>
 
-              {/* Color Variants Tab */}
+              {/* Color Variants Tab with Sizes */}
               <TabsContent value="colors">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Color Variants</CardTitle>
+                    <CardTitle>Color Variants & Sizes</CardTitle>
                     <Button onClick={addColorVariant} type="button" variant="outline">
                       <Plus className="mr-2 h-4 w-4" /> Add Color
                     </Button>
@@ -902,7 +920,7 @@ const AdminProductForm = () => {
                               />
                               {variant.name && (
                                 <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                                  {variant.name}
+                                  {variant.name} ({variant.sizes.length} {variant.sizes.length === 1 ? 'size' : 'sizes'})
                                 </span>
                               )}
                             </div>
@@ -948,7 +966,7 @@ const AdminProductForm = () => {
                             </div>
                           </div>
 
-                          <div className="border-t pt-4">
+                          <div className="border-t pt-4 mb-6">
                             <ReorderableImageGrid
                               colorVariantId={variant.id}
                               colorVariantName={variant.name || `Color #${index + 1}`}
@@ -965,78 +983,79 @@ const AdminProductForm = () => {
                               maxImages={6}
                             />
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
 
-              {/* Size Variants Tab */}
-              <TabsContent value="sizes">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Size Variants & Pricing</CardTitle>
-                    <Button onClick={addSizeVariant} type="button" variant="outline">
-                      <Plus className="mr-2 h-4 w-4" /> Add Size
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {sizeVariants.map((variant, index) => (
-                        <div key={variant.id} className="border rounded-lg p-4 bg-gray-50">
-                          <div className="grid grid-cols-5 gap-4 items-end">
-                            <div>
-                              <Label htmlFor={`size-name-${variant.id}`}>Size Name</Label>
-                              <Input
-                                id={`size-name-${variant.id}`}
-                                value={variant.name}
-                                onChange={(e) => updateSizeVariant(variant.id, "name", e.target.value)}
-                                placeholder="Size name"
-                              />
+                          {/* Sizes Section for this Color */}
+                          <div className="border-t pt-4">
+                            <div className="flex justify-between items-center mb-4">
+                              <Label className="text-base font-semibold">Sizes & Pricing</Label>
+                              <Button 
+                                onClick={() => addSizeToColor(variant.id)} 
+                                type="button" 
+                                variant="outline" 
+                                size="sm"
+                              >
+                                <Plus className="mr-2 h-4 w-4" /> Add Size
+                              </Button>
                             </div>
-                            <div>
-                              <Label htmlFor={`size-price-${variant.id}`}>Original Price</Label>
-                              <Input
-                                id={`size-price-${variant.id}`}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={variant.priceOriginal}
-                                onChange={(e) => updateSizeVariant(variant.id, "priceOriginal", parseFloat(e.target.value) || 0)}
-                                required
-                              />
+                            <div className="space-y-3">
+                              {variant.sizes.map((size) => (
+                                <div key={size.id} className="border rounded-lg p-4 bg-white">
+                                  <div className="grid grid-cols-5 gap-4 items-end">
+                                    <div>
+                                      <Label htmlFor={`size-name-${variant.id}-${size.id}`}>Size Name</Label>
+                                      <Input
+                                        id={`size-name-${variant.id}-${size.id}`}
+                                        value={size.name}
+                                        onChange={(e) => updateSizeInColor(variant.id, size.id, "name", e.target.value)}
+                                        placeholder="e.g. M"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor={`size-price-${variant.id}-${size.id}`}>Original Price</Label>
+                                      <Input
+                                        id={`size-price-${variant.id}-${size.id}`}
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={size.priceOriginal}
+                                        onChange={(e) => updateSizeInColor(variant.id, size.id, "priceOriginal", parseFloat(e.target.value) || 0)}
+                                        required
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor={`size-discount-${variant.id}-${size.id}`}>Discounted Price</Label>
+                                      <Input
+                                        id={`size-discount-${variant.id}-${size.id}`}
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={size.priceDiscounted || ''}
+                                        onChange={(e) => updateSizeInColor(variant.id, size.id, "priceDiscounted", e.target.value ? parseFloat(e.target.value) : undefined)}
+                                        placeholder="Optional"
+                                      />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`size-stock-${variant.id}-${size.id}`}
+                                        checked={size.inStock}
+                                        onCheckedChange={(checked) => updateSizeInColor(variant.id, size.id, "inStock", checked)}
+                                      />
+                                      <Label htmlFor={`size-stock-${variant.id}-${size.id}`}>In Stock</Label>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeSizeFromColor(variant.id, size.id)}
+                                      disabled={variant.sizes.length === 1}
+                                      className="text-red-500 hover:text-red-700"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <div>
-                              <Label htmlFor={`size-discount-${variant.id}`}>Discounted Price</Label>
-                              <Input
-                                id={`size-discount-${variant.id}`}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={variant.priceDiscounted || ''}
-                                onChange={(e) => updateSizeVariant(variant.id, "priceDiscounted", e.target.value ? parseFloat(e.target.value) : undefined)}
-                                placeholder="Optional"
-                              />
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`size-stock-${variant.id}`}
-                                checked={variant.inStock}
-                                onCheckedChange={(checked) => updateSizeVariant(variant.id, "inStock", checked)}
-                              />
-                              <Label htmlFor={`size-stock-${variant.id}`}>In Stock</Label>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeSizeVariant(variant.id)}
-                              disabled={sizeVariants.length === 1}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
                           </div>
                         </div>
                       ))}
