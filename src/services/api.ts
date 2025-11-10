@@ -64,24 +64,27 @@ const transformProductData = (product: any, isAdminContext: boolean = false): Pr
     });
   });
   
-  // Add images to colors
-  (product.product_images || []).forEach((img: any) => {
-    if (colorMap.has(img.color_id)) {
-      const imageData = isAdminContext 
+  // Add images to colors (use nested product_images under each color)
+  (product.product_colors || []).forEach((color: any) => {
+    const target = colorMap.get(color.id);
+    if (!target) return;
+
+    (color.product_images || []).forEach((img: any) => {
+      const imageData = isAdminContext
         ? {
             id: img.id,
             url: img.image_url || '/placeholder.svg',
             filename: img.media_file_name || '',
             fileType: img.media_file_type || 'jpg'
           }
-        : img.image_url || '/placeholder.svg';
-      
-      colorMap.get(img.color_id).images.push({
+        : (img.image_url || '/placeholder.svg');
+
+      target.images.push({
         data: imageData,
         order: img.display_order ?? 999,
         isPrimary: img.is_primary
       });
-    }
+    });
   });
   
   // Sort images by display_order and extract data
