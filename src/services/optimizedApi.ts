@@ -73,11 +73,8 @@ export const fetchProductsOptimized = async (options: {
       
       // Transform the optimized data
       const products = await Promise.all(data.map(async (item: any) => {
-        // Fetch additional data in parallel
-        const [colorVariants, sizeVariants] = await Promise.all([
-          fetchProductColors(item.id),
-          fetchProductSizes(item.id)
-        ]);
+        // Fetch colors with their sizes nested
+        const colorVariants = await fetchProductColorsWithSizes(item.id);
 
         return {
           id: item.id,
@@ -92,7 +89,6 @@ export const fetchProductsOptimized = async (options: {
           categoryId: categoryId || "",
           subCategoryId: subCategoryId || "",
           colorVariants,
-          sizeVariants,
           ageRanges: [],
           specifications: {},
           isLowStock: item.stock_quantity <= 10,
@@ -111,9 +107,9 @@ export const fetchProductsOptimized = async (options: {
   }
 };
 
-// Optimized product colors fetching with proper image URL handling
-const fetchProductColors = async (productId: string) => {
-  const cacheKey = `colors-${productId}`;
+// Optimized product colors fetching with sizes nested
+const fetchProductColorsWithSizes = async (productId: string) => {
+  const cacheKey = `colors-with-sizes-${productId}`;
   
   return getCachedOrFetch(cacheKey, async () => {
     const { data: colorsData, error: colorsError } = await supabase
@@ -126,11 +122,35 @@ const fetchProductColors = async (productId: string) => {
 
     if (colorsError) throw colorsError;
 
+    // Fetch sizes for all colors
+    const { data: sizesData, error: sizesError } = await supabase
+      .from('product_sizes')
+      .select('id, name, in_stock, price_original, price_discounted, color_id, stock_quantity, is_low_stock')
+      .eq('product_id', productId);
+
+    if (sizesError) throw sizesError;
+
+    // Group sizes by color_id
+    const sizesByColor = (sizesData || []).reduce((acc: any, size: any) => {
+      if (!acc[size.color_id]) {
+        acc[size.color_id] = [];
+      }
+      acc[size.color_id].push({
+        id: size.id,
+        name: size.name,
+        inStock: size.in_stock && size.stock_quantity > 0,
+        stockQuantity: size.stock_quantity || 0,
+        isLowStock: size.is_low_stock || (size.stock_quantity > 0 && size.stock_quantity <= 5),
+        priceOriginal: size.price_original,
+        priceDiscounted: size.price_discounted
+      });
+      return acc;
+    }, {});
+
     return (colorsData || []).map(color => ({
       id: color.id,
       name: color.name,
       colorCode: color.color_code,
-      // Sort by display_order for customer pages, then by is_primary as fallback
       images: (color.product_images || [])
         .sort((a: any, b: any) => {
           const orderA = a.display_order ?? 999;
@@ -138,32 +158,11 @@ const fetchProductColors = async (productId: string) => {
           if (orderA !== orderB) return orderA - orderB;
           return (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0);
         })
-        .map((img: any) => img.image_url || '/placeholder.svg')
+        .map((img: any) => img.image_url || '/placeholder.svg'),
+      sizes: (sizesByColor[color.id] || []).sort((a: any, b: any) => 
+        a.name.localeCompare(b.name)
+      )
     }));
-  });
-};
-
-// Optimized product sizes fetching with sorting
-const fetchProductSizes = async (productId: string) => {
-  const cacheKey = `sizes-${productId}`;
-  
-  return getCachedOrFetch(cacheKey, async () => {
-    const { data: sizesData, error: sizesError } = await supabase
-      .from('product_sizes')
-      .select('id, name, in_stock, price_original, price_discounted')
-      .eq('product_id', productId);
-
-    if (sizesError) throw sizesError;
-
-    return (sizesData || [])
-      .map(size => ({
-        id: size.id,
-        name: size.name,
-        inStock: size.in_stock,
-        priceOriginal: size.price_original,
-        priceDiscounted: size.price_discounted
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name)); // Sort by name ascending
   });
 };
 
@@ -203,11 +202,8 @@ export const fetchProductBySlugOptimized = async (slug: string): Promise<Product
       if (error) throw error;
       if (!data) throw new Error("Product not found");
 
-      // Fetch related data in parallel
-      const [colorVariants, sizeVariants] = await Promise.all([
-        fetchProductColors(data.id),
-        fetchProductSizes(data.id)
-      ]);
+      // Fetch colors with their sizes nested
+      const colorVariants = await fetchProductColorsWithSizes(data.id);
 
       return {
         id: data.id,
@@ -222,7 +218,6 @@ export const fetchProductBySlugOptimized = async (slug: string): Promise<Product
         categoryId: data.category_id,
         subCategoryId: data.subcategory_id,
         colorVariants,
-        sizeVariants,
         ageRanges: data.age_ranges || [],
         specifications: data.specifications || {},
         isLowStock: data.stock_quantity <= 10,

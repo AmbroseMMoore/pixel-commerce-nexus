@@ -31,9 +31,10 @@ const ProductDetailsPage = () => {
   // Set default selections when product loads
   React.useEffect(() => {
     if (product && product.colorVariants.length > 0) {
-      setSelectedColor(product.colorVariants[0]);
-      const firstAvailableSize = product.sizeVariants.find((s) => s.inStock);
-      setSelectedSize(firstAvailableSize || product.sizeVariants[0] || null);
+      const firstColor = product.colorVariants[0];
+      setSelectedColor(firstColor);
+      const firstAvailableSize = firstColor.sizes.find((s) => s.inStock);
+      setSelectedSize(firstAvailableSize || firstColor.sizes[0] || null);
     }
   }, [product]);
 
@@ -263,12 +264,12 @@ const ProductDetailsPage = () => {
               <RadioGroup
                 value={selectedSize?.id || ""}
                 onValueChange={(value) => {
-                  const size = product.sizeVariants.find((s) => s.id === value);
+                  const size = selectedColor?.sizes.find((s) => s.id === value);
                   setSelectedSize(size || null);
                 }}
               >
                 <div className="flex flex-wrap gap-2">
-                  {product.sizeVariants.map((size) => {
+                  {selectedColor?.sizes.map((size) => {
                     const sizePrice = size.priceOriginal || product.price.original;
                     const sizeDiscountedPrice = size.priceDiscounted || product.price.discounted;
                     
@@ -307,7 +308,7 @@ const ProductDetailsPage = () => {
                   })}
                 </div>
               </RadioGroup>
-              {product.sizeVariants.some((s) => !s.inStock) && (
+              {selectedColor?.sizes.some((s) => !s.inStock) && (
                 <p className="text-sm text-gray-500 mt-2">
                   Some sizes are currently out of stock
                 </p>

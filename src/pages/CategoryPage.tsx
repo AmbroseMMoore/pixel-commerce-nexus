@@ -49,11 +49,13 @@ const CategoryPage = () => {
     [categoryProducts]
   );
 
-  // Get all available sizes from products
+  // Get all available sizes from products (now from color variants)
   const availableSizes = Array.from(
     new Set(
       categoryProducts.flatMap((product) =>
-        product.sizeVariants.map((sv) => sv.name)
+        product.colorVariants.flatMap((color) =>
+          color.sizes.map((size) => size.name)
+        )
       )
     ).values()
   );
@@ -97,9 +99,11 @@ const CategoryPage = () => {
       }
     }
 
-    // Filter by size
+    // Filter by size (check all sizes across all colors)
     if (selectedSizes.length > 0) {
-      const productSizes = product.sizeVariants.map((sv) => sv.name);
+      const productSizes = product.colorVariants.flatMap((color) =>
+        color.sizes.map((size) => size.name)
+      );
       if (!selectedSizes.some((size) => productSizes.includes(size))) {
         return false;
       }

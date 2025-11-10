@@ -207,23 +207,36 @@ const AdminProductForm = () => {
           setColorVariants([createNewColorVariant()]);
         }
 
-        // Handle size variants with enhanced error handling
-        if (existingProduct.sizeVariants && Array.isArray(existingProduct.sizeVariants) && existingProduct.sizeVariants.length > 0) {
-          console.log('Processing existing size variants:', existingProduct.sizeVariants);
+        // Handle size variants - extract from all color variants
+        const allSizes: SizeVariant[] = [];
+        if (existingProduct.colorVariants && Array.isArray(existingProduct.colorVariants)) {
+          console.log('Extracting sizes from color variants:', existingProduct.colorVariants);
           
-          const loadedSizeVariants = existingProduct.sizeVariants.map((variant: any) => ({
-            id: variant.id || generateUUID(),
-            name: variant.name || "",
-            inStock: variant.inStock !== false,
-            priceOriginal: variant.priceOriginal || existingProduct.price?.original || 0,
-            priceDiscounted: variant.priceDiscounted || existingProduct.price?.discounted || undefined,
-            isExisting: true
-          }));
+          // Collect unique sizes from all colors
+          const seenSizes = new Map<string, SizeVariant>();
           
+          existingProduct.colorVariants.forEach((colorVariant: any) => {
+            if (colorVariant.sizes && Array.isArray(colorVariant.sizes)) {
+              colorVariant.sizes.forEach((size: any) => {
+                if (!seenSizes.has(size.name)) {
+                  seenSizes.set(size.name, {
+                    id: size.id || generateUUID(),
+                    name: size.name || "",
+                    inStock: size.inStock !== false,
+                    priceOriginal: size.priceOriginal || existingProduct.price?.original || 0,
+                    priceDiscounted: size.priceDiscounted || existingProduct.price?.discounted || undefined,
+                    isExisting: true
+                  });
+                }
+              });
+            }
+          });
+          
+          const loadedSizeVariants = Array.from(seenSizes.values());
           console.log('Loaded size variants:', loadedSizeVariants);
           setSizeVariants(loadedSizeVariants);
         } else {
-          console.log('No existing size variants found, using defaults');
+          console.log('No existing color variants or sizes found, using defaults');
           // Keep default size variants if none exist
         }
 
@@ -447,7 +460,7 @@ const AdminProductForm = () => {
         }
       }
 
-      // Handle size variants with simplified logic
+      // Handle size variants - create for each color
       console.log('Processing size variants...');
       
       if (isEditMode) {
@@ -455,26 +468,32 @@ const AdminProductForm = () => {
         await supabase.from('product_sizes').delete().eq('product_id', productId);
       }
 
-      // Process valid size variants
+      // Process valid size variants and create for each color
       const validSizeVariants = sizeVariants.filter(v => v.name.trim() && v.priceOriginal > 0);
-      for (const sizeVariant of validSizeVariants) {
-        console.log('Processing size variant:', sizeVariant.name);
-        
-        const sizeData = {
-          product_id: productId,
-          name: sizeVariant.name.trim(),
-          in_stock: sizeVariant.inStock,
-          price_original: sizeVariant.priceOriginal,
-          price_discounted: sizeVariant.priceDiscounted || null
-        };
-
-        const { error: sizeError } = await supabase
-          .from('product_sizes')
-          .insert(sizeData);
+      const sizeColorVariants = colorVariants.filter(c => c.name.trim() && c.colorCode);
+      
+      for (const colorVariant of sizeColorVariants) {
+        for (const sizeVariant of validSizeVariants) {
+          console.log(`Creating size ${sizeVariant.name} for color ${colorVariant.name}`);
           
-        if (sizeError) {
-          console.error('Error creating size variant:', sizeError);
-          throw sizeError;
+          const sizeData = {
+            product_id: productId,
+            color_id: colorVariant.id,
+            name: sizeVariant.name.trim(),
+            in_stock: sizeVariant.inStock,
+            stock_quantity: sizeVariant.inStock ? 100 : 0,
+            price_original: sizeVariant.priceOriginal,
+            price_discounted: sizeVariant.priceDiscounted || null
+          };
+
+          const { error: sizeError } = await supabase
+            .from('product_sizes')
+            .insert(sizeData);
+            
+          if (sizeError) {
+            console.error('Error creating size variant:', sizeError);
+            throw sizeError;
+          }
         }
       }
 
