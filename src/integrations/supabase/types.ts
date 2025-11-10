@@ -834,30 +834,46 @@ export type Database = {
       }
       product_sizes: {
         Row: {
+          color_id: string
           id: string
           in_stock: boolean | null
+          is_low_stock: boolean | null
           name: string
           price_discounted: number | null
           price_original: number
           product_id: string
+          stock_quantity: number
         }
         Insert: {
+          color_id: string
           id?: string
           in_stock?: boolean | null
+          is_low_stock?: boolean | null
           name: string
           price_discounted?: number | null
           price_original: number
           product_id: string
+          stock_quantity?: number
         }
         Update: {
+          color_id?: string
           id?: string
           in_stock?: boolean | null
+          is_low_stock?: boolean | null
           name?: string
           price_discounted?: number | null
           price_original?: number
           product_id?: string
+          stock_quantity?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "product_sizes_color_id_fkey"
+            columns: ["color_id"]
+            isOneToOne: false
+            referencedRelation: "product_colors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_sizes_product_id_fkey"
             columns: ["product_id"]
@@ -1182,7 +1198,15 @@ export type Database = {
       }
     }
     Functions: {
+      check_stock_availability: {
+        Args: { p_required_quantity: number; p_size_id: string }
+        Returns: boolean
+      }
       cleanup_orphaned_records: { Args: never; Returns: undefined }
+      deduct_stock: {
+        Args: { p_quantity: number; p_size_id: string }
+        Returns: boolean
+      }
       get_active_flash_sale_products: {
         Args: never
         Returns: {
@@ -1259,6 +1283,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      restore_stock: {
+        Args: { p_quantity: number; p_size_id: string }
+        Returns: undefined
+      }
       update_order_status: {
         Args: {
           delivery_date_param?: string
