@@ -50,56 +50,77 @@ const transformProductData = (product: any, isAdminContext: boolean = false): Pr
   console.log('Raw color variants:', product.product_colors);
   console.log('Admin context:', isAdminContext);
 
-  // Transform color variants with context-aware image handling
-  const colorVariants = (product.product_colors || []).map((color: any) => {
-    console.log('Processing color variant:', color);
-    console.log('Raw images for color:', color.product_images);
-
-    // Sort images by display_order first, then transform based on context
-    const sortedImages = (color.product_images || [])
-      .sort((a: any, b: any) => {
-        // Sort by display_order first (ascending), then by is_primary for fallback
-        const orderA = a.display_order ?? 999;
-        const orderB = b.display_order ?? 999;
-        if (orderA !== orderB) return orderA - orderB;
-        return (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0);
-      });
-
-    const images = sortedImages.map((img: any) => {
-      console.log('Processing image:', img);
-      
-      if (isAdminContext) {
-        // For admin context, return full metadata for editing
-        return {
-          id: img.id,
-          url: img.image_url || '/placeholder.svg',
-          filename: img.media_file_name || '',
-          fileType: img.media_file_type || 'jpg'
-        };
-      } else {
-        // For customer context, return simple URL string
-        return img.image_url || '/placeholder.svg';
-      }
-    });
-
-    return {
+  // Build color map with images and sizes
+  const colorMap = new Map<string, any>();
+  
+  // First, build color map with basic info
+  (product.product_colors || []).forEach((color: any) => {
+    colorMap.set(color.id, {
       id: color.id,
       name: color.name || '',
       colorCode: color.color_code || '#ffffff',
-      images: images
-    };
+      images: [],
+      sizes: []
+    });
   });
-
-  console.log('Transformed color variants:', colorVariants);
-
-  // Transform size variants and sort by name
-  const sizeVariants = (product.product_sizes || []).map((size: any) => ({
-    id: size.id,
-    name: size.name,
-    inStock: size.in_stock !== false,
-    priceOriginal: size.price_original || product.price_original,
-    priceDiscounted: size.price_discounted || product.price_discounted || undefined
-  })).sort((a: any, b: any) => a.name.localeCompare(b.name));
+  
+  // Add images to colors
+  (product.product_images || []).forEach((img: any) => {
+    if (colorMap.has(img.color_id)) {
+      const imageData = isAdminContext 
+        ? {
+            id: img.id,
+            url: img.image_url || '/placeholder.svg',
+            filename: img.media_file_name || '',
+            fileType: img.media_file_type || 'jpg'
+          }
+        : img.image_url || '/placeholder.svg';
+      
+      colorMap.get(img.color_id).images.push({
+        data: imageData,
+        order: img.display_order ?? 999,
+        isPrimary: img.is_primary
+      });
+    }
+  });
+  
+  // Sort images by display_order and extract data
+  colorMap.forEach((color) => {
+    color.images = color.images
+      .sort((a: any, b: any) => {
+        if (a.order !== b.order) return a.order - b.order;
+        return (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0);
+      })
+      .map((img: any) => img.data);
+  });
+  
+  // Add sizes to their respective colors
+  (product.product_sizes || []).forEach((size: any) => {
+    if (size.color_id && colorMap.has(size.color_id)) {
+      colorMap.get(size.color_id).sizes.push({
+        id: size.id,
+        name: size.name,
+        inStock: size.stock_quantity > 0,
+        stockQuantity: size.stock_quantity || 0,
+        isLowStock: size.stock_quantity > 0 && size.stock_quantity <= 5,
+        priceOriginal: size.price_original || product.price_original,
+        priceDiscounted: size.price_discounted || product.price_discounted || undefined
+      });
+    }
+  });
+  
+  // Sort sizes by name for each color
+  colorMap.forEach((color) => {
+    color.sizes.sort((a: any, b: any) => a.name.localeCompare(b.name));
+  });
+  
+  const colorVariants = Array.from(colorMap.values());
+  
+  // Calculate product-level stock status
+  const allSizes = colorVariants.flatMap(c => c.sizes);
+  const totalStock = allSizes.reduce((sum, s) => sum + s.stockQuantity, 0);
+  const isOutOfStock = totalStock === 0;
+  const isLowStock = !isOutOfStock && allSizes.some(s => s.isLowStock);
 
   const transformedProduct = {
     id: product.id,
@@ -114,11 +135,10 @@ const transformProductData = (product: any, isAdminContext: boolean = false): Pr
     categoryId: product.category_id,
     subCategoryId: product.subcategory_id,
     colorVariants: colorVariants,
-    sizeVariants: sizeVariants,
     ageRanges: product.age_ranges || [],
     specifications: product.specifications || {},
-    isLowStock: product.stock_quantity <= 10,
-    isOutOfStock: product.stock_quantity <= 0,
+    isLowStock: isLowStock,
+    isOutOfStock: isOutOfStock,
     isFeatured: product.is_featured || false,
     isTrending: product.is_trending || false,
     createdAt: new Date(product.created_at),
@@ -140,9 +160,9 @@ export const fetchProducts = async (): Promise<Product[]> => {
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary, media_file_name, media_file_type, display_order)
+          product_images (id, image_url, color_id, is_primary, media_file_name, media_file_type, display_order)
         ),
-        product_sizes (id, name, in_stock, price_original, price_discounted)
+        product_sizes (id, product_id, color_id, name, stock_quantity, in_stock, price_original, price_discounted)
       `);
 
     if (error) throw error;
@@ -200,9 +220,9 @@ export const fetchProductsByCategory = async (categorySlug: string): Promise<Pro
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary, media_file_name, media_file_type, display_order)
+          product_images (id, image_url, color_id, is_primary, media_file_name, media_file_type, display_order)
         ),
-        product_sizes (id, name, in_stock, price_original, price_discounted)
+        product_sizes (id, product_id, color_id, name, stock_quantity, in_stock, price_original, price_discounted)
       `)
       .eq('category_id', categoryData.id);
 
@@ -225,9 +245,9 @@ export const fetchProductBySlug = async (slug: string): Promise<Product> => {
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary, media_file_name, media_file_type, display_order)
+          product_images (id, image_url, color_id, is_primary, media_file_name, media_file_type, display_order)
         ),
-        product_sizes (id, name, in_stock, price_original, price_discounted)
+        product_sizes (id, product_id, color_id, name, stock_quantity, in_stock, price_original, price_discounted)
       `)
       .eq('slug', slug)
       .single();
@@ -254,9 +274,9 @@ export const fetchProductById = async (id: string): Promise<Product> => {
         *,
         product_colors (
           id, name, color_code,
-          product_images (id, image_url, is_primary, media_file_name, media_file_type, display_order)
+          product_images (id, image_url, color_id, is_primary, media_file_name, media_file_type, display_order)
         ),
-        product_sizes (id, name, in_stock, price_original, price_discounted)
+        product_sizes (id, product_id, color_id, name, stock_quantity, in_stock, price_original, price_discounted)
       `)
       .eq('id', id)
       .single();

@@ -14,19 +14,22 @@ export type SubCategory = {
   categoryId: string;
 };
 
+export type SizeVariant = {
+  id: string;
+  name: string;
+  inStock: boolean;
+  stockQuantity: number;
+  isLowStock: boolean;
+  priceOriginal: number;
+  priceDiscounted?: number;
+};
+
 export type ColorVariant = {
   id: string;
   name: string;
   colorCode: string;
   images: string[];
-};
-
-export type SizeVariant = {
-  id: string;
-  name: string;
-  inStock: boolean;
-  priceOriginal: number;
-  priceDiscounted?: number;
+  sizes: SizeVariant[];
 };
 
 export type ProductPrice = {
@@ -44,7 +47,6 @@ export type Product = {
   categoryId: string;
   subCategoryId: string;
   colorVariants: ColorVariant[];
-  sizeVariants: SizeVariant[];
   ageRanges: string[];
   specifications?: Record<string, string> | string[];
   isLowStock: boolean;

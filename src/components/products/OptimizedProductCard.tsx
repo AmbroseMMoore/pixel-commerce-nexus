@@ -17,10 +17,11 @@ const OptimizedProductCard = ({ product, loading = false }: OptimizedProductCard
 
   const primaryImage = product.colorVariants[0]?.images[0] || "/placeholder.svg";
   
-  // Calculate price range from size variants
+  // Calculate price range from all sizes across all colors
   const getPriceRange = () => {
-    const availableSizes = product.sizeVariants.filter(size => size.inStock);
-    const sizesToCheck = availableSizes.length > 0 ? availableSizes : product.sizeVariants;
+    const allSizes = product.colorVariants.flatMap(c => c.sizes);
+    const availableSizes = allSizes.filter(size => size.inStock);
+    const sizesToCheck = availableSizes.length > 0 ? availableSizes : allSizes;
     
     if (sizesToCheck.length === 0) {
       return {

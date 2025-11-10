@@ -43,6 +43,10 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
   // Use first color variant's first image as the product thumbnail
   const thumbnailImage = product.colorVariants[0]?.images[0] || "";
   
+  // Get all sizes from first color for quick add
+  const firstColor = product.colorVariants[0];
+  const availableSizes = firstColor?.sizes || [];
+  
   const priceDisplay = formatPriceDisplay();
   
   // Handle adding to cart
@@ -50,9 +54,8 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Use first available color and size for quick add
-    const firstColor = product.colorVariants[0];
-    const firstSize = product.sizeVariants.find(s => s.inStock) || product.sizeVariants[0];
+    // Use first available size from first color for quick add
+    const firstSize = availableSizes.find(s => s.inStock) || availableSizes[0];
     
     if (!firstColor || !firstSize) {
       toast({
@@ -95,9 +98,8 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Use first available color and size for wishlist
-    const firstColor = product.colorVariants[0];
-    const firstSize = product.sizeVariants[0];
+    // Use first size from first color for wishlist
+    const firstSize = availableSizes[0];
     
     if (!firstColor || !firstSize) {
       toast({

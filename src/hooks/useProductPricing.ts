@@ -2,10 +2,12 @@
 import { Product } from "@/types/product";
 
 export const useProductPricing = (product: Product) => {
-  // Calculate price range from size variants, fallback to base product price
+  // Calculate price range from all sizes across all colors, fallback to base product price
   const getPriceRange = () => {
-    const availableSizes = product.sizeVariants.filter(size => size.inStock);
-    const sizesToCheck = availableSizes.length > 0 ? availableSizes : product.sizeVariants;
+    // Get all sizes from all color variants
+    const allSizes = product.colorVariants.flatMap(color => color.sizes);
+    const availableSizes = allSizes.filter(size => size.inStock);
+    const sizesToCheck = availableSizes.length > 0 ? availableSizes : allSizes;
     
     // If no size variants, use base product price
     if (sizesToCheck.length === 0) {

@@ -122,6 +122,12 @@ const generateSampleProducts = () => {
             images: [
               "https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?auto=format&fit=crop&q=80&w=600",
               "https://images.unsplash.com/photo-1581655353564-df123a1eb820?auto=format&fit=crop&q=80&w=600",
+            ],
+            sizes: [
+              { id: "s1", name: "S", inStock: true, stockQuantity: 50, isLowStock: false, priceOriginal: basePrice - 100, priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice - 100 : undefined },
+              { id: "s2", name: "M", inStock: true, stockQuantity: 75, isLowStock: false, priceOriginal: basePrice, priceDiscounted: baseDiscountedPrice },
+              { id: "s3", name: "L", inStock: Math.random() > 0.2, stockQuantity: Math.random() > 0.5 ? 10 : 3, isLowStock: true, priceOriginal: basePrice + 100, priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice + 100 : undefined },
+              { id: "s4", name: "XL", inStock: Math.random() > 0.4, stockQuantity: Math.random() > 0.5 ? 20 : 2, isLowStock: false, priceOriginal: basePrice + 200, priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice + 200 : undefined }
             ]
           },
           {
@@ -131,37 +137,13 @@ const generateSampleProducts = () => {
             images: [
               "https://images.unsplash.com/photo-1564584217132-2271feaeb3c5?auto=format&fit=crop&q=80&w=600",
               "https://images.unsplash.com/photo-1554568218-0f1715e72254?auto=format&fit=crop&q=80&w=600",
+            ],
+            sizes: [
+              { id: "s5", name: "S", inStock: true, stockQuantity: 40, isLowStock: false, priceOriginal: basePrice - 100, priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice - 100 : undefined },
+              { id: "s6", name: "M", inStock: true, stockQuantity: 60, isLowStock: false, priceOriginal: basePrice, priceDiscounted: baseDiscountedPrice },
+              { id: "s7", name: "L", inStock: Math.random() > 0.2, stockQuantity: Math.random() > 0.5 ? 15 : 4, isLowStock: true, priceOriginal: basePrice + 100, priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice + 100 : undefined },
+              { id: "s8", name: "XL", inStock: Math.random() > 0.4, stockQuantity: Math.random() > 0.5 ? 25 : 1, isLowStock: false, priceOriginal: basePrice + 200, priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice + 200 : undefined }
             ]
-          }
-        ],
-        sizeVariants: [
-          { 
-            id: "s1", 
-            name: "S", 
-            inStock: true,
-            priceOriginal: basePrice - 100, // Small size slightly cheaper
-            priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice - 100 : undefined
-          },
-          { 
-            id: "s2", 
-            name: "M", 
-            inStock: true,
-            priceOriginal: basePrice, // Medium size base price
-            priceDiscounted: baseDiscountedPrice
-          },
-          { 
-            id: "s3", 
-            name: "L", 
-            inStock: Math.random() > 0.2,
-            priceOriginal: basePrice + 100, // Large size slightly more expensive
-            priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice + 100 : undefined
-          },
-          { 
-            id: "s4", 
-            name: "XL", 
-            inStock: Math.random() > 0.4,
-            priceOriginal: basePrice + 200, // XL size most expensive
-            priceDiscounted: baseDiscountedPrice ? baseDiscountedPrice + 200 : undefined
           }
         ],
         ageRanges: randomAgeRanges,

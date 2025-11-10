@@ -28,12 +28,18 @@ const transformProductData = (product: any): Product => {
           if (orderA !== orderB) return orderA - orderB;
           return (b.is_primary ? 1 : 0) - (a.is_primary ? 1 : 0);
         })
-        .map((img: any) => img.image_url)
-    })),
-    sizeVariants: (product.product_sizes || []).map(size => ({
-      id: size.id,
-      name: size.name,
-      inStock: size.in_stock
+        .map((img: any) => img.image_url),
+      sizes: (product.product_sizes || [])
+        .filter((size: any) => size.color_id === color.id)
+        .map((size: any) => ({
+          id: size.id,
+          name: size.name,
+          inStock: size.stock_quantity > 0,
+          stockQuantity: size.stock_quantity || 0,
+          isLowStock: size.stock_quantity > 0 && size.stock_quantity <= 5,
+          priceOriginal: size.price_original || product.price_original,
+          priceDiscounted: size.price_discounted || product.price_discounted
+        }))
     })),
     ageRanges: product.age_ranges || [],
     specifications: product.specifications || {},
@@ -56,9 +62,9 @@ export const useTrendingProducts = () => {
           *,
           product_colors (
             id, name, color_code,
-            product_images (id, image_url, is_primary, display_order)
+            product_images (id, image_url, color_id, is_primary, display_order)
           ),
-          product_sizes (id, name, in_stock)
+          product_sizes (id, product_id, color_id, name, stock_quantity, in_stock, price_original, price_discounted)
         `)
         .eq('is_trending', true);
 
