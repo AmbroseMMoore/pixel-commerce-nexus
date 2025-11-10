@@ -97,7 +97,7 @@ export const fetchProductsOptimized = async (options: {
           isTrending: item.is_trending || false,
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.created_at)
-        } as Product;
+        };
       }));
 
       return { products, totalCount };
@@ -219,14 +219,14 @@ export const fetchProductBySlugOptimized = async (slug: string): Promise<Product
         subCategoryId: data.subcategory_id,
         colorVariants,
         ageRanges: data.age_ranges || [],
-        specifications: data.specifications || {},
+        specifications: (data.specifications as Record<string, string>) || {},
         isLowStock: data.stock_quantity <= 10,
         isOutOfStock: data.is_out_of_stock || data.stock_quantity <= 0,
         isFeatured: data.is_featured || false,
         isTrending: data.is_trending || false,
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at)
-      } as Product;
+      };
     });
   } finally {
     supabaseManager.untrackConnection(cacheKey);
