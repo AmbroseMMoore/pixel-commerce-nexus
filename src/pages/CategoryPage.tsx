@@ -27,6 +27,7 @@ const CategoryPage = () => {
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [selectedAgeRanges, setSelectedAgeRanges] = useState<string[]>([]);
+  const [showAllSizes, setShowAllSizes] = useState(false);
   const [openSections, setOpenSections] = useState({
     subcategories: true,
     ageRange: true,
@@ -59,6 +60,14 @@ const CategoryPage = () => {
       )
     ).values()
   );
+
+  // Size display logic with "Show More" functionality
+  const SIZE_LIMIT = 12;
+  const displayedSizes = showAllSizes 
+    ? availableSizes 
+    : availableSizes.slice(0, SIZE_LIMIT);
+  const hasMoreSizes = availableSizes.length > SIZE_LIMIT;
+  const hiddenSizesCount = availableSizes.length - SIZE_LIMIT;
 
   // Get all available age ranges from products with proper sorting
   const availableAgeRanges = Array.from(
@@ -362,21 +371,37 @@ const CategoryPage = () => {
                 <ChevronDown className={cn("h-4 w-4 transition-transform", openSections.sizes && "rotate-180")} />
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="flex flex-wrap gap-2">
-                  {availableSizes.map((size, index) => (
-                    <button
-                      key={index}
-                      onClick={() => toggleSize(size)}
-                      className={cn(
-                        "flex h-8 min-w-8 px-2 items-center justify-center rounded border text-sm",
-                        selectedSizes.includes(size)
-                          ? "border-brand bg-brand/10 text-brand font-medium"
-                          : "border-gray-200"
-                      )}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {displayedSizes.map((size, index) => (
+                      <button
+                        key={index}
+                        onClick={() => toggleSize(size)}
+                        className={cn(
+                          "flex h-8 min-w-8 px-2 items-center justify-center rounded border text-sm",
+                          selectedSizes.includes(size)
+                            ? "border-brand bg-brand/10 text-brand font-medium"
+                            : "border-gray-200"
+                        )}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                  {hasMoreSizes && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAllSizes(!showAllSizes)}
+                      className="w-full text-sm h-8"
                     >
-                      {size}
-                    </button>
-                  ))}
+                      <ChevronDown className={cn("h-4 w-4 mr-1 transition-transform", showAllSizes && "rotate-180")} />
+                      {showAllSizes 
+                        ? "Show Less" 
+                        : `Show ${hiddenSizesCount} More`
+                      }
+                    </Button>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -529,21 +554,37 @@ const CategoryPage = () => {
                   <ChevronDown className={cn("h-4 w-4 transition-transform", openSections.sizes && "rotate-180")} />
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <div className="flex flex-wrap gap-2">
-                    {availableSizes.map((size, index) => (
-                      <button
-                        key={index}
-                        onClick={() => toggleSize(size)}
-                        className={cn(
-                          "flex h-8 min-w-8 px-2 items-center justify-center rounded border text-sm",
-                          selectedSizes.includes(size)
-                            ? "border-brand bg-brand/10 text-brand font-medium"
-                            : "border-gray-200"
-                        )}
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {displayedSizes.map((size, index) => (
+                        <button
+                          key={index}
+                          onClick={() => toggleSize(size)}
+                          className={cn(
+                            "flex h-8 min-w-8 px-2 items-center justify-center rounded border text-sm",
+                            selectedSizes.includes(size)
+                              ? "border-brand bg-brand/10 text-brand font-medium"
+                              : "border-gray-200"
+                          )}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                    {hasMoreSizes && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAllSizes(!showAllSizes)}
+                        className="w-full text-sm h-8"
                       >
-                        {size}
-                      </button>
-                    ))}
+                        <ChevronDown className={cn("h-4 w-4 mr-1 transition-transform", showAllSizes && "rotate-180")} />
+                        {showAllSizes 
+                          ? "Show Less" 
+                          : `Show ${hiddenSizesCount} More`
+                        }
+                      </Button>
+                    )}
                   </div>
                 </CollapsibleContent>
               </Collapsible>
