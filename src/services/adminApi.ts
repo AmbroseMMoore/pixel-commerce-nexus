@@ -441,8 +441,7 @@ export const updateStockQuantity = async (sizeId: string, newQuantity: number) =
       .from('product_sizes')
       .update({ 
         stock_quantity: newQuantity,
-        in_stock: newQuantity > 0,
-        is_low_stock: newQuantity > 0 && newQuantity <= 10
+        in_stock: newQuantity > 0
       })
       .eq('id', sizeId)
       .select()
