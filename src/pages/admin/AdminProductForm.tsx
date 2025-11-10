@@ -403,10 +403,14 @@ const AdminProductForm = () => {
       console.log('Processing color variants...');
       
       if (isEditMode) {
-        // For edit mode: Clear existing variants and recreate
+        // For edit mode: Delete in correct order (sizes → images → colors) to avoid FK issues
+        await supabase.from('product_sizes').delete().eq('product_id', productId);
         await supabase.from('product_images').delete().eq('product_id', productId);
         await supabase.from('product_colors').delete().eq('product_id', productId);
       }
+
+      // Map to track local color variant ID → database color ID
+      const colorIdMap = new Map<string, string>();
 
       // Process valid color variants
       const validColorVariants = colorVariants.filter(v => v.name.trim() && v.colorCode);
@@ -429,6 +433,10 @@ const AdminProductForm = () => {
           console.error('Error creating color variant:', colorError);
           throw colorError;
         }
+
+        // Map local color variant ID to database color ID
+        colorIdMap.set(colorVariant.id, newColor.id);
+        console.log(`Mapped local color ID ${colorVariant.id} to DB color ID ${newColor.id}`);
 
         // Handle images for this color with display_order
         for (let i = 0; i < colorVariant.images.length; i++) {
@@ -458,22 +466,24 @@ const AdminProductForm = () => {
 
       // Handle size variants - create only the sizes each color has
       console.log('Processing size variants per color...');
-      
-      if (isEditMode) {
-        // For edit mode: Clear existing size variants
-        await supabase.from('product_sizes').delete().eq('product_id', productId);
-      }
 
       // Process each color's sizes independently
       for (const colorVariant of validColorVariants) {
+        // Get the database color ID from the map
+        const dbColorId = colorIdMap.get(colorVariant.id);
+        if (!dbColorId) {
+          console.error(`No database color ID found for local color variant ${colorVariant.id}`);
+          continue;
+        }
+
         const validSizes = colorVariant.sizes.filter(s => s.name.trim() && s.priceOriginal > 0);
         
         for (const sizeVariant of validSizes) {
-          console.log(`Creating size ${sizeVariant.name} for color ${colorVariant.name}`);
+          console.log(`Creating size ${sizeVariant.name} for color ${colorVariant.name} (DB color ID: ${dbColorId})`);
           
           const sizeData = {
             product_id: productId,
-            color_id: colorVariant.id,
+            color_id: dbColorId, // Use the database color ID, not the local variant ID
             name: sizeVariant.name.trim(),
             in_stock: sizeVariant.inStock,
             stock_quantity: sizeVariant.inStock ? 100 : 0,
@@ -913,16 +923,14 @@ const AdminProductForm = () => {
                               <h3 className="text-lg font-semibold">
                                 Color Variant #{index + 1}
                               </h3>
-                              <div 
+                              <div
                                 className="w-8 h-8 rounded-full border-2 border-gray-300 shadow-sm"
                                 style={{ backgroundColor: variant.colorCode }}
                                 title={`Color: ${variant.name || 'Unnamed'}`}
                               />
-                              {variant.name && (
-                                <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
-                                  {variant.name} ({variant.sizes.length} {variant.sizes.length === 1 ? 'size' : 'sizes'})
-                                </span>
-                              )}
+                              <span className="text-sm font-medium text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                                {variant.name || 'Unnamed'} ({variant.sizes.length} {variant.sizes.length === 1 ? 'size' : 'sizes'})
+                              </span>
                             </div>
                             <Button
                               onClick={() => removeColorVariant(variant.id)}
@@ -986,8 +994,13 @@ const AdminProductForm = () => {
 
                           {/* Sizes Section for this Color */}
                           <div className="border-t pt-4">
-                            <div className="flex justify-between items-center mb-4">
-                              <Label className="text-base font-semibold">Sizes & Pricing</Label>
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="space-y-1">
+                                <Label className="text-base font-semibold">Sizes & Pricing</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Sizes are saved per color. Prices/stock are independent for each color.
+                                </p>
+                              </div>
                               <Button 
                                 onClick={() => addSizeToColor(variant.id)} 
                                 type="button" 
