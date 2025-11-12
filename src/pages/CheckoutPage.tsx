@@ -87,7 +87,26 @@ const CheckoutPage = () => {
   };
 
   const createOrderInDatabase = async () => {
-    // Create address record
+    // STEP 1: Validate stock availability first
+    for (const item of cartItems) {
+      const { data: sizeData, error: sizeError } = await supabase
+        .from('product_sizes')
+        .select('stock_quantity, name')
+        .eq('id', item.size_id)
+        .single();
+      
+      if (sizeError || !sizeData) {
+        throw new Error(`Unable to verify stock for ${item.product.title}`);
+      }
+      
+      if (sizeData.stock_quantity < item.quantity) {
+        throw new Error(
+          `Insufficient stock for ${item.product.title} (${sizeData.name}). Only ${sizeData.stock_quantity} units available.`
+        );
+      }
+    }
+
+    // STEP 2: Create address record
     const { data: addressData, error: addressError } = await supabase
       .from('addresses')
       .insert({
@@ -147,6 +166,19 @@ const CheckoutPage = () => {
       .insert(orderItems);
 
     if (itemsError) throw itemsError;
+
+    // STEP 3: Deduct stock for each item
+    for (const item of cartItems) {
+      const { error: stockError } = await supabase.rpc('deduct_stock', {
+        p_size_id: item.size_id,
+        p_quantity: item.quantity
+      });
+      
+      if (stockError) {
+        console.error('Stock deduction error:', stockError);
+        // Log but don't fail the order - stock will need manual adjustment
+      }
+    }
 
     return orderData;
   };
@@ -221,8 +253,19 @@ const CheckoutPage = () => {
             });
             navigate('/profile?tab=orders');
           },
-          (error) => {
-            // Payment failed
+          async (error) => {
+            // Payment failed - restore stock
+            try {
+              for (const item of cartItems) {
+                await supabase.rpc('restore_stock', {
+                  p_size_id: item.size_id,
+                  p_quantity: item.quantity
+                });
+              }
+            } catch (restoreError) {
+              console.error('Failed to restore stock:', restoreError);
+            }
+            
             logFormError('checkout_form', 'payment_failed', error, {
               orderId: orderData.id,
               orderNumber: orderData.order_number

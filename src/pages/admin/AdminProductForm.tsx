@@ -44,6 +44,7 @@ interface SizeVariant {
   id: string;
   name: string;
   inStock: boolean;
+  stockQuantity: number;
   priceOriginal: number;
   priceDiscounted?: number;
   isExisting?: boolean; // Track if this is an existing variant from DB
@@ -122,9 +123,9 @@ const AdminProductForm = () => {
         fileType: "jpg"
       })),
       sizes: [
-        { id: generateUUID(), name: "S", inStock: true, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
-        { id: generateUUID(), name: "M", inStock: true, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
-        { id: generateUUID(), name: "L", inStock: true, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
+        { id: generateUUID(), name: "S", inStock: true, stockQuantity: 100, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
+        { id: generateUUID(), name: "M", inStock: true, stockQuantity: 100, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
+        { id: generateUUID(), name: "L", inStock: true, stockQuantity: 100, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
       ],
       isExisting: false
     };
@@ -202,6 +203,7 @@ const AdminProductForm = () => {
                   id: size.id || generateUUID(),
                   name: size.name || "",
                   inStock: size.inStock !== false,
+                  stockQuantity: size.stockQuantity || size.stock_quantity || 100,
                   priceOriginal: size.priceOriginal || existingProduct.price?.original || 0,
                   priceDiscounted: size.priceDiscounted || existingProduct.price?.discounted || undefined,
                   isExisting: true
@@ -216,9 +218,9 @@ const AdminProductForm = () => {
               isExisting: true,
               images: images,
               sizes: colorSizes.length > 0 ? colorSizes : [
-                { id: generateUUID(), name: "S", inStock: true, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
-                { id: generateUUID(), name: "M", inStock: true, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
-                { id: generateUUID(), name: "L", inStock: true, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
+                { id: generateUUID(), name: "S", inStock: true, stockQuantity: 100, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
+                { id: generateUUID(), name: "M", inStock: true, stockQuantity: 100, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
+                { id: generateUUID(), name: "L", inStock: true, stockQuantity: 100, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
               ]
             };
           });
@@ -486,7 +488,7 @@ const AdminProductForm = () => {
             color_id: dbColorId, // Use the database color ID, not the local variant ID
             name: sizeVariant.name.trim(),
             in_stock: sizeVariant.inStock,
-            stock_quantity: sizeVariant.inStock ? 100 : 0,
+            stock_quantity: sizeVariant.stockQuantity || 100,
             price_original: sizeVariant.priceOriginal,
             price_discounted: sizeVariant.priceDiscounted || null
           };
@@ -620,6 +622,7 @@ const AdminProductForm = () => {
               id: generateUUID(), 
               name: "", 
               inStock: true, 
+              stockQuantity: 100,
               priceOriginal: basePrice,
               priceDiscounted: baseDiscounted,
               isExisting: false
@@ -1013,7 +1016,7 @@ const AdminProductForm = () => {
                             <div className="space-y-3">
                               {variant.sizes.map((size) => (
                                 <div key={size.id} className="border rounded-lg p-4 bg-white">
-                                  <div className="grid grid-cols-5 gap-4 items-end">
+                                  <div className="grid grid-cols-6 gap-4 items-end">
                                     <div>
                                       <Label htmlFor={`size-name-${variant.id}-${size.id}`}>Size Name</Label>
                                       <Input
@@ -1045,6 +1048,17 @@ const AdminProductForm = () => {
                                         value={size.priceDiscounted || ''}
                                         onChange={(e) => updateSizeInColor(variant.id, size.id, "priceDiscounted", e.target.value ? parseFloat(e.target.value) : undefined)}
                                         placeholder="Optional"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor={`size-stock-qty-${variant.id}-${size.id}`}>Stock Quantity</Label>
+                                      <Input
+                                        id={`size-stock-qty-${variant.id}-${size.id}`}
+                                        type="number"
+                                        min="0"
+                                        value={size.stockQuantity}
+                                        onChange={(e) => updateSizeInColor(variant.id, size.id, "stockQuantity", parseInt(e.target.value) || 0)}
+                                        placeholder="100"
                                       />
                                     </div>
                                     <div className="flex items-center space-x-2">
