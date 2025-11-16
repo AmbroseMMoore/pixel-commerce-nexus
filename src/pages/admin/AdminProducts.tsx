@@ -7,12 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Edit, Trash2, Eye, Loader2, Filter, ArrowUpDown } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search, Edit, Trash2, Eye, Loader2, Filter, ArrowUpDown, Archive, RotateCcw } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import { useProducts } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteProduct } from "@/services/adminApi";
+import { deleteProduct, moveToDropped, restoreProduct } from "@/services/adminApi";
 import { toast } from "@/hooks/use-toast";
 
 const AdminProducts = () => {
@@ -20,14 +22,23 @@ const AdminProducts = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const { data: products, isLoading, error, refetch } = useProducts();
   const { categories } = useCategories();
   
-  // Filter and sort products
-  const filteredAndSortedProducts = useMemo(() => {
-    if (!products) return [];
-
-    let filtered = products.filter(product => {
+  // Separate active and dropped products
+  const { activeProducts, droppedProducts } = useMemo(() => {
+    if (!products) return { activeProducts: [], droppedProducts: [] };
+    
+    const active = products.filter((p: any) => p.isActive !== false);
+    const dropped = products.filter((p: any) => p.isActive === false);
+    
+    return { activeProducts: active, droppedProducts: dropped };
+  }, [products]);
+  
+  // Filter and sort function
+  const filterAndSort = (productList: any[]) => {
+    let filtered = productList.filter(product => {
       const matchesSearch = product.title.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === "all" || product.categoryId === selectedCategory;
       return matchesSearch && matchesCategory;
@@ -52,7 +63,10 @@ const AdminProducts = () => {
     }
 
     return filtered;
-  }, [products, searchTerm, selectedCategory, sortBy]);
+  };
+  
+  const filteredActiveProducts = useMemo(() => filterAndSort(activeProducts), [activeProducts, searchTerm, selectedCategory, sortBy]);
+  const filteredDroppedProducts = useMemo(() => filterAndSort(droppedProducts), [droppedProducts, searchTerm, selectedCategory, sortBy]);
 
   const getCategoryName = (categoryId: string) => {
     const category = categories.find(cat => cat.id === categoryId);
@@ -60,17 +74,16 @@ const AdminProducts = () => {
   };
 
   const handleDelete = async (id: string, title: string) => {
-    if (confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+    if (confirm(`Are you sure you want to permanently delete "${title}"? This action cannot be undone.`)) {
       setDeletingId(id);
       try {
         await deleteProduct(id);
         
         toast({
           title: "Product Deleted",
-          description: `"${title}" has been successfully deleted.`
+          description: `"${title}" has been permanently deleted.`
         });
         
-        // Refresh the product list
         refetch();
       } catch (error: any) {
         console.error("Error deleting product:", error);
@@ -81,6 +94,56 @@ const AdminProducts = () => {
         });
       } finally {
         setDeletingId(null);
+      }
+    }
+  };
+
+  const handleMoveToDropped = async (id: string, title: string) => {
+    if (confirm(`Move "${title}" to Dropped Products? It will be hidden from the customer website but retained in the database.`)) {
+      setProcessingId(id);
+      try {
+        await moveToDropped(id);
+        
+        toast({
+          title: "Product Moved to Dropped",
+          description: `"${title}" has been moved to Dropped Products and is now hidden from customers.`
+        });
+        
+        refetch();
+      } catch (error: any) {
+        console.error("Error moving product:", error);
+        toast({
+          title: "Error",
+          description: error.message || "There was an error moving the product. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setProcessingId(null);
+      }
+    }
+  };
+
+  const handleRestore = async (id: string, title: string) => {
+    if (confirm(`Restore "${title}"? It will be visible to customers again.`)) {
+      setProcessingId(id);
+      try {
+        await restoreProduct(id);
+        
+        toast({
+          title: "Product Restored",
+          description: `"${title}" has been restored and is now visible on the website.`
+        });
+        
+        refetch();
+      } catch (error: any) {
+        console.error("Error restoring product:", error);
+        toast({
+          title: "Error",
+          description: error.message || "There was an error restoring the product. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setProcessingId(null);
       }
     }
   };
@@ -212,114 +275,192 @@ const AdminProducts = () => {
                 </div>
               </div>
 
-              {/* Results Summary */}
-              <div className="mb-4 text-sm text-gray-600">
-                Showing {filteredAndSortedProducts.length} of {products?.length || 0} products
-                {searchTerm && ` for "${searchTerm}"`}
-                {selectedCategory !== "all" && ` in ${getCategoryName(selectedCategory)}`}
-              </div>
+              {/* Tabs for Active and Dropped Products */}
+              <Tabs defaultValue="active" className="w-full">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="active">
+                    Active Products ({filteredActiveProducts.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="dropped">
+                    Dropped Products ({filteredDroppedProducts.length})
+                  </TabsTrigger>
+                </TabsList>
 
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredAndSortedProducts.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
-                          {searchTerm || selectedCategory !== "all" ? (
-                            <div className="text-gray-500">
-                              <p>No products found matching your criteria.</p>
-                              <Button 
-                                variant="outline" 
-                                className="mt-2" 
-                                onClick={() => {
-                                  setSearchTerm("");
-                                  setSelectedCategory("all");
-                                  setSortBy("newest");
-                                }}
-                              >
-                                Clear Filters
-                              </Button>
-                            </div>
-                          ) : (
-                            "No products found. Add your first product!"
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredAndSortedProducts.map((product) => (
-                        <TableRow key={product.id}>
-                          <TableCell>{product.title}</TableCell>
-                          <TableCell>{getCategoryName(product.categoryId)}</TableCell>
-                          <TableCell>
-                            {product.price.discounted ? (
-                              <>
-                                <span className="line-through text-gray-400 mr-2">
-                                  ₹{product.price.original.toFixed(2)}
-                                </span>
-                                <span className="text-green-600 font-medium">
-                                  ₹{product.price.discounted.toFixed(2)}
-                                </span>
-                              </>
-                            ) : (
-                              `₹${product.price.original.toFixed(2)}`
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {product.isOutOfStock ? (
-                              <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-                                Out of Stock
-                              </span>
-                            ) : product.isLowStock ? (
-                              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                                Low Stock
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                                In Stock
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button size="sm" variant="ghost" asChild>
-                                <Link to={`/product/${product.slug}`}>
-                                  <Eye className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              <Button size="sm" variant="ghost" asChild>
-                                <Link to={`/admin/products/${product.id}`}>
-                                  <Edit className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => handleDelete(product.id, product.title)}
-                                disabled={deletingId === product.id}
-                              >
-                                {deletingId === product.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-red-500" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4 text-red-500" />
-                                )}
-                              </Button>
-                            </div>
-                          </TableCell>
+                {/* Active Products Tab */}
+                <TabsContent value="active">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Price</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredActiveProducts.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8">
+                              <div className="text-muted-foreground">
+                                <p>No active products found.</p>
+                                <Button 
+                                  variant="outline" 
+                                  className="mt-2" 
+                                  onClick={() => {
+                                    setSearchTerm("");
+                                    setSelectedCategory("all");
+                                  }}
+                                >
+                                  Clear Filters
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredActiveProducts.map((product) => (
+                            <TableRow key={product.id}>
+                              <TableCell className="font-medium">{product.title}</TableCell>
+                              <TableCell>{getCategoryName(product.categoryId)}</TableCell>
+                              <TableCell>
+                                {product.price.discounted ? (
+                                  <div className="flex flex-col">
+                                    <span className="line-through text-muted-foreground text-sm">
+                                      ₹{product.price.original}
+                                    </span>
+                                    <span className="text-primary font-semibold">
+                                      ₹{product.price.discounted}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span>₹{product.price.original}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={product.isOutOfStock ? "destructive" : "default"}>
+                                  {product.isOutOfStock ? "Out of Stock" : "In Stock"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="ghost" size="icon" asChild>
+                                    <Link to={`/products/${product.slug}`}>
+                                      <Eye className="h-4 w-4" />
+                                    </Link>
+                                  </Button>
+                                  <Button variant="ghost" size="icon" asChild>
+                                    <Link to={`/admin/products/edit/${product.id}`}>
+                                      <Edit className="h-4 w-4" />
+                                    </Link>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleMoveToDropped(product.id, product.title)}
+                                    disabled={processingId === product.id}
+                                  >
+                                    {processingId === product.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Archive className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDelete(product.id, product.title)}
+                                    disabled={deletingId === product.id}
+                                  >
+                                    {deletingId === product.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4 text-destructive" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+
+                {/* Dropped Products Tab */}
+                <TabsContent value="dropped">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Price</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredDroppedProducts.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8">
+                              <div className="text-muted-foreground">
+                                <p>No dropped products found.</p>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredDroppedProducts.map((product) => (
+                            <TableRow key={product.id} className="opacity-60">
+                              <TableCell className="font-medium">{product.title}</TableCell>
+                              <TableCell>{getCategoryName(product.categoryId)}</TableCell>
+                              <TableCell>
+                                {product.price.discounted ? (
+                                  <div className="flex flex-col">
+                                    <span className="line-through text-muted-foreground text-sm">
+                                      ₹{product.price.original}
+                                    </span>
+                                    <span className="text-primary font-semibold">
+                                      ₹{product.price.discounted}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span>₹{product.price.original}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">Dropped</Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="ghost" size="icon" asChild>
+                                    <Link to={`/admin/products/edit/${product.id}`}>
+                                      <Edit className="h-4 w-4" />
+                                    </Link>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRestore(product.id, product.title)}
+                                    disabled={processingId === product.id}
+                                  >
+                                    {processingId === product.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <RotateCcw className="h-4 w-4 text-primary" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>

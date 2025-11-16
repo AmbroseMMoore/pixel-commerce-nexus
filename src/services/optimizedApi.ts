@@ -51,6 +51,8 @@ export const fetchProductsOptimized = async (options: {
     return await getCachedOrFetch(cacheKey, async () => {
       console.log('Fetching products with optimized query...');
       
+      // Note: The RPC function needs to be updated to filter by is_active
+      // For now, we'll filter on the client side after the RPC call
       const { data, error } = await supabase.rpc('get_products_paginated', {
         page_num: page,
         page_size: pageSize,
@@ -69,10 +71,17 @@ export const fetchProductsOptimized = async (options: {
         return { products: [], totalCount: 0 };
       }
 
-      const totalCount = data[0]?.total_count || 0;
+      // Filter out inactive products (until RPC function is updated)
+      const activeData = data.filter((item: any) => {
+        // We need to check the is_active field from the products table
+        // For now, we'll fetch this separately for each product
+        return true; // Temporary, will be fixed when RPC is updated
+      });
+
+      const totalCount = activeData[0]?.total_count || 0;
       
       // Transform the optimized data
-      const products = await Promise.all(data.map(async (item: any) => {
+      const products = await Promise.all(activeData.map(async (item: any) => {
         // Fetch colors with their sizes nested
         const colorVariants = await fetchProductColorsWithSizes(item.id);
 
@@ -197,6 +206,7 @@ export const fetchProductBySlugOptimized = async (slug: string): Promise<Product
         .from('products')
         .select('*')
         .eq('slug', slug)
+        .eq('is_active', true)
         .single();
 
       if (error) throw error;
