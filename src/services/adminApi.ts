@@ -484,7 +484,8 @@ export const fetchInventoryData = async (
         products!inner(
           id,
           title,
-          slug
+          slug,
+          is_active
         ),
         product_colors!inner(
           id,
@@ -497,6 +498,7 @@ export const fetchInventoryData = async (
           )
         )
       `)
+      .eq('products.is_active', true)
       .order('stock_quantity', { ascending: true });
 
     const { data, error } = await query;
