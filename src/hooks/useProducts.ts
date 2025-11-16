@@ -6,6 +6,7 @@ import {
   fetchProductBySlug,
   fetchProductById
 } from "@/services/api";
+import { fetchAllProductsForAdmin } from "@/services/adminApi";
 import { supabase } from "@/integrations/supabase/client";
 
 // Hook for all products
@@ -48,6 +49,14 @@ export const useProductById = (id: string) => {
     queryKey: ["product", "id", id],
     queryFn: () => fetchProductById(id),
     enabled: !!id
+  });
+};
+
+// Hook for admin to fetch ALL products (including dropped)
+export const useAdminProducts = () => {
+  return useQuery({
+    queryKey: ["admin-products"],
+    queryFn: fetchAllProductsForAdmin
   });
 };
 

@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit, Trash2, Eye, Loader2, Filter, ArrowUpDown, Archive, RotateCcw } from "lucide-react";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
-import { useProducts } from "@/hooks/useProducts";
+import { useAdminProducts } from "@/hooks/useProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { deleteProduct, moveToDropped, restoreProduct } from "@/services/adminApi";
@@ -23,7 +23,7 @@ const AdminProducts = () => {
   const [sortBy, setSortBy] = useState<string>("newest");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const { data: products, isLoading, error, refetch } = useProducts();
+  const { data: products, isLoading, error, refetch } = useAdminProducts();
   const { categories } = useCategories();
   
   // Separate active and dropped products

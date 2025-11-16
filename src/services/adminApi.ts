@@ -123,6 +123,72 @@ export const restoreProduct = async (id: string) => {
   }
 };
 
+// Fetch all products for admin panel (including dropped products)
+export const fetchAllProductsForAdmin = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        categories!inner(id, name, slug),
+        subcategories!inner(id, name, slug),
+        product_colors(
+          id, name, color_code,
+          product_images(id, image_url, is_primary, display_order)
+        ),
+        product_sizes(id, name, stock_quantity, in_stock, is_low_stock, price_original, price_discounted, color_id, product_id)
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    
+    // Transform the data to match the Product interface
+    return (data || []).map((product: any) => ({
+      id: product.id,
+      title: product.title,
+      slug: product.slug,
+      shortDescription: product.short_description || '',
+      longDescription: product.long_description || '',
+      categoryId: product.category_id,
+      subCategoryId: product.subcategory_id,
+      price: {
+        original: product.price_original,
+        discounted: product.price_discounted
+      },
+      isActive: product.is_active,
+      colorVariants: (product.product_colors || []).map((color: any) => ({
+        id: color.id,
+        name: color.name,
+        colorCode: color.color_code,
+        images: (color.product_images || [])
+          .sort((a: any, b: any) => (a.display_order || 0) - (b.display_order || 0))
+          .map((img: any) => img.image_url),
+        sizes: (product.product_sizes || [])
+          .filter((size: any) => size.color_id === color.id)
+          .map((size: any) => ({
+            id: size.id,
+            name: size.name,
+            inStock: size.in_stock,
+            stockQuantity: size.stock_quantity,
+            isLowStock: size.is_low_stock,
+            priceOriginal: size.price_original,
+            priceDiscounted: size.price_discounted
+          }))
+      })),
+      ageRanges: product.age_ranges || [],
+      specifications: product.specifications || {},
+      isLowStock: product.is_low_stock || false,
+      isOutOfStock: product.is_out_of_stock || false,
+      isFeatured: product.is_featured || false,
+      isTrending: product.is_trending || false,
+      createdAt: new Date(product.created_at),
+      updatedAt: new Date(product.updated_at)
+    }));
+  } catch (error) {
+    return handleSupabaseError(error);
+  }
+};
+
 // Admin Functions for Categories
 export const fetchAllCategories = async (): Promise<Category[]> => {
   try {
