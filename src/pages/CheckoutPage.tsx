@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useCart } from "@/hooks/useCart";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAddresses } from "@/hooks/useAddresses";
@@ -52,8 +51,6 @@ const CheckoutPage = () => {
       phoneNumber: ""
     };
   });
-  
-  const [paymentMethod, setPaymentMethod] = useState("razorpay");
 
   // Get delivery info for the postal code
   const { data: deliveryInfo } = useDeliveryInfoByPincode(
@@ -138,7 +135,7 @@ const CheckoutPage = () => {
         total_amount: totalWithDelivery,
         status: 'pending',
         delivery_address_id: addressData.id,
-        payment_method: paymentMethod,
+        payment_method: 'razorpay',
         payment_status: 'pending',
         delivery_zone_id: deliveryInfo?.zone_id || null,
         delivery_charge: effectiveDeliveryCharge,
@@ -205,31 +202,8 @@ const CheckoutPage = () => {
     setIsProcessing(true);
     
     try {
-      if (paymentMethod === "cod") {
-        // Handle Cash on Delivery
-        const orderData = await createOrderInDatabase();
-        
-        // Clear cart
-        clearCart();
-
-        logFormSuccess('checkout_form', 'order_placed', {
-          orderId: orderData.id,
-          orderNumber: orderData.order_number,
-          totalAmount: totalWithDelivery,
-          itemCount: cartItems.length,
-          paymentMethod: 'cod',
-          deliveryCharge: effectiveDeliveryCharge
-        });
-
-        toast({
-          title: "Order placed successfully!",
-          description: `Your order ${orderData.order_number} has been placed.`,
-        });
-
-        navigate('/profile?tab=orders');
-      } else if (paymentMethod === "razorpay") {
-        // Handle Razorpay payment
-        const orderData = await createOrderInDatabase();
+      // Handle Razorpay payment
+      const orderData = await createOrderInDatabase();
         
         // Initiate Razorpay payment
         await initiatePayment(
@@ -272,7 +246,6 @@ const CheckoutPage = () => {
             });
           }
         );
-      }
     } catch (error: any) {
       console.error('Order placement error:', error);
       logFormError('checkout_form', 'order_failed', error, deliveryAddress);
@@ -438,16 +411,19 @@ const CheckoutPage = () => {
                 <CardTitle>Payment Method</CardTitle>
               </CardHeader>
               <CardContent>
-                <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="razorpay" id="razorpay" />
-                    <Label htmlFor="razorpay">Pay Online (Credit/Debit Card, UPI, Net Banking)</Label>
+                <div className="flex items-center space-x-3 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                  <div className="flex-shrink-0">
+                    <svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="cod" id="cod" />
-                    <Label htmlFor="cod">Cash on Delivery</Label>
+                  <div>
+                    <p className="font-medium text-foreground">Online Payment (Razorpay)</p>
+                    <p className="text-sm text-muted-foreground">
+                      Secure payment via Credit/Debit Card, UPI, Net Banking, and Wallets
+                    </p>
                   </div>
-                </RadioGroup>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -527,7 +503,7 @@ const CheckoutPage = () => {
                   onClick={handlePlaceOrder}
                   disabled={isLoading || !deliveryInfo}
                 >
-                  {isLoading ? "Processing..." : paymentMethod === "cod" ? "Place Order" : "Pay Now"}
+                  {isLoading ? "Processing..." : "Pay Now"}
                 </Button>
 
                 {!deliveryInfo && deliveryAddress.postalCode.length === 6 && (
