@@ -166,7 +166,8 @@ export const fetchProducts = async (): Promise<Product[]> => {
           product_images (id, image_url, color_id, is_primary, media_file_name, media_file_type, display_order)
         ),
         product_sizes (id, product_id, color_id, name, stock_quantity, in_stock, price_original, price_discounted)
-      `);
+      `)
+      .eq('is_active', true);
 
     if (error) throw error;
     
@@ -191,7 +192,8 @@ export const fetchFeaturedProducts = async (): Promise<Product[]> => {
         ),
         product_sizes (id, name, in_stock, price_original, price_discounted)
       `)
-      .eq('is_featured', true);
+      .eq('is_featured', true)
+      .eq('is_active', true);
 
     if (error) throw error;
     
@@ -227,7 +229,8 @@ export const fetchProductsByCategory = async (categorySlug: string): Promise<Pro
         ),
         product_sizes (id, product_id, color_id, name, stock_quantity, in_stock, price_original, price_discounted)
       `)
-      .eq('category_id', categoryData.id);
+      .eq('category_id', categoryData.id)
+      .eq('is_active', true);
 
     if (error) throw error;
     
@@ -253,6 +256,7 @@ export const fetchProductBySlug = async (slug: string): Promise<Product> => {
         product_sizes (id, product_id, color_id, name, stock_quantity, in_stock, price_original, price_discounted)
       `)
       .eq('slug', slug)
+      .eq('is_active', true)
       .single();
 
     if (error) throw error;

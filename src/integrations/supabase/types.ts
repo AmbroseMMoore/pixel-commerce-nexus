@@ -896,6 +896,7 @@ export type Database = {
           category_id: string
           created_at: string | null
           id: string
+          is_active: boolean | null
           is_featured: boolean | null
           is_low_stock: boolean | null
           is_out_of_stock: boolean | null
@@ -916,6 +917,7 @@ export type Database = {
           category_id: string
           created_at?: string | null
           id?: string
+          is_active?: boolean | null
           is_featured?: boolean | null
           is_low_stock?: boolean | null
           is_out_of_stock?: boolean | null
@@ -936,6 +938,7 @@ export type Database = {
           category_id?: string
           created_at?: string | null
           id?: string
+          is_active?: boolean | null
           is_featured?: boolean | null
           is_low_stock?: boolean | null
           is_out_of_stock?: boolean | null

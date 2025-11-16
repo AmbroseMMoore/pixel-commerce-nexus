@@ -14,7 +14,7 @@ const handleSupabaseError = (error: any) => {
     // Force refresh the session to ensure we have the latest auth state
     supabase.auth.refreshSession();
   } else if (error.code === "23503") { // Foreign key violation
-    error.message = "Invalid reference. The item you're referencing may not exist.";
+    error.message = "This product cannot be deleted because it exists in order history. Please move it to 'Dropped Products' to hide it from customers instead.";
   }
   
   throw error;
@@ -54,6 +54,23 @@ export const updateProduct = async (id: string, productData: any) => {
 
 export const deleteProduct = async (id: string) => {
   try {
+    // Check if product has any order items
+    const { data: orderItems, error: checkError } = await supabase
+      .from('order_items')
+      .select('id')
+      .eq('product_id', id)
+      .limit(1);
+    
+    if (checkError) throw checkError;
+    
+    if (orderItems && orderItems.length > 0) {
+      throw new Error(
+        'This product cannot be deleted because it has been ordered by customers. ' +
+        'Please move it to "Dropped Products" instead to hide it from the website.'
+      );
+    }
+    
+    // Only delete if no orders exist
     const { error } = await supabase
       .from('products')
       .delete()
@@ -61,6 +78,46 @@ export const deleteProduct = async (id: string) => {
       
     if (error) throw error;
     return true;
+  } catch (error) {
+    return handleSupabaseError(error);
+  }
+};
+
+// Move product to dropped (set is_active to false)
+export const moveToDropped = async (id: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .update({ 
+        is_active: false, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    return handleSupabaseError(error);
+  }
+};
+
+// Restore product from dropped (set is_active to true)
+export const restoreProduct = async (id: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .update({ 
+        is_active: true, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    return data;
   } catch (error) {
     return handleSupabaseError(error);
   }
