@@ -345,12 +345,12 @@ const AdminProducts = () => {
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
                                   <Button variant="ghost" size="icon" asChild>
-                                    <Link to={`/products/${product.slug}`}>
+                                    <Link to={`/product/${product.slug}`}>
                                       <Eye className="h-4 w-4" />
                                     </Link>
                                   </Button>
                                   <Button variant="ghost" size="icon" asChild>
-                                    <Link to={`/admin/products/edit/${product.id}`}>
+                                    <Link to={`/admin/products/${product.id}`}>
                                       <Edit className="h-4 w-4" />
                                     </Link>
                                   </Button>
@@ -435,7 +435,7 @@ const AdminProducts = () => {
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
                                   <Button variant="ghost" size="icon" asChild>
-                                    <Link to={`/admin/products/edit/${product.id}`}>
+                                    <Link to={`/admin/products/${product.id}`}>
                                       <Edit className="h-4 w-4" />
                                     </Link>
                                   </Button>
