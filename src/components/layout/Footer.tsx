@@ -24,7 +24,9 @@ const Footer = () => {
                 <Facebook size={20} />
               </a>
               <a 
-                href="#" 
+                href="https://www.instagram.com/cutebae.in/" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="transition-colors hover:opacity-70"
                 style={{ color: '#353535' }}
                 aria-label="Instagram"
