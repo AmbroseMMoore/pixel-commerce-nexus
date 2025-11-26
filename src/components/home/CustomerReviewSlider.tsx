@@ -107,7 +107,7 @@ const CustomerReviewSlider = () => {
           >
             {reviews.map((review) => (
               <div key={review.id} className="flex-shrink-0 px-3" style={{ width: `${100 / slidesToShow}%` }}>
-                <div className="w-[70%] mx-auto">
+                <div className="w-full mx-auto">
                   <AspectRatio ratio={16 / 9}>
                     <div className="bg-white border border-gray-200 rounded-lg p-6 h-full flex flex-col">
                       <div className="flex items-center mb-3">{renderStars(review.rating)}</div>
@@ -121,7 +121,7 @@ const CustomerReviewSlider = () => {
                         )}
                       </div>
 
-                      <p className="text-gray-600 font-quicksand leading-relaxed flex-1 overflow-auto">"{review.review}"</p>
+                      <p className="text-gray-600 font-quicksand leading-relaxed line-clamp-3">"{review.review}"</p>
                     </div>
                   </AspectRatio>
                 </div>
