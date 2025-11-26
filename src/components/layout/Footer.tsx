@@ -16,7 +16,9 @@ const Footer = () => {
             </p>
             <div className="flex space-x-4">
               <a 
-                href="#" 
+                href="https://www.facebook.com/share/1CiXSzJTcR/" 
+                target="_blank"
+                rel="noopener noreferrer"
                 className="transition-colors hover:opacity-70"
                 style={{ color: '#353535' }}
                 aria-label="Facebook"
