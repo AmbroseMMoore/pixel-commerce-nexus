@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,98 +11,115 @@ const faqData = [
     questions: [
       {
         question: "How long does delivery take?",
-        answer: "We typically deliver within 3-7 business days across India. Metro cities usually receive orders within 2-4 days."
+        answer:
+          "We typically deliver within 3-7 business days across India. Metro cities usually receive orders within 2-4 days.",
       },
       {
         question: "Do you offer free shipping?",
-        answer: "Yes! We offer free shipping on orders above ₹999. For orders below this amount, a nominal shipping charge of ₹99 applies."
+        answer:
+          "Yes! We offer free shipping on orders above ₹3000. For orders below this amount, a nominal shipping charge of ₹99 applies.",
       },
       {
         question: "Can I track my order?",
-        answer: "Absolutely! Once your order is shipped, you'll receive a tracking number via SMS and email to monitor your package."
+        answer:
+          "Absolutely! Once your order is shipped, you'll receive a tracking number via SMS and email to monitor your package.",
       },
       {
         question: "What if my order is delayed?",
-        answer: "In rare cases of delays, we'll notify you immediately. You can also contact our support team for real-time updates."
-      }
-    ]
+        answer:
+          "In rare cases of delays, we'll notify you immediately. You can also contact our support team for real-time updates.",
+      },
+    ],
   },
   {
     category: "Returns & Exchanges",
     questions: [
       {
         question: "What is your return policy?",
-        answer: "We offer easy 7-day returns from the date of delivery. Items should be unused, unwashed, and in original packaging with tags intact."
+        answer:
+          "We offer easy 7-day returns from the date of delivery. Items should be unused, unwashed, and in original packaging with tags intact.",
       },
       {
         question: "How do I return an item?",
-        answer: "Simply go to your account, select the order, and choose 'Return Item'. We'll arrange a free pickup from your address."
+        answer:
+          "Simply go to your account, select the order, and choose 'Return Item'. We'll arrange a free pickup from your address.",
       },
       {
         question: "When will I get my refund?",
-        answer: "Refunds are processed within 5-7 business days after we receive the returned item. The amount will be credited to your original payment method."
+        answer:
+          "Refunds are processed within 5-7 business days after we receive the returned item. The amount will be credited to your original payment method.",
       },
       {
         question: "Can I exchange for a different size?",
-        answer: "Yes! We offer free size exchanges within 7 days. Just request an exchange instead of a return when initiating the process."
-      }
-    ]
+        answer:
+          "Yes! We offer free size exchanges within 7 days. Just request an exchange instead of a return when initiating the process.",
+      },
+    ],
   },
   {
     category: "Products & Sizing",
     questions: [
       {
         question: "How do I choose the right size?",
-        answer: "Each product page has a detailed size chart. We recommend measuring your child and comparing with our size guide for the best fit."
+        answer:
+          "Each product page has a detailed size chart. We recommend measuring your child and comparing with our size guide for the best fit.",
       },
       {
         question: "Are your clothes safe for babies?",
-        answer: "Absolutely! All our products are made from baby-safe, non-toxic materials and undergo strict quality checks."
+        answer:
+          "Absolutely! All our products are made from baby-safe, non-toxic materials and undergo strict quality checks.",
       },
       {
         question: "Do you have organic/eco-friendly options?",
-        answer: "Yes! Look for our 'Eco-Friendly' tag on products. We offer a range of organic cotton and sustainable fabric options."
+        answer:
+          "Yes! Look for our 'Eco-Friendly' tag on products. We offer a range of organic cotton and sustainable fabric options.",
       },
       {
         question: "How should I care for the clothes?",
-        answer: "Care instructions are provided on each product page and on the garment labels. Generally, we recommend gentle machine wash in cold water."
-      }
-    ]
+        answer:
+          "Care instructions are provided on each product page and on the garment labels. Generally, we recommend gentle machine wash in cold water.",
+      },
+    ],
   },
   {
     category: "Payment & Account",
     questions: [
       {
         question: "What payment methods do you accept?",
-        answer: "We accept all major credit/debit cards, UPI, net banking, and Cash on Delivery (COD) for eligible orders."
+        answer: "We accept all major credit/debit cards, UPI and net banking for eligible orders.",
       },
       {
         question: "Is it safe to pay online?",
-        answer: "Yes! We use industry-standard SSL encryption and secure payment gateways to protect your financial information."
+        answer:
+          "Yes! We use industry-standard SSL encryption and secure payment gateways to protect your financial information.",
       },
       {
         question: "Can I modify my order after placing it?",
-        answer: "Orders can be modified within 1 hour of placement. After that, you'll need to cancel and place a new order."
+        answer:
+          "Orders can be modified within 1 hour of placement. After that, you'll need to cancel and place a new order.",
       },
       {
         question: "How do I create an account?",
-        answer: "Click on 'Sign Up' and provide your email. You can also sign up using your Google account for quick access."
-      }
-    ]
-  }
+        answer:
+          "Click on 'Sign Up' and provide your email. You can also sign up using your Google account for quick access.",
+      },
+    ],
+  },
 ];
 
 const FAQPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredFAQs = faqData.map(category => ({
-    ...category,
-    questions: category.questions.filter(
-      item =>
-        item.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.answer.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  })).filter(category => category.questions.length > 0);
+  const filteredFAQs = faqData
+    .map((category) => ({
+      ...category,
+      questions: category.questions.filter(
+        (item) =>
+          item.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.answer.toLowerCase().includes(searchTerm.toLowerCase()),
+      ),
+    }))
+    .filter((category) => category.questions.length > 0);
 
   return (
     <MainLayout>
@@ -147,9 +163,7 @@ const FAQPage = () => {
                         <AccordionTrigger className="text-left font-medium hover:text-custom-purple">
                           {item.question}
                         </AccordionTrigger>
-                        <AccordionContent className="text-gray-600 leading-relaxed">
-                          {item.answer}
-                        </AccordionContent>
+                        <AccordionContent className="text-gray-600 leading-relaxed">{item.answer}</AccordionContent>
                       </AccordionItem>
                     ))}
                   </Accordion>
