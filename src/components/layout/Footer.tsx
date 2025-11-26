@@ -33,14 +33,6 @@ const Footer = () => {
               >
                 <Instagram size={20} />
               </a>
-              <a 
-                href="#" 
-                className="transition-colors hover:opacity-70"
-                style={{ color: '#353535' }}
-                aria-label="Twitter"
-              >
-                <Twitter size={20} />
-              </a>
             </div>
           </div>
 
