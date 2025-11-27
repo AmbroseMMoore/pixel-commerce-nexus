@@ -26,3 +26,6 @@ enable_confirmations = false
 
 [functions.razorpay-payment]
 verify_jwt = true
+
+[functions.send-contact-email]
+verify_jwt = false
