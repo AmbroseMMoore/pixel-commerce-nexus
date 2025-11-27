@@ -1,19 +1,17 @@
-import { Helmet } from "react-helmet-async";
 import { Check, Heart, Phone, Mail, MapPin } from "lucide-react";
+import MainLayout from "@/components/layout/MainLayout";
 import store1 from "@/assets/store-1.png";
 import store2 from "@/assets/store-2.png";
 import store3 from "@/assets/store-3.png";
 
 const AboutUsPage = () => {
   return (
-    <div className="min-h-screen bg-background">
-      <Helmet>
-        <title>About Us - CuteBae | Our Story and Mission</title>
-        <meta 
-          name="description" 
-          content="Learn about CuteBae's journey - founded by Dr. Keerthana in Vellore. Discover our mission to provide high-quality, comfortable, and stylish kidswear for every home." 
-        />
-      </Helmet>
+    <MainLayout
+      seoTitle="About Us - CuteBae | Our Story and Mission"
+      seoDescription="Learn about CuteBae's journey - founded by Dr. Keerthana in Vellore. Discover our mission to provide high-quality, comfortable, and stylish kidswear for every home."
+      seoKeywords="about cutebae, kidswear store vellore, Dr Keerthana, children's clothing India, quality kids fashion"
+      canonicalUrl="https://cutebae.in/about"
+    >
 
       {/* Hero Section */}
       <section className="relative py-20 px-4 bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
@@ -134,7 +132,7 @@ const AboutUsPage = () => {
           </div>
         </div>
       </section>
-    </div>
+    </MainLayout>
   );
 };
 
