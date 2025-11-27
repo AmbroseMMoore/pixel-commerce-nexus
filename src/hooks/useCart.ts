@@ -33,6 +33,7 @@ export interface CartItem {
     name: string;
     price_original?: number;
     price_discounted?: number;
+    stock_quantity: number;
   };
   product_images: Array<{
     image_url: string;
@@ -79,7 +80,7 @@ export const useCart = () => {
               // Fetch size details
               const { data: sizeData, error: sizeError } = await supabase
                 .from('product_sizes')
-                .select('name, price_original, price_discounted')
+                .select('name, price_original, price_discounted, stock_quantity')
                 .eq('id', item.size_id)
                 .maybeSingle();
 
@@ -97,7 +98,8 @@ export const useCart = () => {
               const size = {
                 name: sizeData.name,
                 price_original: sizeData.price_original,
-                price_discounted: sizeData.price_discounted
+                price_discounted: sizeData.price_discounted,
+                stock_quantity: sizeData.stock_quantity ?? 0
               };
 
               // Fetch product images
@@ -145,7 +147,7 @@ export const useCart = () => {
           quantity,
           product:product_id(title, price_original, price_discounted, slug),
           color:color_id(name, color_code),
-          size:size_id(name, price_original, price_discounted)
+          size:size_id(name, price_original, price_discounted, stock_quantity)
         `)
         .eq('customer_id', user.id);
 

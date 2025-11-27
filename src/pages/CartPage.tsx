@@ -138,24 +138,39 @@ const CartPage = () => {
                         </Button>
                       </div>
                       
-                      <div className="flex items-center gap-2 mt-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          
+                          <span className="w-8 text-center text-sm">{item.quantity}</span>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                            disabled={item.quantity >= item.size.stock_quantity}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
                         
-                        <span className="w-8 text-center text-sm">{item.quantity}</span>
+                        {item.quantity >= item.size.stock_quantity && (
+                          <p className="text-xs text-amber-600">
+                            Max quantity ({item.size.stock_quantity}) reached
+                          </p>
+                        )}
                         
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
+                        {item.size.stock_quantity <= 5 && item.size.stock_quantity > 0 && item.quantity < item.size.stock_quantity && (
+                          <p className="text-xs text-amber-600">
+                            Only {item.size.stock_quantity} left in stock
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
