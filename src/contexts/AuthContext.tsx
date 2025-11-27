@@ -27,52 +27,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const loadUserProfile = useCallback(async (userId: string): Promise<boolean> => {
-    console.log("[Auth] 🔍 Loading profile for user:", userId);
     try {
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      // Batch profile and admin check in parallel for faster loading
+      const [profileResult, adminResult] = await Promise.all([
+        supabase.from("profiles").select("*").eq("id", userId).single(),
+        supabase.rpc('is_admin')
+      ]);
 
-      if (error) {
-        console.warn("[Auth] ❌ Profile loading error:", error.message, "Code:", error.code);
-        // Allow app to continue if this is just a missing profile row
-        if (error.code === "PGRST116" || error.message.includes("No rows")) {
-          console.warn("[Auth] ⚠️ Profile not found (trigger will handle creation if applicable)");
+      if (profileResult.error) {
+        if (profileResult.error.code === "PGRST116" || profileResult.error.message.includes("No rows")) {
+          console.warn("[Auth] Profile not found");
           return false;
         }
         return false;
       }
 
-      if (profile) {
-        // Check admin status using RPC (bypasses RLS)
-        console.log('[Auth] Checking admin status via RPC...');
-        const { data: isAdminFlag, error: isAdminErr } = await supabase.rpc('is_admin');
-
-        if (isAdminErr) {
-          console.error('[Auth] RPC is_admin error:', isAdminErr);
-          // Don't break auth on RPC error, default to non-admin
-        }
-
-        console.log('[Auth] Admin status check result:', isAdminFlag);
-        const adminRole = isAdminFlag === true;
-
+      if (profileResult.data) {
+        const adminRole = adminResult.data === true && !adminResult.error;
         const userData: User = {
-          id: profile.id,
-          name: profile.name || profile.email,
-          email: profile.email,
+          id: profileResult.data.id,
+          name: profileResult.data.name || profileResult.data.email,
+          email: profileResult.data.email,
           isAdmin: adminRole,
         };
-
-        console.log("[Auth] ✅ Profile loaded:", userData);
 
         setUser(userData);
         setIsAdmin(userData.isAdmin);
         return true;
       }
     } catch (err: any) {
-      console.error("[Auth] 💥 Unexpected error loading profile:", err.message || err);
+      console.error("[Auth] Error loading profile:", err.message || err);
       setUser(null);
       setIsAdmin(false);
     }
@@ -97,37 +81,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
 
-      // Merge guest cart and wishlist after successful login
-      setTimeout(async () => {
-        try {
-          const guestItems = getGuestCart();
-          if (guestItems.length > 0) {
-            console.log(`[Auth] 🛒 Merging ${guestItems.length} guest cart items...`);
-            await mergeGuestCartWithAuth(userId, guestItems);
-            clearGuestCart();
-            console.log('[Auth] ✅ Guest cart merged successfully');
+      // Merge guest data in background without blocking login
+      const guestItems = getGuestCart();
+      const guestWishlistItems = getGuestWishlist();
+      
+      if (guestItems.length > 0 || guestWishlistItems.length > 0) {
+        setTimeout(async () => {
+          try {
+            await Promise.all([
+              guestItems.length > 0 ? mergeGuestCartWithAuth(userId, guestItems) : Promise.resolve(),
+              guestWishlistItems.length > 0 ? mergeGuestWishlistWithAuth(userId, guestWishlistItems) : Promise.resolve()
+            ]);
+            
+            if (guestItems.length > 0) clearGuestCart();
+            if (guestWishlistItems.length > 0) clearGuestWishlist();
+          } catch (error) {
+            console.error('[Auth] Error merging guest data:', error);
           }
-
-          const guestWishlistItems = getGuestWishlist();
-          if (guestWishlistItems.length > 0) {
-            console.log(`[Auth] ❤️ Merging ${guestWishlistItems.length} guest wishlist items...`);
-            await mergeGuestWishlistWithAuth(userId, guestWishlistItems);
-            clearGuestWishlist();
-            console.log('[Auth] ✅ Guest wishlist merged successfully');
-          }
-        } catch (error) {
-          console.error('[Auth] ❌ Error merging guest data:', error);
-          // Don't block login if merge fails
-        }
-      }, 0);
+        }, 0);
+      }
 
       if (mounted) setLoading(false);
     };
 
     const mergeGuestCartWithAuth = async (userId: string, guestItems: GuestCartItem[]) => {
-      for (const item of guestItems) {
-        try {
-          // Check if item already exists in user's cart
+      // Process all items in parallel for faster merging
+      await Promise.allSettled(
+        guestItems.map(async (item) => {
           const { data: existing } = await supabase
             .from('cart_items')
             .select('id, quantity')
@@ -138,13 +118,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
 
           if (existing) {
-            // Update quantity - add guest quantity to existing
             await supabase
               .from('cart_items')
               .update({ quantity: existing.quantity + item.quantity })
               .eq('id', existing.id);
           } else {
-            // Insert new item
             await supabase
               .from('cart_items')
               .insert({
@@ -155,17 +133,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 quantity: item.quantity
               });
           }
-        } catch (error) {
-          console.error('[Auth] ❌ Error merging cart item:', error);
-          // Continue with other items even if one fails
-        }
-      }
+        })
+      );
     };
 
     const mergeGuestWishlistWithAuth = async (userId: string, guestItems: GuestWishlistItem[]) => {
-      for (const item of guestItems) {
-        try {
-          // Check if item already exists in user's wishlist
+      // Process all items in parallel for faster merging
+      await Promise.allSettled(
+        guestItems.map(async (item) => {
           const { data: existing } = await supabase
             .from('wishlists')
             .select('id')
@@ -176,7 +151,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
 
           if (!existing) {
-            // Insert new item only if it doesn't exist
             await supabase
               .from('wishlists')
               .insert({
@@ -186,11 +160,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 size_id: item.sizeId
               });
           }
-        } catch (error) {
-          console.error('[Auth] ❌ Error merging wishlist item:', error);
-          // Continue with other items even if one fails
-        }
-      }
+        })
+      );
     };
 
     const init = async () => {

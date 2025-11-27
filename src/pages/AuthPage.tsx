@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useLogging } from "@/hooks/useLogging";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
@@ -22,7 +21,6 @@ const AuthPage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { logFormSuccess, logFormError } = useLogging();
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState("");
@@ -61,12 +59,9 @@ const AuthPage = () => {
       if (error) {
         throw error;
       }
-
-      logFormSuccess('google_auth', 'signin_initiated');
     } catch (error: any) {
       console.error("Google sign-in error:", error);
       setErrorMessage(error.message || "Failed to sign in with Google");
-      logFormError('google_auth', 'signin_failed', error);
       toast({
         title: "Sign in failed",
         description: error.message || "Failed to sign in with Google",
@@ -92,7 +87,6 @@ const AuthPage = () => {
         throw error;
       }
 
-      logFormSuccess('login_form', 'signin_success', { email: loginEmail });
       toast({
         title: "Login successful",
         description: "Welcome back!",
@@ -103,7 +97,6 @@ const AuthPage = () => {
     } catch (error: any) {
       console.error("Login error:", error);
       setErrorMessage(error.message || "Invalid email or password");
-      logFormError('login_form', 'signin_failed', error, { email: loginEmail });
       toast({
         title: "Login failed",
         description: error.message || "Invalid email or password",
@@ -143,7 +136,6 @@ const AuthPage = () => {
         throw error;
       }
 
-      logFormSuccess('signup_form', 'signup_success', signupData);
       toast({
         title: "Account created successfully",
         description: "Please check your email to verify your account.",
@@ -154,7 +146,6 @@ const AuthPage = () => {
     } catch (error: any) {
       console.error("Signup error:", error);
       setErrorMessage(error.message || "Failed to create account");
-      logFormError('signup_form', 'signup_failed', error, signupData);
       toast({
         title: "Signup failed",
         description: error.message || "Failed to create account",
