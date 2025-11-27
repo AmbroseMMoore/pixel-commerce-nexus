@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Facebook, Instagram, Twitter, MessageSquare } from "lucide-react";
+import { Mail, Phone, MapPin, Facebook, Instagram, Twitter, MessageCircleMore } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -44,7 +44,7 @@ const Footer = () => {
                 style={{ color: "#353535" }}
                 aria-label="WhatsApp"
               >
-                <MessageSquare size={20} />
+                <MessageCircleMore size={20} />
               </a>
             </div>
           </div>
