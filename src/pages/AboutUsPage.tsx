@@ -13,13 +13,13 @@ const AboutUsPage = () => {
       </Helmet>
 
       {/* Hero Section */}
-      <section className="relative py-20 px-4 bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10">
+      <section className="relative py-20 px-4 bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
         <div className="container mx-auto max-w-4xl text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
             About Us
           </h1>
           <div className="flex justify-center mb-6">
-            <Heart className="w-16 h-16 text-primary fill-primary/20" />
+            <Heart className="w-16 h-16 text-pink-500 fill-pink-200" />
           </div>
         </div>
       </section>
@@ -47,8 +47,8 @@ const AboutUsPage = () => {
                 "Adorable styles kids love"
               ].map((feature, index) => (
                 <div key={index} className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center mt-1">
-                    <Check className="w-4 h-4 text-primary" />
+                  <div className="flex-shrink-0 w-6 h-6 rounded-full bg-pink-100 flex items-center justify-center mt-1">
+                    <Check className="w-4 h-4 text-pink-600" />
                   </div>
                   <p className="text-lg text-foreground/90">{feature}</p>
                 </div>
@@ -59,7 +59,7 @@ const AboutUsPage = () => {
       </section>
 
       {/* Mission Section */}
-      <section className="py-16 px-4 bg-muted/30">
+      <section className="py-16 px-4 bg-gradient-to-r from-pink-50 to-rose-50">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-3xl font-bold text-foreground mb-6">Our Mission</h2>
           <p className="text-xl text-foreground/90 leading-relaxed">
@@ -75,26 +75,26 @@ const AboutUsPage = () => {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="flex justify-center mb-4">
-                <MapPin className="w-8 h-8 text-primary" />
+                <MapPin className="w-8 h-8 text-pink-500" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Location</h3>
               <p className="text-muted-foreground">Vellore, Tamil Nadu</p>
             </div>
             <div className="text-center">
               <div className="flex justify-center mb-4">
-                <Phone className="w-8 h-8 text-primary" />
+                <Phone className="w-8 h-8 text-pink-500" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Phone</h3>
-              <a href="tel:+919842829998" className="text-muted-foreground hover:text-primary transition-colors">
+              <a href="tel:+919842829998" className="text-muted-foreground hover:text-pink-600 transition-colors">
                 +91 98428 29998
               </a>
             </div>
             <div className="text-center">
               <div className="flex justify-center mb-4">
-                <Mail className="w-8 h-8 text-primary" />
+                <Mail className="w-8 h-8 text-pink-500" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Email</h3>
-              <a href="mailto:cutebae.in@gmail.com" className="text-muted-foreground hover:text-primary transition-colors">
+              <a href="mailto:cutebae.in@gmail.com" className="text-muted-foreground hover:text-pink-600 transition-colors">
                 cutebae.in@gmail.com
               </a>
             </div>
