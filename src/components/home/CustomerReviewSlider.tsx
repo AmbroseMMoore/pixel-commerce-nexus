@@ -13,26 +13,34 @@ interface Review {
 const reviews: Review[] = [
   {
     id: "1",
-    name: "Sarah M.",
+    name: "Victor",
     rating: 5,
     review:
-      "I'm blown away by the quality and style of the clothes I received from Shop.co. From casual wear to elegant dresses, every piece I've bought has exceeded my expectations.",
+      "I recently bought a few outfits from Cutebae for my daughter, and I'm genuinely impressed. The fabric feels soft and breathable, perfect for daily use. What I loved most is how easy the clothes are to put on — no struggle at all during diaper changes. Truly convenient! Will definitely come back for more.",
     verified: true,
   },
   {
     id: "2",
-    name: "Alex K.",
+    name: "Meera",
     rating: 5,
     review:
-      "Finding clothes that align with my personal style used to be a challenge until I discovered cutebae.in. The range of options they offer is truly remarkable, catering to a variety of tastes and occasions.",
+      "Cutebae has officially become my favorite store for baby clothing. The quality is amazing for the price, and the designs are adorable. You can tell a lot of thought goes into stitching and patterns. My little one looks super cute and feels comfortable too. Highly recommended!",
     verified: true,
   },
   {
     id: "3",
-    name: "James L.",
+    name: "Subash",
+    rating: 4,
+    review:
+      "Purchased a gift for my cousin's baby, and everyone loved it. The collection is stylish and unique — definitely stands out compared to other stores in town. If you're looking for modern kidswear, this is the place, overall a great experience!",
+    verified: true,
+  },
+  {
+    id: "4",
+    name: "Vandhanaa",
     rating: 5,
     review:
-      "As someone who's always on the lookout for unique fashion pieces, I'm thrilled to have stumbled upon Shop.co. The selection of clothes is not only diverse but also on point with the latest trends.",
+      "Wonderful shop with lovely collections! I bought a tuxedo for my son's birthday, and the quality exceeded my expectations. They even altered the outfit for free and delivered it quickly. Received so many compliments at the party. Thank you for making the day special!",
     verified: true,
   },
 ];
