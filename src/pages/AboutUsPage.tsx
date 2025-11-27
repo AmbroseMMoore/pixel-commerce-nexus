@@ -1,5 +1,8 @@
 import { Helmet } from "react-helmet-async";
 import { Check, Heart, Phone, Mail, MapPin } from "lucide-react";
+import store1 from "@/assets/store-1.png";
+import store2 from "@/assets/store-2.png";
+import store3 from "@/assets/store-3.png";
 
 const AboutUsPage = () => {
   return (
@@ -68,8 +71,38 @@ const AboutUsPage = () => {
         </div>
       </section>
 
-      {/* Contact Section */}
+      {/* Store Gallery Section */}
       <section className="py-16 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <h2 className="text-3xl font-bold text-center text-foreground mb-12">Our Store in Vellore</h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="overflow-hidden rounded-lg shadow-lg hover-scale">
+              <img 
+                src={store1} 
+                alt="CuteBae Store Counter - Pink themed reception area with toy displays" 
+                className="w-full h-64 object-cover"
+              />
+            </div>
+            <div className="overflow-hidden rounded-lg shadow-lg hover-scale">
+              <img 
+                src={store2} 
+                alt="CuteBae Store Interior - Beautiful pink cherry blossom tree decoration and clothing displays" 
+                className="w-full h-64 object-cover"
+              />
+            </div>
+            <div className="overflow-hidden rounded-lg shadow-lg hover-scale">
+              <img 
+                src={store3} 
+                alt="CuteBae Store View - Wide angle view of children's clothing and toy sections" 
+                className="w-full h-64 object-cover"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section className="py-16 px-4 bg-gradient-to-r from-pink-50 to-rose-50">
         <div className="container mx-auto max-w-4xl">
           <h2 className="text-3xl font-bold text-center text-foreground mb-12">Visit Us</h2>
           <div className="grid md:grid-cols-3 gap-8">
