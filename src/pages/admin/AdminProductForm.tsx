@@ -406,9 +406,37 @@ const AdminProductForm = () => {
       
       if (isEditMode) {
         // For edit mode: Delete in correct order (sizes → images → colors) to avoid FK issues
-        await supabase.from('product_sizes').delete().eq('product_id', productId);
-        await supabase.from('product_images').delete().eq('product_id', productId);
-        await supabase.from('product_colors').delete().eq('product_id', productId);
+        console.log('Deleting existing variants for product:', productId);
+        
+        const { error: sizesError } = await supabase.from('product_sizes').delete().eq('product_id', productId);
+        if (sizesError) {
+          console.error('Failed to delete sizes:', sizesError);
+          throw new Error(`Failed to delete existing sizes: ${sizesError.message}`);
+        }
+        
+        const { error: imagesError } = await supabase.from('product_images').delete().eq('product_id', productId);
+        if (imagesError) {
+          console.error('Failed to delete images:', imagesError);
+          throw new Error(`Failed to delete existing images: ${imagesError.message}`);
+        }
+        
+        const { error: colorsError } = await supabase.from('product_colors').delete().eq('product_id', productId);
+        if (colorsError) {
+          console.error('Failed to delete colors:', colorsError);
+          throw new Error(`Failed to delete existing colors: ${colorsError.message}`);
+        }
+        
+        // Verify colors were deleted
+        const { count } = await supabase
+          .from('product_colors')
+          .select('*', { count: 'exact', head: true })
+          .eq('product_id', productId);
+
+        if (count && count > 0) {
+          throw new Error('Failed to delete existing colors - please try again');
+        }
+        
+        console.log('Successfully deleted all existing variants');
       }
 
       // Map to track local color variant ID → database color ID
@@ -720,7 +748,7 @@ const AdminProductForm = () => {
               <Button variant="outline" onClick={() => navigate("/admin/products")}>
                 Cancel
               </Button>
-              <Button onClick={handleSubmit} disabled={isSubmitting}>
+              <Button type="submit" form="product-form" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -733,7 +761,7 @@ const AdminProductForm = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form id="product-form" onSubmit={handleSubmit}>
             <Tabs defaultValue="basic">
               <TabsList className="mb-4">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
