@@ -123,9 +123,9 @@ const AdminProductForm = () => {
         fileType: "jpg"
       })),
       sizes: [
-        { id: generateUUID(), name: "S", inStock: true, stockQuantity: 100, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
-        { id: generateUUID(), name: "M", inStock: true, stockQuantity: 100, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
-        { id: generateUUID(), name: "L", inStock: true, stockQuantity: 100, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
+        { id: generateUUID(), name: "S", inStock: true, stockQuantity: 0, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
+        { id: generateUUID(), name: "M", inStock: true, stockQuantity: 0, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
+        { id: generateUUID(), name: "L", inStock: true, stockQuantity: 0, priceOriginal: basePrice, priceDiscounted: baseDiscounted, isExisting: false },
       ],
       isExisting: false
     };
@@ -203,7 +203,7 @@ const AdminProductForm = () => {
                   id: size.id || generateUUID(),
                   name: size.name || "",
                   inStock: size.inStock !== false,
-                  stockQuantity: size.stockQuantity || size.stock_quantity || 100,
+                  stockQuantity: size.stockQuantity ?? size.stock_quantity ?? 0,
                   priceOriginal: size.priceOriginal || existingProduct.price?.original || 0,
                   priceDiscounted: size.priceDiscounted || existingProduct.price?.discounted || undefined,
                   isExisting: true
@@ -218,9 +218,9 @@ const AdminProductForm = () => {
               isExisting: true,
               images: images,
               sizes: colorSizes.length > 0 ? colorSizes : [
-                { id: generateUUID(), name: "S", inStock: true, stockQuantity: 100, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
-                { id: generateUUID(), name: "M", inStock: true, stockQuantity: 100, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
-                { id: generateUUID(), name: "L", inStock: true, stockQuantity: 100, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
+                { id: generateUUID(), name: "S", inStock: true, stockQuantity: 0, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
+                { id: generateUUID(), name: "M", inStock: true, stockQuantity: 0, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
+                { id: generateUUID(), name: "L", inStock: true, stockQuantity: 0, priceOriginal: existingProduct.price?.original || 0, priceDiscounted: existingProduct.price?.discounted, isExisting: false },
               ]
             };
           });
@@ -516,7 +516,7 @@ const AdminProductForm = () => {
             color_id: dbColorId, // Use the database color ID, not the local variant ID
             name: sizeVariant.name.trim(),
             in_stock: sizeVariant.inStock,
-            stock_quantity: sizeVariant.stockQuantity || 100,
+            stock_quantity: sizeVariant.stockQuantity ?? 0,
             price_original: sizeVariant.priceOriginal,
             price_discounted: sizeVariant.priceDiscounted || null
           };
