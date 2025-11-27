@@ -31,6 +31,11 @@ export const useInventory = (options: UseInventoryOptions = {}) => {
       // Also invalidate product queries to reflect updated stock
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["optimized-products"] });
+      queryClient.invalidateQueries({ queryKey: ["product"] });
+      queryClient.invalidateQueries({ queryKey: ["featuredProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["trending-products"] });
+      queryClient.invalidateQueries({ queryKey: ["optimized-featured-products"] });
+      queryClient.invalidateQueries({ queryKey: ["optimized-trending-products"] });
     },
   });
 

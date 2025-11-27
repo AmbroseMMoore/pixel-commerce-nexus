@@ -534,6 +534,14 @@ const AdminProductForm = () => {
 
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["product"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["optimized-products"] });
+      queryClient.invalidateQueries({ queryKey: ["featuredProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["trending-products"] });
+      queryClient.invalidateQueries({ queryKey: ["optimized-featured-products"] });
+      queryClient.invalidateQueries({ queryKey: ["optimized-trending-products"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       
       toast({
         title: isEditMode ? "Product Updated" : "Product Created",
