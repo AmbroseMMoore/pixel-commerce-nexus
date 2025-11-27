@@ -14,7 +14,7 @@ import AuthPage from "./pages/AuthPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import ContactPage from "./pages/ContactPage";
 import SearchPage from "./pages/SearchPage";
-import FAQPage from "./pages/FAQPage";
+import AboutUsPage from "./pages/AboutUsPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import ShippingPolicyPage from "./pages/ShippingPolicyPage";
 import TermsConditionsPage from "./pages/TermsConditionsPage";
@@ -65,7 +65,8 @@ const App = () => (
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/search" element={<SearchPage />} />
-            <Route path="/faq" element={<FAQPage />} />
+          <Route path="/about-us" element={<AboutUsPage />} />
+          <Route path="/faq" element={<Navigate to="/about-us" replace />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
             <Route path="/terms-conditions" element={<TermsConditionsPage />} />
