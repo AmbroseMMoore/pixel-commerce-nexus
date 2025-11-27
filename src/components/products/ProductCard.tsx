@@ -146,7 +146,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
           <img 
             src={thumbnailImage || "/placeholder.svg"} 
             alt={product.title} 
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="w-full h-full object-cover"
             onError={(e) => {
               e.currentTarget.src = "/placeholder.svg";
               logError('product_image_load_error', {
