@@ -108,8 +108,8 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/faq" className="hover:opacity-70 transition-colors" style={{ color: "#353535" }}>
-                  FAQ
+                <Link to="/about-us" className="hover:opacity-70 transition-colors" style={{ color: "#353535" }}>
+                  About Us
                 </Link>
               </li>
               <li>
