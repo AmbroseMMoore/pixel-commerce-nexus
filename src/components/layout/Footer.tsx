@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Facebook, Instagram, Twitter } from "lucide-react";
+import { Mail, Phone, MapPin, Facebook, Instagram, Twitter, MessageCircle } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -35,6 +35,16 @@ const Footer = () => {
                 aria-label="Instagram"
               >
                 <Instagram size={20} />
+              </a>
+              <a
+                href="https://wa.me/919585851570"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors hover:opacity-70"
+                style={{ color: "#353535" }}
+                aria-label="WhatsApp"
+              >
+                <MessageCircle size={20} />
               </a>
             </div>
           </div>
