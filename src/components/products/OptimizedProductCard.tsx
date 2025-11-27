@@ -167,22 +167,6 @@ const OptimizedProductCard = ({ product, loading = false }: OptimizedProductCard
           )}
         </div>
 
-        {/* Stock Status */}
-        {!product.isOutOfStock && (
-          <div className="flex items-center gap-1">
-            <div className={cn(
-              "w-2 h-2 rounded-full",
-              product.isLowStock ? "bg-yellow-500" : "bg-green-500"
-            )} />
-            <span className={cn(
-              "text-xs",
-              product.isLowStock ? "text-yellow-600" : "text-green-600"
-            )}>
-              {product.isLowStock ? "Low Stock" : "In Stock"}
-            </span>
-          </div>
-        )}
-
         {/* Color Options Preview */}
         {product.colorVariants.length > 1 && (
           <div className="flex gap-1 mt-2">

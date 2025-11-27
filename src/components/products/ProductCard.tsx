@@ -164,11 +164,6 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
               Sale
             </span>
           )}
-          {product.isLowStock && !product.isOutOfStock && (
-            <span className="bg-amber-500 text-white text-xs font-semibold px-2 py-1 rounded">
-              Low Stock
-            </span>
-          )}
           {product.isOutOfStock && (
             <span className="bg-gray-700 text-white text-xs font-semibold px-2 py-1 rounded">
               Out of Stock
