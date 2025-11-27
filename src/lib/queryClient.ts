@@ -4,66 +4,50 @@ import { QueryClient } from "@tanstack/react-query";
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 2 * 60 * 1000, // Reduced to 2 minutes
-      gcTime: 5 * 60 * 1000, // Reduced to 5 minutes
+      staleTime: 5 * 60 * 1000, // 5 minutes - balanced for performance
+      gcTime: 10 * 60 * 1000, // 10 minutes - keep data longer
       retry: (failureCount, error: any) => {
         if (error?.status >= 400 && error?.status < 500) {
           return false;
         }
-        return failureCount < 1; // Reduced retry attempts
+        return failureCount < 1;
       },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 15000), // Reduced max delay
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 15000),
       refetchOnWindowFocus: false,
-      refetchOnReconnect: false, // Disabled to reduce load
+      refetchOnReconnect: false,
       networkMode: "online",
       meta: {
         errorBoundary: true,
       },
     },
     mutations: {
-      retry: 0, // No retries for mutations
+      retry: 0,
       networkMode: "online",
     },
   },
 });
 
-// More aggressive cache cleanup - every 5 minutes
+// Less aggressive cache cleanup - every 10 minutes
 setInterval(() => {
   const cache = queryClient.getQueryCache();
   const queries = cache.getAll();
   
-  // Remove stale queries older than 5 minutes
-  const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+  // Remove stale queries older than 15 minutes
+  const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
   queries.forEach(query => {
-    if ((query.state.dataUpdatedAt || 0) < fiveMinutesAgo) {
+    if ((query.state.dataUpdatedAt || 0) < fifteenMinutesAgo) {
       cache.remove(query);
     }
   });
-}, 5 * 60 * 1000);
+}, 10 * 60 * 1000);
 
-// Clear cache when memory usage gets high (reduced threshold)
+// Clear cache only when memory usage is critically high
 if (typeof window !== 'undefined' && 'memory' in performance) {
   setInterval(() => {
     const memInfo = (performance as any).memory;
-    if (memInfo && memInfo.usedJSHeapSize > 30 * 1024 * 1024) { // 30MB threshold
+    if (memInfo && memInfo.usedJSHeapSize > 100 * 1024 * 1024) { // 100MB threshold
       console.log('High memory usage detected, clearing query cache');
       queryClient.getQueryCache().clear();
     }
-  }, 2 * 60 * 1000); // Check every 2 minutes
-}
-
-// More frequent localStorage cleanup
-if (typeof window !== 'undefined') {
-  setInterval(() => {
-    try {
-      const keys = Object.keys(localStorage);
-      keys.forEach(key => {
-        if (key.startsWith('react-query-') || key.startsWith('supabase-')) {
-          localStorage.removeItem(key);
-        }
-      });
-    } catch (error) {
-      console.warn('Failed to clean localStorage:', error);
-    }
-  }, 30 * 60 * 1000); // Clean every 30 minutes
+  }, 5 * 60 * 1000); // Check every 5 minutes
 }

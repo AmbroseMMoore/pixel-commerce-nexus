@@ -27,32 +27,24 @@ class SupabaseConnectionManager {
   }
 
   async cleanup() {
-    console.log('Cleaning up Supabase connections...');
-    
     this.activeConnections.clear();
     this.connectionCount = 0;
     this.lastCleanup = Date.now();
     
-    // Only refresh auth if there's an active session and avoid throwing errors
+    // Minimal auth refresh - only when critically needed
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.access_token) {
-        // Check if token is still valid before attempting refresh
-        const tokenExpiry = session.expires_at ? session.expires_at * 1000 : 0;
+      if (session?.access_token && session.expires_at) {
+        const tokenExpiry = session.expires_at * 1000;
         const now = Date.now();
         
-        // Only refresh if token expires within next 5 minutes
-        if (tokenExpiry - now < 5 * 60 * 1000) {
-          console.log('Refreshing auth session...');
-          const { error } = await supabase.auth.refreshSession();
-          if (error) {
-            console.warn('Auth refresh failed (this is normal if session expired):', error.message);
-          }
+        // Only refresh if token expires within next 3 minutes
+        if (tokenExpiry - now < 3 * 60 * 1000) {
+          await supabase.auth.refreshSession();
         }
       }
-    } catch (error) {
-      // Silently handle auth errors to prevent console spam
-      console.warn('Auth cleanup warning:', error instanceof Error ? error.message : 'Unknown error');
+    } catch {
+      // Silently handle errors
     }
   }
 
@@ -76,16 +68,15 @@ if (typeof window !== 'undefined') {
     supabaseManager.forceCleanup();
   });
   
-  // Reduced cleanup frequency to every 15 minutes
+  // Cleanup every 20 minutes instead of 15
   setInterval(() => {
     supabaseManager.cleanup();
-  }, 15 * 60 * 1000);
+  }, 20 * 60 * 1000);
   
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      // Only cleanup if we haven't cleaned up recently
       const timeSinceLastCleanup = Date.now() - supabaseManager.getStats().lastCleanup;
-      if (timeSinceLastCleanup > 10 * 60 * 1000) { // 10 minutes
+      if (timeSinceLastCleanup > 15 * 60 * 1000) { // 15 minutes
         supabaseManager.cleanup();
       }
     }
