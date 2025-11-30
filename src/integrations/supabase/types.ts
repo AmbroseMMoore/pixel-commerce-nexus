@@ -439,35 +439,44 @@ export type Database = {
       }
       order_items: {
         Row: {
-          color_id: string
+          color_code: string | null
+          color_id: string | null
+          color_name: string | null
           created_at: string
           id: string
           order_id: string
           product_id: string
           quantity: number
-          size_id: string
+          size_id: string | null
+          size_name: string | null
           total_price: number
           unit_price: number
         }
         Insert: {
-          color_id: string
+          color_code?: string | null
+          color_id?: string | null
+          color_name?: string | null
           created_at?: string
           id?: string
           order_id: string
           product_id: string
           quantity: number
-          size_id: string
+          size_id?: string | null
+          size_name?: string | null
           total_price: number
           unit_price: number
         }
         Update: {
-          color_id?: string
+          color_code?: string | null
+          color_id?: string | null
+          color_name?: string | null
           created_at?: string
           id?: string
           order_id?: string
           product_id?: string
           quantity?: number
-          size_id?: string
+          size_id?: string | null
+          size_name?: string | null
           total_price?: number
           unit_price?: number
         }

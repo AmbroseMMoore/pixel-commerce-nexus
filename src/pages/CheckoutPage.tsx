@@ -147,7 +147,7 @@ const CheckoutPage = () => {
 
     if (orderError) throw orderError;
 
-    // Create order items
+    // Create order items with denormalized data for historical accuracy
     const orderItems = cartItems.map(item => ({
       order_id: orderData.id,
       product_id: item.product_id,
@@ -155,7 +155,11 @@ const CheckoutPage = () => {
       size_id: item.size_id,
       quantity: item.quantity,
       unit_price: item.product.price_discounted || item.product.price_original,
-      total_price: (item.product.price_discounted || item.product.price_original) * item.quantity
+      total_price: (item.product.price_discounted || item.product.price_original) * item.quantity,
+      // Store denormalized data to preserve order details even if product variants change
+      size_name: item.size.name,
+      color_name: item.color.name,
+      color_code: item.color.color_code
     }));
 
     const { error: itemsError } = await supabase
