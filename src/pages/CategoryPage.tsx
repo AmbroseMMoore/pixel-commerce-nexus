@@ -351,7 +351,7 @@ const CategoryPage = () => {
                           "w-8 h-8 rounded-full border-2 transition-all",
                           selectedColors.includes(group.name)
                             ? "border-brand ring-2 ring-brand/20"
-                            : "border-gray-300 hover:border-gray-400"
+                            : "border-gray-700 hover:border-gray-600"
                         )}
                         style={{ backgroundColor: group.colorCode }}
                       />
