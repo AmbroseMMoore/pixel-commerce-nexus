@@ -401,42 +401,56 @@ const AdminProductForm = () => {
         productId = newProduct.id;
       }
 
-      // Handle color variants with simplified logic
+      // Handle color variants with smart update logic
       console.log('Processing color variants...');
       
       if (isEditMode) {
-        // For edit mode: Delete in correct order (sizes → images → colors) to avoid FK issues
-        console.log('Deleting existing variants for product:', productId);
+        // For edit mode: Smart update strategy
+        // 1. Update existing colors/sizes in place
+        // 2. Add new ones
+        // 3. Delete only unreferenced variants
+        console.log('Smart updating variants for product:', productId);
         
-        const { error: sizesError } = await supabase.from('product_sizes').delete().eq('product_id', productId);
-        if (sizesError) {
-          console.error('Failed to delete sizes:', sizesError);
-          throw new Error(`Failed to delete existing sizes: ${sizesError.message}`);
-        }
-        
-        const { error: imagesError } = await supabase.from('product_images').delete().eq('product_id', productId);
-        if (imagesError) {
-          console.error('Failed to delete images:', imagesError);
-          throw new Error(`Failed to delete existing images: ${imagesError.message}`);
-        }
-        
-        const { error: colorsError } = await supabase.from('product_colors').delete().eq('product_id', productId);
-        if (colorsError) {
-          console.error('Failed to delete colors:', colorsError);
-          throw new Error(`Failed to delete existing colors: ${colorsError.message}`);
-        }
-        
-        // Verify colors were deleted
-        const { count } = await supabase
+        // Fetch existing colors to determine what to update vs create
+        const { data: existingColors, error: fetchColorsError } = await supabase
           .from('product_colors')
-          .select('*', { count: 'exact', head: true })
+          .select('id, name, color_code')
           .eq('product_id', productId);
-
-        if (count && count > 0) {
-          throw new Error('Failed to delete existing colors - please try again');
-        }
         
-        console.log('Successfully deleted all existing variants');
+        if (fetchColorsError) throw fetchColorsError;
+        
+        const existingColorIds = new Set(existingColors?.map(c => c.id) || []);
+        const currentColorIds = new Set(
+          colorVariants.filter(v => v.isExisting && v.name.trim() && v.colorCode).map(v => v.id)
+        );
+        
+        // Find colors to delete (not in current set and not referenced in orders)
+        const colorsToDelete = Array.from(existingColorIds).filter(id => !currentColorIds.has(id));
+        
+        for (const colorId of colorsToDelete) {
+          // Check if color is referenced in orders via order_items
+          const { data: orderRefs, error: orderCheckError } = await supabase
+            .from('order_items')
+            .select('id')
+            .eq('color_id', colorId)
+            .limit(1);
+          
+          if (orderCheckError) {
+            console.error('Error checking order references:', orderCheckError);
+            continue;
+          }
+          
+          // Only delete if not referenced in orders
+          if (!orderRefs || orderRefs.length === 0) {
+            // Delete associated sizes and images first
+            await supabase.from('product_sizes').delete().eq('color_id', colorId);
+            await supabase.from('product_images').delete().eq('color_id', colorId);
+            await supabase.from('product_colors').delete().eq('id', colorId);
+            console.log('Deleted unreferenced color:', colorId);
+          } else {
+            console.log('Keeping color due to order references:', colorId);
+          }
+        }
       }
 
       // Map to track local color variant ID → database color ID
@@ -453,22 +467,47 @@ const AdminProductForm = () => {
           color_code: colorVariant.colorCode
         };
 
-        const { data: newColor, error: colorError } = await supabase
-          .from('product_colors')
-          .insert(colorData)
-          .select()
-          .single();
+        let dbColorId: string;
+        
+        if (isEditMode && colorVariant.isExisting) {
+          // Update existing color
+          const { error: colorError } = await supabase
+            .from('product_colors')
+            .update(colorData)
+            .eq('id', colorVariant.id);
           
-        if (colorError) {
-          console.error('Error creating color variant:', colorError);
-          throw colorError;
+          if (colorError) {
+            console.error('Error updating color variant:', colorError);
+            throw colorError;
+          }
+          dbColorId = colorVariant.id;
+          console.log('Updated existing color:', dbColorId);
+        } else {
+          // Create new color
+          const { data: newColor, error: colorError } = await supabase
+            .from('product_colors')
+            .insert(colorData)
+            .select()
+            .single();
+            
+          if (colorError) {
+            console.error('Error creating color variant:', colorError);
+            throw colorError;
+          }
+          dbColorId = newColor.id;
+          console.log('Created new color:', dbColorId);
         }
 
         // Map local color variant ID to database color ID
-        colorIdMap.set(colorVariant.id, newColor.id);
-        console.log(`Mapped local color ID ${colorVariant.id} to DB color ID ${newColor.id}`);
+        colorIdMap.set(colorVariant.id, dbColorId);
+        console.log(`Mapped local color ID ${colorVariant.id} to DB color ID ${dbColorId}`);
 
         // Handle images for this color with display_order
+        if (isEditMode) {
+          // Delete existing images for this color, then recreate
+          await supabase.from('product_images').delete().eq('color_id', dbColorId);
+        }
+        
         for (let i = 0; i < colorVariant.images.length; i++) {
           const imageData = colorVariant.images[i];
           if (imageData.url && imageData.filename && imageData.fileType) {
@@ -478,7 +517,7 @@ const AdminProductForm = () => {
               .from('product_images')
               .insert({
                 product_id: productId,
-                color_id: newColor.id,
+                color_id: dbColorId,
                 image_url: imageData.url,
                 media_server_api_url_fk: mediaServerConfig.id,
                 media_file_name: imageData.filename,
@@ -494,7 +533,7 @@ const AdminProductForm = () => {
         }
       }
 
-      // Handle size variants - create only the sizes each color has
+      // Handle size variants - create or update sizes for each color
       console.log('Processing size variants per color...');
 
       // Process each color's sizes independently
@@ -508,12 +547,43 @@ const AdminProductForm = () => {
 
         const validSizes = colorVariant.sizes.filter(s => s.name.trim() && s.priceOriginal > 0);
         
-        for (const sizeVariant of validSizes) {
-          console.log(`Creating size ${sizeVariant.name} for color ${colorVariant.name} (DB color ID: ${dbColorId})`);
+        if (isEditMode && colorVariant.isExisting) {
+          // For existing colors, fetch existing sizes
+          const { data: existingSizes, error: fetchSizesError } = await supabase
+            .from('product_sizes')
+            .select('id, name')
+            .eq('color_id', dbColorId);
           
+          if (fetchSizesError) {
+            console.error('Error fetching existing sizes:', fetchSizesError);
+            throw fetchSizesError;
+          }
+          
+          const existingSizeIds = new Set(existingSizes?.map(s => s.id) || []);
+          const currentSizeIds = new Set(validSizes.filter(s => s.isExisting).map(s => s.id));
+          
+          // Delete unreferenced sizes
+          const sizesToDelete = Array.from(existingSizeIds).filter(id => !currentSizeIds.has(id));
+          for (const sizeId of sizesToDelete) {
+            // Check if size is referenced in orders
+            const { data: orderRefs } = await supabase
+              .from('order_items')
+              .select('id')
+              .eq('size_id', sizeId)
+              .limit(1);
+            
+            // Only delete if not referenced
+            if (!orderRefs || orderRefs.length === 0) {
+              await supabase.from('product_sizes').delete().eq('id', sizeId);
+              console.log('Deleted unreferenced size:', sizeId);
+            }
+          }
+        }
+        
+        for (const sizeVariant of validSizes) {
           const sizeData = {
             product_id: productId,
-            color_id: dbColorId, // Use the database color ID, not the local variant ID
+            color_id: dbColorId,
             name: sizeVariant.name.trim(),
             in_stock: sizeVariant.inStock,
             stock_quantity: sizeVariant.stockQuantity ?? 0,
@@ -521,13 +591,29 @@ const AdminProductForm = () => {
             price_discounted: sizeVariant.priceDiscounted || null
           };
 
-          const { error: sizeError } = await supabase
-            .from('product_sizes')
-            .insert(sizeData);
-            
-          if (sizeError) {
-            console.error('Error creating size variant:', sizeError);
-            throw sizeError;
+          if (isEditMode && sizeVariant.isExisting) {
+            // Update existing size
+            console.log(`Updating size ${sizeVariant.name} for color ${colorVariant.name}`);
+            const { error: sizeError } = await supabase
+              .from('product_sizes')
+              .update(sizeData)
+              .eq('id', sizeVariant.id);
+              
+            if (sizeError) {
+              console.error('Error updating size variant:', sizeError);
+              throw sizeError;
+            }
+          } else {
+            // Create new size
+            console.log(`Creating size ${sizeVariant.name} for color ${colorVariant.name}`);
+            const { error: sizeError } = await supabase
+              .from('product_sizes')
+              .insert(sizeData);
+              
+            if (sizeError) {
+              console.error('Error creating size variant:', sizeError);
+              throw sizeError;
+            }
           }
         }
       }
