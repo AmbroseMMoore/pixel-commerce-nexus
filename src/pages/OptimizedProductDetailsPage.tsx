@@ -16,7 +16,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import PincodeChecker from "@/components/products/PincodeChecker";
 import { useDeliveryInfo } from "@/hooks/useDeliveryInfo";
 import ProductNavigation from "@/components/products/ProductNavigation";
-import { SizeChartModal } from "@/components/products/SizeChartModal";
 
 const OptimizedProductDetailsPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -265,14 +264,7 @@ const OptimizedProductDetailsPage = () => {
 
             {/* Size Selection with Individual Pricing */}
             <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium">Size</h3>
-                <SizeChartModal
-                  headers={product.sizeChartHeaders || []}
-                  rows={product.sizeChartRows || []}
-                  productTitle={product.title}
-                />
-              </div>
+              <h3 className="text-sm font-medium mb-3">Size</h3>
               <RadioGroup
                 value={selectedSize?.id || ""}
                 onValueChange={(value) => {
