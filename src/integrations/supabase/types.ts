@@ -914,6 +914,8 @@ export type Database = {
           price_discounted: number | null
           price_original: number
           short_description: string | null
+          size_chart_headers: Json | null
+          size_chart_rows: Json | null
           slug: string
           specifications: Json | null
           stock_quantity: number
@@ -935,6 +937,8 @@ export type Database = {
           price_discounted?: number | null
           price_original: number
           short_description?: string | null
+          size_chart_headers?: Json | null
+          size_chart_rows?: Json | null
           slug: string
           specifications?: Json | null
           stock_quantity?: number
@@ -956,6 +960,8 @@ export type Database = {
           price_discounted?: number | null
           price_original?: number
           short_description?: string | null
+          size_chart_headers?: Json | null
+          size_chart_rows?: Json | null
           slug?: string
           specifications?: Json | null
           stock_quantity?: number
