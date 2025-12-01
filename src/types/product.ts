@@ -49,6 +49,8 @@ export type Product = {
   colorVariants: ColorVariant[];
   ageRanges: string[];
   specifications?: Record<string, string> | string[];
+  sizeChartHeaders?: string[];
+  sizeChartRows?: string[][];
   isLowStock: boolean;
   isOutOfStock: boolean;
   isFeatured: boolean;

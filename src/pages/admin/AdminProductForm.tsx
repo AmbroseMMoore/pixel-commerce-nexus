@@ -20,6 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useProductById } from "@/hooks/useProducts";
 import ReorderableImageGrid from "@/components/admin/ReorderableImageGrid";
 import { deleteFromMediaServer, getActiveMediaServerConfig } from "@/services/mediaServerApi";
+import { SizeChartEditor } from "@/components/admin/SizeChartEditor";
 
 // Utility function to generate proper UUID
 const generateUUID = () => {
@@ -140,6 +141,10 @@ const AdminProductForm = () => {
     { key: "Care Instructions", value: "" },
   ]);
 
+  // Size Chart
+  const [sizeChartHeaders, setSizeChartHeaders] = useState<string[]>(["Size", "Age", "Height (cm)", "Chest (cm)"]);
+  const [sizeChartRows, setSizeChartRows] = useState<string[][]>([["", "", "", ""]]);
+
   // Enhanced data population with better error handling and debugging
   useEffect(() => {
     if (isEditMode && existingProduct) {
@@ -250,6 +255,14 @@ const AdminProductForm = () => {
           if (loadedSpecs.length > 0) {
             setSpecifications(loadedSpecs);
           }
+        }
+
+        // Load size chart data
+        if (existingProduct.sizeChartHeaders && Array.isArray(existingProduct.sizeChartHeaders) && existingProduct.sizeChartHeaders.length > 0) {
+          setSizeChartHeaders(existingProduct.sizeChartHeaders);
+        }
+        if (existingProduct.sizeChartRows && Array.isArray(existingProduct.sizeChartRows) && existingProduct.sizeChartRows.length > 0) {
+          setSizeChartRows(existingProduct.sizeChartRows);
         }
 
         console.log('Successfully loaded all product data for editing');
@@ -373,6 +386,8 @@ const AdminProductForm = () => {
         is_out_of_stock: isOutOfStock,
         age_ranges: selectedAgeRanges,
         specifications: specsObj,
+        size_chart_headers: sizeChartHeaders,
+        size_chart_rows: sizeChartRows,
         updated_at: new Date().toISOString()
       };
 
@@ -860,6 +875,7 @@ const AdminProductForm = () => {
               <TabsList className="mb-4">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
                 <TabsTrigger value="colors">Color Variants & Sizes</TabsTrigger>
+                <TabsTrigger value="sizechart">Size Chart</TabsTrigger>
                 <TabsTrigger value="specifications">Specifications</TabsTrigger>
               </TabsList>
 
@@ -1211,6 +1227,16 @@ const AdminProductForm = () => {
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* Size Chart Tab */}
+              <TabsContent value="sizechart">
+                <SizeChartEditor
+                  headers={sizeChartHeaders}
+                  rows={sizeChartRows}
+                  onHeadersChange={setSizeChartHeaders}
+                  onRowsChange={setSizeChartRows}
+                />
               </TabsContent>
 
               {/* Specifications Tab */}
