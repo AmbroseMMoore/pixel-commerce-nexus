@@ -140,6 +140,8 @@ const transformProductData = (product: any, isAdminContext: boolean = false): Pr
     colorVariants: colorVariants,
     ageRanges: product.age_ranges || [],
     specifications: product.specifications || {},
+    sizeChartHeaders: (product.size_chart_headers as string[]) || [],
+    sizeChartRows: (product.size_chart_rows as string[][]) || [],
     isLowStock: isLowStock,
     isOutOfStock: isOutOfStock,
     isFeatured: product.is_featured || false,

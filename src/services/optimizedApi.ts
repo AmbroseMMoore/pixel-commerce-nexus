@@ -230,6 +230,8 @@ export const fetchProductBySlugOptimized = async (slug: string): Promise<Product
         colorVariants,
         ageRanges: data.age_ranges || [],
         specifications: (data.specifications as Record<string, string>) || {},
+        sizeChartHeaders: (data.size_chart_headers as string[]) || [],
+        sizeChartRows: (data.size_chart_rows as string[][]) || [],
         isLowStock: data.stock_quantity <= 10,
         isOutOfStock: data.is_out_of_stock || data.stock_quantity <= 0,
         isFeatured: data.is_featured || false,
