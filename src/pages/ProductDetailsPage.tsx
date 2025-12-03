@@ -15,7 +15,7 @@ import { useWishlist } from "@/hooks/useWishlist";
 import PincodeChecker from "@/components/products/PincodeChecker";
 import { useDeliveryInfo } from "@/hooks/useDeliveryInfo";
 import ProductNavigation from "@/components/products/ProductNavigation";
-import { SizeChartModal } from "@/components/products/SizeChartModal";
+import { SizeChartCollapsible } from "@/components/products/SizeChartCollapsible";
 
 const ProductDetailsPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -275,11 +275,6 @@ const ProductDetailsPage = () => {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium">Size</h3>
-                <SizeChartModal
-                  headers={product.sizeChartHeaders || []}
-                  rows={product.sizeChartRows || []}
-                  productTitle={product.title}
-                />
               </div>
               <RadioGroup
                 value={selectedSize?.id || ""}
@@ -392,6 +387,13 @@ const ProductDetailsPage = () => {
                 <p className="text-sm text-amber-600 mt-2">Maximum quantity reached</p>
               )}
             </div>
+
+            {/* Size Chart (Collapsible) */}
+            <SizeChartCollapsible
+              headers={product.sizeChartHeaders || []}
+              rows={product.sizeChartRows || []}
+              productTitle={product.title}
+            />
 
             {/* Pincode Checker */}
             <div className="mb-6">
