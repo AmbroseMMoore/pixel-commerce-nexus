@@ -105,7 +105,8 @@ const AdminProductForm = () => {
   // Get subcategories for selected category
   const selectedCategory = categories.find(cat => cat.id === mainCategoryId);
   const subcategories = selectedCategory?.subCategories || [];
-
+  const validSubCategoryIds = new Set(subcategories.map(sub => sub.id));
+  const isSavedSubCategoryValid = !subCategoryId || validSubCategoryIds.has(subCategoryId);
   // Function to create new color variant with proper UUID and default sizes
   const createNewColorVariant = (): ColorVariant => {
     const variantId = generateUUID();
@@ -142,13 +143,16 @@ const AdminProductForm = () => {
   ]);
 
   // Size Chart
-  const [sizeChartHeaders, setSizeChartHeaders] = useState<string[]>(["Size", "Age", "Height (cm)", "Chest (cm)"]);
-  const [sizeChartRows, setSizeChartRows] = useState<string[][]>([["", "", "", ""]]);
+  const [sizeChartHeaders, setSizeChartHeaders] = useState<string[]>([]);
+  const [sizeChartRows, setSizeChartRows] = useState<string[][]>([]);
 
   // Enhanced data population with better error handling and debugging
   useEffect(() => {
     if (isEditMode && existingProduct) {
       console.log('Loading existing product data for edit mode:', existingProduct);
+      console.log('Loaded category/subcategory:', existingProduct.categoryId, existingProduct.subCategoryId);
+      console.log('Loaded size chart headers:', existingProduct.sizeChartHeaders);
+      console.log('Loaded size chart rows:', existingProduct.sizeChartRows);
       
       try {
         // Basic product info
@@ -278,6 +282,25 @@ const AdminProductForm = () => {
     }
   }, [isEditMode, existingProduct]);
 
+  // Ensure category and subcategory are correctly set once categories are loaded
+  useEffect(() => {
+    if (!isEditMode || !existingProduct || categories.length === 0) return;
+
+    if (!mainCategoryId && existingProduct.categoryId) {
+      setMainCategoryId(existingProduct.categoryId);
+    }
+    if (!subCategoryId && existingProduct.subCategoryId) {
+      setSubCategoryId(existingProduct.subCategoryId);
+    }
+
+    console.log('Final category/subcategory in form:', {
+      mainCategoryId,
+      subCategoryId,
+      productCategoryId: existingProduct.categoryId,
+      productSubCategoryId: existingProduct.subCategoryId,
+    });
+  }, [isEditMode, existingProduct, categories, mainCategoryId, subCategoryId]);
+
   // Generate slug when title changes (only for new products)
   useEffect(() => {
     if (!isEditMode && title) {
@@ -285,6 +308,14 @@ const AdminProductForm = () => {
       setSlug(newSlug);
     }
   }, [title, isEditMode]);
+
+  // For NEW products, set default size chart if still empty
+  useEffect(() => {
+    if (!isEditMode && sizeChartHeaders.length === 0 && sizeChartRows.length === 0) {
+      setSizeChartHeaders(["Size", "Age", "Height (cm)", "Chest (cm)"]);
+      setSizeChartRows([["", "", "", ""]]);
+    }
+  }, [isEditMode, sizeChartHeaders.length, sizeChartRows.length]);
 
   // Auto-fill size prices when base price changes (only for new products)
   useEffect(() => {
@@ -967,7 +998,7 @@ const AdminProductForm = () => {
                     <div>
                       <Label htmlFor="subCategory">Subcategory *</Label>
                       <Select
-                        value={subCategoryId}
+                        value={isSavedSubCategoryValid ? subCategoryId : ""}
                         onValueChange={(value) => setSubCategoryId(value)}
                         disabled={!mainCategoryId}
                       >
