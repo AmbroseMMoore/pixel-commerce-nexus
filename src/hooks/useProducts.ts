@@ -48,7 +48,8 @@ export const useProductById = (id: string) => {
   return useQuery({
     queryKey: ["product", "id", id],
     queryFn: () => fetchProductById(id),
-    enabled: !!id
+    enabled: !!id,
+    staleTime: 0,
   });
 };
 
