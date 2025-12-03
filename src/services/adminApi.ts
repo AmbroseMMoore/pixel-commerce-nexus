@@ -177,6 +177,8 @@ export const fetchAllProductsForAdmin = async () => {
       })),
       ageRanges: product.age_ranges || [],
       specifications: product.specifications || {},
+      sizeChartHeaders: product.size_chart_headers || [],
+      sizeChartRows: product.size_chart_rows || [],
       isLowStock: product.is_low_stock || false,
       isOutOfStock: product.is_out_of_stock || false,
       isFeatured: product.is_featured || false,
