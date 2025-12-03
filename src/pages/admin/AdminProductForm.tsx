@@ -636,6 +636,9 @@ const AdminProductForm = () => {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["product"] });
+      if (isEditMode && productId) {
+        queryClient.invalidateQueries({ queryKey: ["product", "id", productId] });
+      }
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["optimized-products"] });
       queryClient.invalidateQueries({ queryKey: ["featuredProducts"] });
