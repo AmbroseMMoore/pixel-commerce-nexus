@@ -12,7 +12,7 @@ interface OptimizedFeaturedProductsProps {
 }
 
 const OptimizedFeaturedProducts = ({ 
-  title = "Featured Products"
+  title = "New Launches"
 }: OptimizedFeaturedProductsProps) => {
   const isMobile = useIsMobile();
   const { data: products = [], isLoading, error, isError } = useOptimizedFeaturedProducts();
@@ -30,7 +30,7 @@ const OptimizedFeaturedProducts = ({
           <Alert variant="destructive" className="max-w-md mx-auto">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Unable to load featured products. Please try refreshing the page.
+              Unable to load new launch products. Please try refreshing the page.
             </AlertDescription>
           </Alert>
         </div>
@@ -54,7 +54,7 @@ const OptimizedFeaturedProducts = ({
               ))
             ) : products.length === 0 ? (
               <div className="col-span-2 text-center py-8">
-                <p className="text-gray-500">No featured products available yet.</p>
+                <p className="text-gray-500">No new launch products available yet.</p>
               </div>
             ) : (
               products.slice(0, 6).map((product) => (
@@ -81,7 +81,7 @@ const OptimizedFeaturedProducts = ({
               ) : products.length === 0 ? (
                 <CarouselItem className="pl-4 basis-full">
                   <div className="text-center py-8">
-                    <p className="text-gray-500">No featured products available yet.</p>
+                    <p className="text-gray-500">No new launch products available yet.</p>
                   </div>
                 </CarouselItem>
               ) : (

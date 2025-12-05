@@ -1059,7 +1059,7 @@ const AdminProductForm = () => {
                         checked={isFeatured}
                         onCheckedChange={setIsFeatured}
                       />
-                      <Label htmlFor="isFeatured">Featured</Label>
+                      <Label htmlFor="isFeatured">New Launch</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Switch
