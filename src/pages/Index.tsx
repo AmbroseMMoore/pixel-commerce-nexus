@@ -28,7 +28,7 @@ const Index = () => {
         categories={categories}
         isLoading={categoriesLoading}
       />
-      <OptimizedFeaturedProducts />
+      <OptimizedFeaturedProducts title="New Launches" />
       <OptimizedTrendingProducts />
       <CustomerReviewSlider />
       <NewsletterSection />

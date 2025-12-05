@@ -80,7 +80,7 @@ const OptimizedProductCard = ({ product, loading = false }: OptimizedProductCard
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {product.isFeatured && (
             <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded">
-              Featured
+              New Launch
             </span>
           )}
           {product.isTrending && (

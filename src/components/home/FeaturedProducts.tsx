@@ -13,7 +13,7 @@ interface FeaturedProductsProps {
 
 const FeaturedProducts = ({ 
   products, 
-  title = "Featured Products",
+  title = "New Launches",
   isLoading = false
 }: FeaturedProductsProps) => {
   const isMobile = useIsMobile();
@@ -38,8 +38,8 @@ const FeaturedProducts = ({
               ))
             ) : products.length === 0 ? (
               <div className="col-span-2 text-center py-8">
-                <p className="text-gray-500">No featured products available yet.</p>
-                <p className="text-sm text-gray-400 mt-2">Featured products will appear here once they are added.</p>
+                <p className="text-gray-500">No new launch products available yet.</p>
+                <p className="text-sm text-gray-400 mt-2">New launch products will appear here once they are added.</p>
               </div>
             ) : (
               // Actual products
@@ -68,8 +68,8 @@ const FeaturedProducts = ({
               ) : products.length === 0 ? (
                 <CarouselItem className="pl-4 basis-full">
                   <div className="text-center py-8">
-                    <p className="text-gray-500">No featured products available yet.</p>
-                    <p className="text-sm text-gray-400 mt-2">Featured products will appear here once they are added.</p>
+                    <p className="text-gray-500">No new launch products available yet.</p>
+                    <p className="text-sm text-gray-400 mt-2">New launch products will appear here once they are added.</p>
                   </div>
                 </CarouselItem>
               ) : (
