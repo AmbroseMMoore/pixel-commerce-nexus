@@ -100,6 +100,11 @@ const AdminSidebar = () => {
       href: "/admin/customers"
     },
     {
+      icon: <MessageCircle size={20} />,
+      label: "Cart Reminders",
+      href: "/admin/cart-reminders"
+    },
+    {
       icon: <FileText size={20} />,
       label: "CMS",
       href: "/admin/cms"

@@ -140,6 +140,11 @@ const App = () => (
               </AdminProtectedRoute>
             } />
             <Route path="/admin/delivery-partners" element={<AdminDeliveryPartners />} />
+            <Route path="/admin/cart-reminders" element={
+              <AdminProtectedRoute>
+                <AdminCartReminders />
+              </AdminProtectedRoute>
+            } />
             
             {/* Catch-All Route */}
             <Route path="*" element={<NotFound />} />
