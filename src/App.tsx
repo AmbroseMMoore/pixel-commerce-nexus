@@ -33,6 +33,7 @@ import AdminCMS from "./pages/admin/AdminCMS";
 import AdminProductForm from "./pages/admin/AdminProductForm";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminDeliveryPartners from "@/pages/admin/AdminDeliveryPartners";
+import AdminCartReminders from "@/pages/admin/AdminCartReminders";
 
 // Common Pages
 import NotFound from "./pages/NotFound";
