@@ -12,7 +12,8 @@ import {
   LogOut,
   Tag,
   Truck,
-  Boxes
+  Boxes,
+  MessageCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,11 @@ const AdminSidebar = () => {
       icon: <Users size={20} />,
       label: "Customers",
       href: "/admin/customers"
+    },
+    {
+      icon: <MessageCircle size={20} />,
+      label: "Cart Reminders",
+      href: "/admin/cart-reminders"
     },
     {
       icon: <FileText size={20} />,
