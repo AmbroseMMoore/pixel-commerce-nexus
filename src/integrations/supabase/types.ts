@@ -91,6 +91,75 @@ export type Database = {
         }
         Relationships: []
       }
+      cart_abandonment_tracking: {
+        Row: {
+          cart_snapshot: Json | null
+          cart_value: number | null
+          converted_order_id: string | null
+          created_at: string | null
+          customer_id: string
+          id: string
+          is_converted: boolean | null
+          is_paused: boolean | null
+          is_stopped: boolean | null
+          last_reminder_sent_at: string | null
+          next_reminder_at: string | null
+          phone_number: string
+          reminder_step: number
+          total_reminders_sent: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          cart_snapshot?: Json | null
+          cart_value?: number | null
+          converted_order_id?: string | null
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          is_converted?: boolean | null
+          is_paused?: boolean | null
+          is_stopped?: boolean | null
+          last_reminder_sent_at?: string | null
+          next_reminder_at?: string | null
+          phone_number: string
+          reminder_step?: number
+          total_reminders_sent?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          cart_snapshot?: Json | null
+          cart_value?: number | null
+          converted_order_id?: string | null
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          is_converted?: boolean | null
+          is_paused?: boolean | null
+          is_stopped?: boolean | null
+          last_reminder_sent_at?: string | null
+          next_reminder_at?: string | null
+          phone_number?: string
+          reminder_step?: number
+          total_reminders_sent?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_abandonment_tracking_converted_order_id_fkey"
+            columns: ["converted_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_abandonment_tracking_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           color_id: string
@@ -159,6 +228,123 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cart_reminder_logs: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          delivery_status: string | null
+          error_message: string | null
+          id: string
+          message_template: string | null
+          reminder_step: number
+          sent_at: string | null
+          tracking_id: string
+          whatsapp_message_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          delivery_status?: string | null
+          error_message?: string | null
+          id?: string
+          message_template?: string | null
+          reminder_step: number
+          sent_at?: string | null
+          tracking_id: string
+          whatsapp_message_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          delivery_status?: string | null
+          error_message?: string | null
+          id?: string
+          message_template?: string | null
+          reminder_step?: number
+          sent_at?: string | null
+          tracking_id?: string
+          whatsapp_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_reminder_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_reminder_logs_tracking_id_fkey"
+            columns: ["tracking_id"]
+            isOneToOne: false
+            referencedRelation: "cart_abandonment_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cart_reminder_schedule: {
+        Row: {
+          created_at: string | null
+          delay_hours: number
+          discount_code: string | null
+          discount_percentage: number | null
+          id: string
+          is_active: boolean | null
+          message_preview: string | null
+          message_type: string
+          step_number: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          delay_hours: number
+          discount_code?: string | null
+          discount_percentage?: number | null
+          id?: string
+          is_active?: boolean | null
+          message_preview?: string | null
+          message_type: string
+          step_number: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          delay_hours?: number
+          discount_code?: string | null
+          discount_percentage?: number | null
+          id?: string
+          is_active?: boolean | null
+          message_preview?: string | null
+          message_type?: string
+          step_number?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      cart_reminder_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_enabled: boolean | null
+          updated_at: string | null
+          whatsapp_phone_number: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          updated_at?: string | null
+          whatsapp_phone_number?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          updated_at?: string | null
+          whatsapp_phone_number?: string | null
+        }
+        Relationships: []
       }
       categories: {
         Row: {
