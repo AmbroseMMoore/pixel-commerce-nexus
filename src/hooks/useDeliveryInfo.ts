@@ -1,7 +1,7 @@
 
 import { useState, useCallback } from 'react';
 
-export const FREE_SHIPPING_THRESHOLD = 3000;
+export const FREE_SHIPPING_THRESHOLD = 2000;
 
 interface DeliveryInfo {
   zone_id: string;

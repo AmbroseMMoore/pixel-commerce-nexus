@@ -66,7 +66,8 @@ export const useTrendingProducts = () => {
           ),
           product_sizes (id, product_id, color_id, name, stock_quantity, in_stock, price_original, price_discounted)
         `)
-        .eq('is_trending', true);
+        .eq('is_trending', true)
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
       
