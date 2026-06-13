@@ -30,8 +30,6 @@ verify_jwt = true
 [functions.send-contact-email]
 verify_jwt = false
 
-[functions.product-assistant]
-verify_jwt = false
 
 [functions.track-cart-abandonment]
 verify_jwt = false
