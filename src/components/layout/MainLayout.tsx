@@ -4,7 +4,7 @@ import Footer from "./Footer";
 import PopupModal from "../PopupModal";
 import SEOHead from "../seo/SEOHead";
 import StructuredData from "../seo/StructuredData";
-import ProductAssistant from "../chat/ProductAssistant";
+
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -47,7 +47,7 @@ const MainLayout = ({
       </main>
       <Footer />
       <PopupModal />
-      <ProductAssistant />
+      
       
       {/* Global Organization Schema */}
       <StructuredData type="organization" data={{}} />
